@@ -1,12 +1,10 @@
-classdef bdHilbert < bdPanel
-    %bdHilbert  Brain Dynamics Toolbox panel for the Hilbert transfrom.
-    %   This display panel applies the Hilbert transform to the output
-    %   of a dynamical system.
+classdef bdHilbert < bdPanelBase
+    %bdHilbert Display panel for plotting the Hilbert transform of a time series
     %
     %AUTHORS
-    %  Stewart Heitmann (2017b,2018a,2019a)
+    %  Stewart Heitmann (2017b,2018a,2019a,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -34,516 +32,929 @@ classdef bdHilbert < bdPanel
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
 
-    properties (Constant)
-        title = 'Hilbert';
-    end    
-
+    properties (Dependent)
+        options
+    end
+    
     properties (Access=public)
-        t               % equi-spaced time points
-        y               % time series of the selected variable(s)
-        h               % Hilbert transform of the time series
-        p               % Hilbert phases of the time series
+        t                   double          % time steps of the signal
+        h                   double          % Hilbert transform of the time series
+        p                   double          % Hilbert phases of the time series
+        
+        % Upper/Lower axes
+        axes1               matlab.ui.control.UIAxes
+        axes2               matlab.ui.control.UIAxes
+        
+        % Cylinder/Disc meshes        
+        mesh1               matlab.graphics.chart.primitive.Surface
+        mesh2               matlab.graphics.chart.primitive.Surface 
     end
     
     properties (Access=private)
-        ax1             % handle to the upper axes
-        ax2             % handle to the lower axes
-        tranmenu        % handle to TRANSIENTS menu item
-        markmenu        % handle to MARKERS menu item        
-        relmenu         % handle to RELATIVE PHASE menu item        
-        submenu         % handle to subpanel selector menu item
-        listener        % handle to listener
-        cylinder        % handle to cylinder mesh
-        cylinderX       % cylinder wire frame (x-coord)
-        cylinderY       % cylinder wire frame (y-coord)
-        cylinderZ       % cylinder wire frame (z-coord)
+        sysobj              bdSystem
+        selector            bdSelector
+        
+        % panel menus
+        menu                matlab.ui.container.Menu
+        menuTransients      matlab.ui.container.Menu
+        menuMarkers         matlab.ui.container.Menu
+        menuPoints          matlab.ui.container.Menu
+        menuRelPhase        matlab.ui.container.Menu
+        menuDock            matlab.ui.container.Menu
+        
+        % panel tab
+        tab                 matlab.ui.container.Tab           
+
+        % instrumentation
+        azimuthSlider       matlab.ui.control.Slider
+        elevationKnob       matlab.ui.control.Knob
+        opacityKnob         matlab.ui.control.Knob
+        label1              matlab.ui.control.Label
+        
+        % background traces (upper plot)
+        trace1a             matlab.graphics.primitive.Line
+        trace1b             matlab.graphics.primitive.Line
+        
+        % foreground lines (upper plot)
+        line1a              matlab.graphics.primitive.Line
+        line1b              matlab.graphics.primitive.Line
+        
+        % foreground lines (lower plot)      
+        line2a              matlab.graphics.primitive.Line
+        line2b              matlab.graphics.primitive.Line
+        
+        % markers (upper plot)
+        marker1a            matlab.graphics.primitive.Line
+        marker1b            matlab.graphics.primitive.Line
+        marker1c            matlab.graphics.primitive.Line
+        
+        % markers (lower plot)
+        marker2a            matlab.graphics.primitive.Line
+        marker2b            matlab.graphics.primitive.Line
+        marker2c            matlab.graphics.primitive.Line
+
+        % event listeners
+        listener1
+        listener2
+        listener3
     end
     
     methods
-        function this = bdHilbert(tabgroup,control)
-             % Construct a new Hilbert Panel in the given tabgroup
-
-            % initialise the base class (specifically this.menu and this.tab)
-            this@bdPanel(tabgroup);
+        function this = bdHilbert(tabgrp,sysobj,opt)
+            %fprintf('%s()\n',mfilename);
             
-            % assign default values to missing options in sys.panels.bdHilbert
-            control.sys.panels.bdHilbert = bdHilbert.syscheck(control.sys);
-
-            % construct the cylinder frame
-            [this.cylinderY,this.cylinderZ,this.cylinderX] = cylinder(0.95*ones(1,31),31);
+            % remember the parents
+            this.sysobj = sysobj;
             
-            % configure the pull-down menu
-            this.menu.Label = control.sys.panels.bdHilbert.title;
-            this.InitCalibrateMenu(control);
-            this.InitTransientsMenu(control);
-            this.InitMarkerMenu(control);
-            this.InitRelPhaseMenu(control);
-            this.InitExportMenu(control);
-            this.InitCloseMenu(control);
+            % get the parent figure of the TabGroup
+            fig = ancestor(tabgrp,'figure');
             
-            % configure the panel graphics
-            this.tab.Title = control.sys.panels.bdHilbert.title;
-            this.InitSubpanel(control);
+            % Create the panel menu and assign it a unique Tag to identify it.
+            this.menu = uimenu('Parent',fig, ...
+                'Label','Hilbert Phase', ...
+                'Tag', bdPanelBase.FocusMenuID(), ...     % unique Tag used by the FocusMenu function
+                'Visible','off');
+            
+            % construct the TRANSIENTS menu item
+            this.menuTransients = uimenu(this.menu, ...
+                'Label', 'Transients', ...
+                'Checked', 'on', ...
+                'Tag', 'transients', ...
+                'Tooltip', 'Show the transient part of the trajectory', ...
+                'Callback', @(src,~) this.callbackTransients(src) );
+            
+            % construct the MARKERS menu item
+            this.menuMarkers = uimenu(this.menu, ...
+                'Label', 'Markers', ...
+                'Checked', 'on', ...
+                'Tag', 'markers', ...
+                'Tooltip', 'Show the trajectory markers', ...               
+                'Callback', @(src,~) this.callbackMarkers(src) );
+            
+            % construct the POINTS menu item
+            this.menuPoints = uimenu(this.menu, ...
+                'Label', 'Time Points', ...
+                'Checked', 'off', ...
+                'Tag', 'points', ...
+                'Tooltip', 'Show individual time points', ...            
+                'Callback', @(src,~) this.callbackPoints(src) );
+                        
+            % construct the RELATIVE PHASE menu item
+            this.menuRelPhase = uimenu(this.menu, ...
+                'Label', 'Relative Phases', ...
+                'Checked', 'off', ...
+                'Tag', 'relphase', ...
+                'Tooltip', 'Adjust phases relative to the 1st time series', ...
+                'Callback', @(src,~) this.callbackRelPhase(src) );
+                                    
+            % construct the HOLD menu item
+            uimenu(this.menu, ...
+                'Label', 'Hold', ...
+                'Tooltip', 'Hold the graphics', ...            
+                'Callback', @(src,~) this.callbackHold(src) );
+            
+            % construct the CLEAR menu item
+            uimenu(this.menu, ...
+                'Label', 'Clear', ...
+                'Tooltip', 'Clear the graphics', ...            
+                'Callback', @(~,~) this.callbackClear() );
+            
+            % construct the RESET menu item
+            uimenu(this.menu, ...
+                'Label', 'Reset View', ...
+                'Tooltip', 'Reset the view angle', ...            
+                'Callback', @(~,~) this.callbackReset() );
+            
+            % construct the DOCK menu item
+            this.menuDock = uimenu(this.menu, ...
+                'Label', 'Undock', ...
+                'Tooltip', 'Undock the display panel', ...            
+                'Callback', @(src,~) this.callbackDock(src,tabgrp) );
 
-            % listen to the control panel for redraw events
-            this.listener = addlistener(control,'redraw',@(~,~) this.redraw(control));    
+            % construct the CLOSE menu item
+            uimenu(this.menu, ...
+                'Separator','on', ...
+                'Label','Close', ...
+                'Tooltip', 'Close the display panel', ...            
+                'Callback', @(~,~) this.callbackClose(fig) );
+
+            % Create Tab and give it the focus. The tab should have the same
+            % Tag as the panel menu so that each can be found by the other.
+            this.tab = uitab(tabgrp, 'Title','Hilbert Phase', 'Tag',this.menu.Tag);
+            tabgrp.SelectedTab = this.tab;
+            
+            % Create GridLayout within the Tab
+            GridLayout = uigridlayout(this.tab);
+            GridLayout.ColumnWidth = {'2x','3x','3x'};
+            GridLayout.RowHeight = {21,'3x','1x','2x'};
+            GridLayout.RowSpacing = 5;
+            GridLayout.ColumnSpacing = 0;
+            GridLayout.Visible = 'off';
+
+            % construct the selectors
+            this.selector = bdSelector(sysobj,'vardef');
+
+            % Create DropDownCombo for selector
+            combo1 = this.selector.DropDownCombo(GridLayout);
+            combo1.Layout.Row = 1;
+            combo1.Layout.Column = 1;
+
+            % Create label1
+            this.label1 = uilabel(GridLayout);
+            this.label1.Layout.Row = 1;
+            this.label1.Layout.Column = [2 3];
+            this.label1.Text = 'Not all traces are shown';
+            this.label1.VerticalAlignment = 'center';
+            this.label1.HorizontalAlignment = 'right';
+            this.label1.FontColor = [0.5 0.5 0.5];
+            this.label1.Visible = 'off';
+
+            % Create axes1 (upper plot)
+            this.axes1 = uiaxes(GridLayout);
+            this.axes1.Layout.Row = 2;
+            this.axes1.Layout.Column = [1 3];
+            this.axes1.NextPlot = 'add';
+            this.axes1.XLabel.String = 'time';
+            this.axes1.FontSize = 11;
+            this.axes1.XGrid = 'off';
+            this.axes1.YGrid = 'off';
+            this.axes1.Box = 'on';
+            this.axes1.XLim = sysobj.tspan;
+            this.axes1.YLim = [-1.1 1.1];
+            this.axes1.ZLim = [-1.1 1.1];
+            this.axes1.View = [0 0];
+            this.axes1.YTick = [];
+            this.axes1.ZTick = [];
+            this.axes1.TickLength=[0.01 0.01];
+            
+            % Create axes2 (lower plot)
+            this.axes2 = uiaxes(GridLayout);
+            this.axes2.Layout.Row = [3 4];
+            this.axes2.Layout.Column = 3;
+            this.axes2.NextPlot = 'add';
+            this.axes2.FontSize = 11;
+            this.axes2.XGrid = 'off';
+            this.axes2.YGrid = 'off';
+            this.axes2.Box = 'off';
+            this.axes2.XLim = [-1.6 1.6];
+            this.axes2.YLim = [-1.6 1.6];
+            this.axes2.XTick = [];
+            this.axes2.YTick = [];
+            this.axes2.DataAspectRatio = [1 1 1];
+            this.axes2.Visible = 'off';
+                     
+            % Customise the axes toolbars
+            axtoolbar(this.axes1,{'export'});
+            axtoolbar(this.axes2,{'export'});
+            
+            % Creat Opacity Knob
+            this.opacityKnob = uiknob(GridLayout);
+            this.opacityKnob.Layout.Row = 4;
+            this.opacityKnob.Layout.Column = 1;
+            this.opacityKnob.Limits = [0 1];
+            this.opacityKnob.Value = 1;
+            this.opacityKnob.MajorTicks= [0 1];
+            this.opacityKnob.MinorTicks= 0:0.1:1;
+            this.opacityKnob.Tooltip = 'Opacity';  
+            this.opacityKnob.ValueChangingFcn = @(src,evnt) this.OpacityChanging(src,evnt);
+  
+            % Create Azimuth slider
+            this.azimuthSlider = uislider(GridLayout);
+            this.azimuthSlider.Layout.Row = 3;
+            this.azimuthSlider.Layout.Column = 1;
+            this.azimuthSlider.Limits = [-10 10];
+            this.azimuthSlider.Value = 0;
+            this.azimuthSlider.MajorTicks = -10:10:10;
+            this.azimuthSlider.MinorTicks = -10:2:10;
+            this.azimuthSlider.Tooltip = 'Azimuth';
+            this.azimuthSlider.ValueChangingFcn = @(src,evnt) this.AzimuthChanging(src,evnt);
+            
+            % Create Elevation Knob
+            this.elevationKnob = uiknob(GridLayout);
+            this.elevationKnob.Layout.Row = [3 4];
+            this.elevationKnob.Layout.Column = 2;
+            this.elevationKnob.Limits = [-180 180];
+            this.elevationKnob.Value = 0;
+            this.elevationKnob.MajorTicks= -180:45:180;
+            this.elevationKnob.MinorTicks= -180:15:180;
+            this.elevationKnob.ValueChangingFcn = @(src,evnt) this.ElevationChanging(src,evnt);
+
+            % Construct mesh1 (Cylinder)
+            [X,Y,Z] = this.CylinderMesh(0,1,0);
+            this.mesh1 = mesh(this.axes1, X, Y, Z, ...
+                'EdgeColor',[0.5 0.9 0.5], ...
+                'FaceColor',[0.9 1 0.9], ...
+                'FaceAlpha',1, ...
+                'EdgeAlpha',1, ...
+                'PickableParts','none');
+
+            % Construct mesh2 (Disc)
+            [X,Y,Z] = this.DiscMesh(0);
+            this.mesh2 = mesh(this.axes2, X, Y, Z, ...
+                'EdgeColor',[0.8 0.8 0.8], ...
+                'FaceColor',[1.0 1.0 1.0], ...
+                'PickableParts','none');
+            
+            % Add text labels to the disc
+            text(this.axes2,-1.5,-1.5,'-\pi', ...
+                'HorizontalAlignment','left', ...
+                'VerticalAlignment','middle', ...
+                'FontSize',14);
+            text(this.axes2,1.5,-1.5,'+\pi', ...
+                'HorizontalAlignment','right', ...
+                'VerticalAlignment','middle', ...
+                'FontSize',14);
+            
+            % Construct background traces (containing NaN)
+            this.trace1a = line(this.axes1,NaN,NaN, 'LineStyle','-', 'color',[0.8 0.8 0.8], 'Linewidth',1.5, 'PickableParts','none');
+            this.trace1b = line(this.axes1,NaN,NaN, 'LineStyle','-', 'color',[0.8 0.8 0.8], 'Linewidth',1.5, 'PickableParts','none');
+            
+            % Construct the line plots (containing NaN)
+            this.line1a = line(this.axes1,NaN,NaN,'LineStyle','-','color',[0.5 0.5 0.5],'Linewidth',2);
+            this.line1b = line(this.axes1,NaN,NaN,'LineStyle','-','color',[0 0 0],'Linewidth',2);
+            this.line2a = line(this.axes2,NaN,NaN,'LineStyle','-','color',[0.5 0.5 0.5],'Linewidth',1);
+            this.line2b = line(this.axes2,NaN,NaN,'LineStyle','-','color',[0 0 0],'Linewidth',1.5);
+
+            % Construct the markers
+            this.marker1a = line(this.axes1,NaN,NaN,'Marker','h','color','k','Linewidth',0.75,'MarkerFaceColor','y','MarkerSize',10);
+            this.marker1b = line(this.axes1,NaN,NaN,'Marker','o','color','k','Linewidth',1,'MarkerFaceColor','w');
+            this.marker1c = line(this.axes1,NaN,NaN,'Marker','o','color','k','Linewidth',1,'MarkerFaceColor',[0.6 0.6 0.6]);
+            this.marker2a = line(this.axes2,NaN,NaN,'Marker','h','color','k','Linewidth',0.75,'MarkerFaceColor','y','MarkerSize',10);
+            this.marker2b = line(this.axes2,NaN,NaN,'Marker','o','color','k','Linewidth',1,'MarkerFaceColor','w');
+            this.marker2c = line(this.axes2,NaN,NaN,'Marker','o','color','k','Linewidth',1,'MarkerFaceColor',[0.6 0.6 0.6]);
+
+            % Customise the DataTipTemplate (line1a)
+            dt = datatip(this.line1a,NaN,NaN);
+            this.line1a.DataTipTemplate.DataTipRows(1).Label = 'time';
+            this.line1a.DataTipTemplate.DataTipRows(2) = [];
+            delete(dt);
+            
+            % Customise the DataTipTemplate (line1b)
+            dt = datatip(this.line1b,NaN,NaN);
+            this.line1b.DataTipTemplate.DataTipRows(1).Label = 'time';
+            this.line1b.DataTipTemplate.DataTipRows(2) = [];
+            delete(dt);
+            
+            % Customise the DataTipTemplate (marker1a)
+            dt = datatip(this.marker1a,NaN,NaN);
+            this.marker1a.DataTipTemplate.DataTipRows(1).Label = 'time';
+            this.marker1a.DataTipTemplate.DataTipRows(2) = [];
+            delete(dt);
+            
+            % Customise the DataTipTemplate (marker1b)
+            dt = datatip(this.marker1b,NaN,NaN);
+            this.marker1b.DataTipTemplate.DataTipRows(1).Label = 'time';
+            this.marker1b.DataTipTemplate.DataTipRows(2) = [];
+            delete(dt);
+            
+            % Customise the DataTipTemplate (marker1c)
+            dt = datatip(this.marker1c,NaN,NaN);
+            this.marker1c.DataTipTemplate.DataTipRows(1).Label = 'time';
+            this.marker1c.DataTipTemplate.DataTipRows(2) = [];
+            delete(dt);
+               
+            % apply the custom options (and render the data)
+            this.options = opt;
+
+            % make our panel menu visible and hide the others
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % make the grid visible
+            GridLayout.Visible = 'on';
+
+            % listen for SelectionChanged events
+            this.listener1 = listener(this.selector,'SelectionChanged',@(src,evnt) this.SelectorChanged());
+            
+            % listen for SubscriptChanged events
+            this.listener2 = listener(this.selector,'SubscriptChanged',@(src,evnt) this.SubscriptChanged());
+                       
+            % listen for Redraw events
+            this.listener3 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(evnt));
+        end
+        
+        function opt = get.options(this)
+            opt.title      = this.tab.Title;
+            opt.transients = this.menuTransients.Checked;
+            opt.markers    = this.menuMarkers.Checked;
+            opt.points     = this.menuPoints.Checked;
+            opt.relphase   = this.menuRelPhase.Checked;
+            opt.azimuth    = this.azimuthSlider.Value;
+            opt.elevation  = this.elevationKnob.Value;
+            opt.opacity    = this.opacityKnob.Value;  
+            opt.selector   = this.selector.cellspec();
+        end
+        
+        function set.options(this,opt)   
+            % check the incoming options and apply defaults to missing values
+            opt = bdHilbert.optcheck(opt);
+             
+            % update the selector
+            this.selector.SelectByCell(opt.selector);
+
+            % update the tab title
+            this.tab.Title = opt.title;
+            
+            % update the menu title
+            this.menu.Text = opt.title;
+            
+            % update the TRANSIENTS menu
+            this.menuTransients.Checked = opt.transients;
+
+            % update the MARKERS menu
+            this.menuMarkers.Checked = opt.markers;
+
+            % update the POINTS menu
+            this.menuPoints.Checked = opt.points;
+             
+            % update the RELATIVE PHASE menu
+            this.menuRelPhase.Checked = opt.relphase;
+
+            % update the AZIMUTH slider
+            this.azimuthSlider.Value = opt.azimuth;
+                
+            % update the ELEVATION roller
+            this.elevationKnob.Value = opt.elevation;
+            
+            % update the OPACITY roller
+            this.opacityKnob.Value = opt.opacity;
+            
+            % Redraw everything
+            this.RenderBackground();
+            this.RenderForeground();
+            drawnow;
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
         end
         
         function delete(this)
-            % Destructor
-            delete(this.listener)
-        end
-         
+           %disp('bdHilbert.delete()');
+           delete(this.listener1);
+           delete(this.listener2);
+           delete(this.listener3);
+           delete(this.menu);
+           delete(this.tab);
+       end
     end
-    
     
     methods (Access=private)
-        % Initialise the CALIBRATE menu item
-        function InitCalibrateMenu(this,control)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Calibrate Axes', ...
-                'Callback', @CalibrateMenuCallback );
+
+        % Listener for REDRAW events
+        function Redraw(this,evnt)
+            %disp('bdHilbert.Redraw()');
+
+            % Get the current selector settings
+            [xxxdef,xxxindx] = this.selector.Item();
+
+            % if the solution (sol) has changed, or
+            % if time slider value (tval) has changed, or
+            % if the time step size (tstep) has changed, or
+            % if the plot limit for our variable has changed
+            % then redraw all plot lines.
+            if evnt.sol || evnt.tval || evnt.tstep || evnt.tspan || evnt.(xxxdef)(xxxindx).lim
+                this.RenderBackground();
+                this.RenderForeground();
+            end  
             
-            % Menu callback function
-            function CalibrateMenuCallback(~,~)
-                % if the TRANSIENT menu is checked then ...
-                switch this.tranmenu.Checked
-                    case 'on'
-                        % adjust the limits to fit all of the data
-                        tindx = true(size(control.tindx));
-                    case 'off'
-                        % adjust the limits to fit the non-transient data only
-                        tindx = control.tindx;
-                end
-
-                % find the limits of the original data
-                lo = min(min(this.y));
-                hi = max(max(this.y));
-                
-                % get the index of the plot variable in sys.vardef
-                varindx = this.submenu.UserData.xxxindx;
-                
-                % adjust the limits of the plot variables
-                control.sys.vardef(varindx).lim = bdPanel.RoundLim(lo,hi);
-
-                % refresh the vardef control widgets
-                notify(control,'vardef');
-                
-                % redraw all panels (because the new limits apply to all panels)
-                notify(control,'redraw');
-            end
-
         end
         
-        % Initialise the TRANISENTS menu item
-        function InitTransientsMenu(this,control)
-            % get the default transient menu setting from sys.panels
-            if control.sys.panels.bdHilbert.transients
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
+        % Compute the Hilbert transform (of the selected state variable.
+        % Returns the results in this.t, this.h and this.p.
+        function [tindx0,tindx1] = ComputeHilbertPhases(this)
+            % retrieve the relevant time series data via the selector
+            [y,~,this.t,tindx0,tindx1] = this.selector.Trajectory();
 
-            % construct the menu item
-            this.tranmenu = uimenu(this.menu, ...
-                'Label','Transients', ...
-                'Checked',checkflag, ...
-                'Callback', @TranMenuCallback);
-
-            % Menu callback function
-            function TranMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end
-        
-        % Initialise the MARKERS menu item
-        function InitMarkerMenu(this,control)
-            % get the marker menu setting from sys.panels
-            if control.sys.panels.bdHilbert.markers
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
-
-            % construct the menu item
-            this.markmenu = uimenu(this.menu, ...
-                'Label','Markers', ...
-                'Checked',checkflag, ...
-                'Callback', @MarkMenuCallback);
-
-            % Menu callback function
-            function MarkMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end       
-       
-        % Initialise the RELATIVE PHASE menu item
-        function InitRelPhaseMenu(this,control)
-            % get the relative menu setting from sys.panels
-            if control.sys.panels.bdHilbert.relphase
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
-
-            % construct the menu item
-            this.relmenu = uimenu(this.menu, ...
-                'Label','Relative Phase', ...
-                'Checked',checkflag, ...
-                'Callback', @RelMenuCallback);
-
-            % Menu callback function
-            function RelMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end       
-       
-        % Initialise the EXPORT menu item
-        function InitExportMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Export Figure', ...
-               'Callback',@callback);
-           
-            function callback(~,~)
-                % Construct a new figure
-                fig = figure();    
-                
-                % Change mouse cursor to hourglass
-                set(fig,'Pointer','watch');
-                drawnow;
-                
-                % Copy the plot data to the new figure
-                ax1new = copyobj(this.ax1,fig);
-                ax1new.OuterPosition = [0 0.51 1 0.47];
-                ax2new = copyobj(this.ax2,fig);
-                ax2new.OuterPosition = [0 0.03 1 0.47];
-
-                % Allow the user to hit everything in ax1new
-                objs = findobj(ax1new,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                
-                % Allow the user to hit everything in ax2new
-                objs = findobj(ax2new,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                
-                % Change mouse cursor to arrow
-                set(fig,'Pointer','arrow');
-                drawnow;
-            end
-        end
-
-        % Initialise the CLOSE menu item
-        function InitCloseMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-                   'Label','Close', ...
-                   'Callback',@(~,~) this.close());
-        end
-
-        % Initialise the subpanel
-        function InitSubpanel(this,control)
-            % construct the subpanel
-            [this.ax1,cmenu,spanel] = bdPanel.Subpanel(this.tab,[0 0 1 1],[0 0.51 1 0.47]);
-            xlabel(this.ax1,'time');
-            title(this.ax1,'Time Series');
-
-            % construct the second axis
-            this.ax2 = axes('Parent',spanel, ...
-                'Units','normal', ...
-                'OuterPosition',[0 0.01 1 0.47], ...
-                'NextPlot','add', ...
-            ...    'PlotBoxAspectRatioMode','manual', ...
-            ...    'PlotBoxAspectRatio',[3 1 1], ...
-                'YDir','reverse', ...
-                'XLim',[-1.1 1.1], ...
-                'YLim',[-1.1 1.1], ...
-                'YTick', [], ...
-                'ZTick', [], ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Box','on');
-            xlabel(this.ax2,'time');
-
-            % Constuct the cylinder for the second axis
-            edgecolor = 0.8*[1 1 1];
-            facecolor = 1.0*[1 1 1];
-            edgealpha = 0.7;
-            facealpha = 0.7;
-            t0 = control.sys.tspan(1);
-            t1 = control.sys.tspan(2);
-            this.cylinder = mesh(this.ax2, ...
-                this.cylinderX.*(t1-t0) + t0, ...
-                this.cylinderY, ...
-                this.cylinderZ, ...
-                'EdgeColor',edgecolor,'FaceColor',facecolor, 'FaceAlpha',facealpha, 'EdgeAlpha',edgealpha);
-
-            % Set the initial view angle
-            view(this.ax2,-5,0);
-
-            % construct a selector menu comprising items from sys.vardef
-            this.submenu = bdPanel.SelectorMenuFull(cmenu, ...
-                control.sys.vardef, ...
-                @callback, ...
-                'off', 'mb1',1,1);
-            
-            % Callback function for the subpanel selector menu
-            function callback(menuitem,~)
-                % check 'on' the selected menu item and check 'off' all others
-                bdPanel.SelectorCheckItem(menuitem);
-                % update our handle to the selected menu item
-                this.submenu = menuitem;
-                % redraw the panel
-                this.redraw(control);
-            end
-        end
-        
-        function redraw(this,control)
-            %disp('bdHilbert.redraw()')
-
-            % get the details of the variable currently selected variable
-            varname  = this.submenu.UserData.xxxname;          % generic name of variable
-            varlabel = this.submenu.UserData.label;            % plot label for selected variable
-            varindx  = this.submenu.UserData.xxxindx;          % index of selected variable in sys.vardef
-            valindx  = this.submenu.UserData.valindx;          % indices of selected entries in sys.vardef.value
-            solindx  = control.sys.vardef(varindx).solindx;    % indices of selected entries in sol
-            ylim     = control.sys.vardef(varindx).lim;        % axis limits of the selected variable
-
-            % Ensure we are using equi-spaced time points
-            switch control.solvertype
-                case 'sde'
-                    % The SDE solvers use fixed time steps already
-                    % so we simply use the solver's own time steps.
-                    this.t = control.sol.x;
-
-                otherwise
-                    % Use interpolation to obtain fixed time steps.
-                    % We choose the number of time steps of the interpolant
-                    % to be similar to the number of steps chosen by the
-                    % solver. This avoids over-sampling and under-sampling.
-                    this.t = linspace(control.sol.x(1),control.sol.x(end),numel(control.sol.x));                        
-            end
-            
-            % get the indices of the non-transient time steps in this.t
-            tindx = (this.t >= control.sys.tval);  % logical indices of the non-transient time steps
-            indxt = find(tindx>0,1);            % numerical index of the first non-transient step (may be empty)
-
-            % interpolate the trajectory using the equi-spaced time points 
-            this.y = bdEval(control.sol,this.t,solindx);
+            % ensure that y is not 3D format
+            nt = numel(this.t);
+            y = reshape(y,[],nt,1);
             
             % compute the Hilbert transform and its phase angles
-            [this.h,this.p] = bdHilbert.hilbert(this.y);
-            
-            % clear the top axes
-            cla(this.ax1);
-            
-            % clear parts of the bottom axes
-            delete( findobj(this.ax2,'Tag','fgnd') );
-
-            % if the RELATIVE PHASE menu is enabled then  ...
-            switch this.relmenu.Checked
+            [this.h,this.p] = bdHilbert.hilbert(y);
+                        
+            % compute relative phases (if appropriate)
+            switch this.menuRelPhase.Checked
                 case 'on'
-                    % adjust the phase angles of the all variables relative to the first variable.
-                    
-                    % repeat the first row of this.p as a matrix
-                    p2 = this.p(ones(1,size(this.p,1)),:);
-
-                    % subtract the first row from all other rows
-                    this.p = this.p - p2;
-                    
-                    % title
-                    title(this.ax2,['Phase of ' varlabel ' relative to ' varname '_1']);
-
-                case 'off'
-                    % title
-                    title(this.ax2,['Phase of ' varlabel]);
+                    p0 = this.p(1,1);
+                    this.p = this.p - this.p(1,:) + p0;
             end
-
-            % set the y-axes limits on the upper plot
-            this.ax1.YLim = ylim + [-1e-4 +1e-4];
-
-            % set the y- and z-axes limits on the lower plot
-            this.ax2.YLim = [-1.1 +1.1];
-            this.ax2.ZLim = [-1.1 +1.1];
-                    
-            % if the TRANSIENT menu is enabled then  ...
-            switch this.tranmenu.Checked
-                case 'on'
-                    % set the x-axes limits to the full time span
-                    this.ax1.XLim = control.sys.tspan + [-1e-4 0];
-                    this.ax2.XLim = control.sys.tspan + [-1e-4 0];
-
-                case 'off'
-                    % limit the x-axes to the non-transient part of the time domain
-                    this.ax1.XLim = [control.sys.tval control.sys.tspan(2)] + [-1e-4 0];
-                    this.ax2.XLim = [control.sys.tval control.sys.tspan(2)] + [-1e-4 0];
-            end
-            
-            % update the ylabels
-            ylabel(this.ax1, varlabel);
-
-            % Plot the original signal in ax1
-            % ... with the background traces in grey
-            plot(this.ax1, this.t, this.y, 'color',[0.75 0.75 0.75], 'HitTest','off');              
-            % ... and variable of interest in black
-            plot(this.ax1, this.t(tindx), this.y(valindx,tindx), 'color','k', 'Linewidth',1.5);
-
-            % rescale the cylinder mesh to fit the simulation time span
-            t0 = control.sys.tspan(1);
-            t1 = control.sys.tspan(2);
-            this.cylinder.XData = this.cylinderX.*(t1-t0) + t0;
-            
-            % Plot the Hilbert phase superimposed on the cylinder
-            sinp = sin(this.p);
-            cosp = cos(this.p);   
-            % ... with the background traces in grey
-            plot3(this.ax2, this.t, 0.975*cosp, 0.975*sinp, 'color',[0.5 0.5 0.5], 'HitTest','off', 'Tag','fgnd');
-            % ... and variable of interest in black
-            plot3(this.ax2, this.t(tindx), cosp(valindx,tindx), sinp(valindx,tindx), 'color','k', 'Linewidth',1.5, 'Tag','fgnd');
-            
-            % if the TRANSIENT menu is enabled then  ...
-            if strcmp(this.tranmenu.Checked,'on')                            
-                % plot the pentagram marker on the first axes
-                plot(this.ax1, this.t(1), this.y(valindx,1), ...
-                    'Marker','p', ...
-                    'Color','k', ...
-                    'MarkerFaceColor','y', ...
-                    'MarkerSize',10 , ...
-                    'Visible',this.markmenu.Checked, ...
-                    'Tag','fgnd');
-
-                % plot the pentagram marker on the second axes
-                plot3(this.ax2, this.t(1), cosp(valindx,1), sinp(valindx,1), ...
-                    'Marker','p', ...
-                    'Color','k', ...
-                    'MarkerFaceColor','y', ...
-                    'MarkerSize',10 , ...
-                    'Visible',this.markmenu.Checked, ...
-                    'Tag','fgnd');
-            end
-
-            if ~isempty(indxt)
-                % plot the open circle marker on the first axes
-                plot(this.ax1, this.t(indxt), this.y(valindx,indxt), ...
-                    'Marker','o', ...
-                    'Color','k', ...
-                    'MarkerFaceColor','y', ...
-                    'MarkerSize',6, ...
-                    'Visible',this.markmenu.Checked, ...
-                    'Tag','fgnd');
-
-                % plot the open circle marker on the second axes
-                plot3(this.ax2, this.t(indxt), cosp(valindx,indxt), sinp(valindx,indxt), ...
-                    'Marker','o', ...
-                    'Color','k', ...
-                    'MarkerFaceColor','y', ...
-                    'MarkerSize',6 , ...
-                    'Visible',this.markmenu.Checked, ...
-                    'Tag','fgnd');
-            end
-            
-            % plot the closed circle marker on the first axes
-            plot(this.ax1, this.t(end), this.y(valindx,end), ...
-                'Marker','o', ...
-                'Color','k', ...
-                'MarkerFaceColor',[0.5 0.5 0.5], ...
-                'MarkerSize',6, ...
-                'Visible',this.markmenu.Checked, ...
-                'Tag','fgnd');
-
-            % plot the closed circle marker on the second axes
-            plot3(this.ax2, this.t(end), cosp(valindx,end), sinp(valindx,end), ...
-                'Marker','o', ...
-                'Color','k', ...
-                'MarkerFaceColor',[0.5 0.5 0.5], ...
-                'MarkerSize',6 , ...
-                'Visible',this.markmenu.Checked, ...
-                'Tag','fgnd');
-            
-        end        
+        end
                 
-        % Callback for panel resizing. 
-        function SizeChanged(this,parent)
-            % get new parent geometry
-            parentw = parent.Position(3);
-            parenth = parent.Position(4);
-            
-            % new width, height of each axis
-            w = parentw - 65;
-            h = (parenth - 110)/2;
-            
-            % adjust position of ax1
-            this.ax1.Position = [50, 100+h, w-15, h];
+        % Render the background (grey) traces
+        function RenderBackground(this)
+            %disp('bdHilbert.RenderBackground()');
+                        
+            % elevation value (in radians)
+            roll = this.elevationKnob.Value * pi/180 + pi;
 
-            % adjust position of ax2
-            this.ax2.Position = [20, 50, w+35, h];
+            % update the cylinder mesh
+            t0 = this.sysobj.tspan(1);
+            t1 = this.sysobj.tspan(2);
+            [X,Y,Z] = this.CylinderMesh(t0,t1,roll);
+            this.mesh1.XData = X;
+            this.mesh1.YData = Y;
+            this.mesh1.ZData = Z;
+
+            % update the opacity
+            this.mesh1.FaceAlpha = this.opacityKnob.Value;
+            this.mesh1.EdgeAlpha = this.opacityKnob.Value;
+
+            % update the azimuth
+            this.axes1.View(1) = -this.azimuthSlider.Value;
+            
+            % update the disc mesh
+            [X,Y,Z] = this.DiscMesh(roll);
+            this.mesh2.XData = X;
+            this.mesh2.YData = Y;
+            this.mesh2.ZData = Z;
+
+            % retrieve the plot limits via the selector
+            [~,ylim] = this.selector.lim();
+            ylo = ylim(1);
+            yhi = ylim(2);
+
+            % Compute the Hilbert transform (this.t, this.h, this.p).
+            [tindx0,tindx1] = this.ComputeHilbertPhases();
+
+            % number of trajectories in our data
+            ntheta = size(this.p,1);
+
+            % number of background traces to plot (100 at most)
+            ntraces = min(ntheta,100);
+
+            % Update the warning label
+            if ntraces < ntheta
+                this.label1.Visible = 'on';
+            else
+                this.label1.Visible = 'off';
+            end
+
+            % Update the background traces (upper plot)
+            if ntraces>1
+                % indicies of the selected trajectories
+                indx = round(linspace(1,ntheta,ntraces));
+
+                % transient part of selected trajectories
+                t0 = this.t(tindx0);
+                theta0 = this.p(indx,tindx0) - roll;
+                
+                % non-transient part of selected trajectories
+                t1 = this.t(tindx1);
+                theta1 = this.p(indx,tindx1) - roll;
+                
+                % polar coords to X,Y,Z coords (transients)
+                X0 = (ones(ntraces,1)*[t0 NaN])';
+                Y0 = 0.9 * [cos(theta0), NaN(ntraces,1)]';
+                Z0 = 0.9 * [sin(theta0), NaN(ntraces,1)]';
+                
+                % polar coords to X,Y,Z coords (non-transients)
+                X1 = (ones(ntraces,1)*[t1 NaN])';
+                Y1 = 0.9 * [cos(theta1), NaN(ntraces,1)]';
+                Z1 = 0.9 * [sin(theta1), NaN(ntraces,1)]';
+
+                % update background traces (use reverse Y direction)
+                set(this.trace1a, 'XData',X0(:), 'YData',-Y0(:), 'ZData',Z0(:));                
+                set(this.trace1b, 'XData',X1(:), 'YData',-Y1(:), 'ZData',Z1(:));                
+            else
+                set(this.trace1a, 'XData',NaN, 'YData',NaN, 'ZData',NaN);
+                set(this.trace1b, 'XData',NaN, 'YData',NaN, 'ZData',NaN);
+            end
+
+            % visibility of transients
+            this.trace1a.Visible = this.menuTransients.Checked;  
+            
+            % update the axes labels
+            [~,~,name1] = this.selector.name();
+            this.axes1.ZLabel.String = name1;
         end
         
-        % Callback for the plot variable selectors
-        function selectorCallback(this,control)
-            this.render(control);
+        % Render the trajectories
+        function RenderForeground(this)
+            %disp('bdHilbert.RenderForeground()');
+                  
+            % elevation value (in radians)
+            roll = this.elevationKnob.Value * pi/180 + pi;
+            
+            % get the selected subscripts and convert to an index
+            [rindx,cindx] = this.selector.subscripts();
+            [nr,nc] = this.selector.vsize();
+            indx = sub2ind([nr,nc],rindx,cindx);
+                    
+            % get the phase of the selected time series (plus roll angle)
+            theta = this.p(indx,:) - roll;
+            
+            % polar coords to X,Y,Z coords (upper plot)
+            X = this.t;
+            Y = cos(theta);
+            Z = sin(theta);
+            
+            % polar coords to spiral (lower plot)
+            if this.sysobj.backward
+                R = linspace(0.5,1.5,numel(X));
+            else
+                R = linspace(1.5,0.5,numel(X));
+            end
+            Xr = R.*Y;
+            Yr = R.*Z;
+
+            % get the transient and non-transient parts of the time domain
+            [tindx0,tindx1,ttindx] = this.sysobj.tindices(this.t);
+
+            % update the time axes limits
+            [tlim, ~, tlim1] = this.tlim(this.t,ttindx);
+            switch this.menuTransients.Checked
+                case 'on'
+                    this.axes1.XLim = tlim + [-1e-9 1e-9];
+                case 'off'
+                    this.axes1.XLim = tlim1 + [-1e-9 1e-9];
+            end
+            
+            % update the line plot data (upper plot)
+            set(this.line1a,  'XData',X(tindx0), 'YData',-Y(tindx0), 'ZData',Z(tindx0));
+            set(this.line1b,  'XData',X(tindx1), 'YData',-Y(tindx1), 'ZData',Z(tindx1));
+                            
+            % update the marker plot data (upper plot)
+            set(this.marker1a, 'XData',X(1),      'YData',-Y(1),      'ZData',Z(1));
+            set(this.marker1b, 'XData',X(ttindx), 'YData',-Y(ttindx), 'ZData',Z(ttindx));
+            set(this.marker1c, 'XData',X(end),    'YData',-Y(end),    'ZData',Z(end));
+
+            % update the line plot data (lower plot)
+            set(this.line2a,  'XData',Xr(tindx0), 'YData',Yr(tindx0));
+            set(this.line2b,  'XData',Xr(tindx1), 'YData',Yr(tindx1));
+
+            % update the marker plot data (lower plot)
+            set(this.marker2a, 'XData',Xr(1),      'YData',Yr(1));
+            set(this.marker2b, 'XData',Xr(ttindx), 'YData',Yr(ttindx));
+            set(this.marker2c, 'XData',Xr(end),    'YData',Yr(end));
+
+            % visibilty of transients (upper plot)
+            this.line1a.Visible = this.menuTransients.Checked;
+            this.line2a.Visible = this.menuTransients.Checked;
+
+            % visibility of markers (upper and lower plots)
+            switch this.menuMarkers.Checked
+                case 'on'
+                    this.marker1a.Visible = this.menuTransients.Checked;
+                    this.marker1b.Visible = 'on';
+                    this.marker1c.Visible = 'on';
+                    this.marker2a.Visible = this.menuTransients.Checked;
+                    this.marker2b.Visible = 'on';
+                    this.marker2c.Visible = 'on';
+                case 'off'
+                    this.marker1a.Visible = 'off';
+                    this.marker1b.Visible = 'off';
+                    this.marker1c.Visible = 'off';
+                    this.marker2a.Visible = 'off';
+                    this.marker2b.Visible = 'off';
+                    this.marker2c.Visible = 'off';
+            end
+            
+            % visibility of the time points (upper and lower plots)
+            switch this.menuPoints.Checked
+                case 'on'
+                    set(this.line1a, 'Marker','.', 'MarkerSize',12);
+                    set(this.line2a, 'Marker','.', 'MarkerSize',10);
+                    set(this.line1b, 'Marker','.', 'MarkerSize',12);
+                    set(this.line2b, 'Marker','.', 'MarkerSize',10);
+                case 'off'
+                    set(this.line1a, 'Marker','none');
+                    set(this.line2a, 'Marker','none');
+                    set(this.line1b, 'Marker','none');
+                    set(this.line2b, 'Marker','none');
+            end
+            
+            % update the time label
+            this.axes1.XLabel.String = sprintf('time (dt=%g)',this.sysobj.tstep);
+        end
+          
+        % Selector Changed callback
+        function SelectorChanged(this)
+            %disp('bdHilbert.SelectorChanged');
+            this.RenderBackground();
+            this.RenderForeground();
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+        
+        % Subscript Changed callback
+        function SubscriptChanged(this)
+            %disp('bdHilbert.SubscriptChanged');
+            this.RenderForeground();
+                        
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+         
+        % Azimuth Changing callback
+        function AzimuthChanging(this,src,evnt)
+            %fprintf('%s.AzimuthChanging\n',mfilename);
+            src.Value = evnt.Value;
+            this.axes1.View(1) = -evnt.Value;
+        end
+        
+        % Opacity Changing callback
+        function OpacityChanging(this,src,evnt)
+            %fprintf('%s.OpacityChanging\n',mfilename);
+            src.Value = evnt.Value;
+            this.mesh1.FaceAlpha = evnt.Value;
+            this.mesh1.EdgeAlpha = evnt.Value;
+        end
+                
+        % Elevation Changing callback
+        function ElevationChanging(this,src,evnt)
+            %fprintf('%s.ElevationChanging\n',mfilename);
+            src.Value = evnt.Value;
+            this.RenderBackground();
+            this.RenderForeground();
+        end
+                
+        % TRANSIENTS menu callback
+        function callbackTransients(this,menuitem)
+            % toggle the menu state
+            this.MenuToggle(menuitem);
+            
+            % reset the time axes limits
+            [~,~,ttindx,tdomain] = this.sysobj.tindices([]);
+            [tlim, ~, tlim1] = this.tlim(tdomain,ttindx);
+            switch this.menuTransients.Checked
+                case 'on'
+                    this.axes1.XLim = tlim + [-1e-9 1e-9];
+                case 'off'
+                    this.axes1.XLim = tlim1 + [-1e-9 1e-9];
+            end
+            this.RenderBackground();
+            this.RenderForeground();
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+                
+        % MARKERS menu callback
+        function callbackMarkers(this,menuitem)
+            this.MenuToggle(menuitem);
+            this.RenderForeground();
+                        
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+        
+        % POINTS menu callback
+        function callbackPoints(this,menuitem)
+            this.MenuToggle(menuitem);
+            this.RenderForeground();
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+       
+        % RELATIVE PHASE menu callback
+        function callbackRelPhase(this,menuitem)
+            this.MenuToggle(menuitem);
+            this.RenderBackground();
+            this.RenderForeground();
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+                
+        % HOLD menu callback
+        function callbackHold(this,menuitem)
+            % Make new copies of the foreground plot lines
+            l1a = copyobj(this.line1a, this.axes1);
+            l1b = copyobj(this.line1b, this.axes1);
+            l2a = copyobj(this.line2a, this.axes2);
+            l2b = copyobj(this.line2b, this.axes2);
+            
+            % Convert the old foreground plot lines to 'Held'
+            this.line1a.LineWidth = 1.5;
+            this.line1b.LineWidth = 1.5;
+            this.line1a.Color = [0.5 0.75 0.5];
+            this.line1b.Color = [0.5 0.75 0.5];
+            this.line1a.Tag = 'Held';
+            this.line1b.Tag = 'Held';
+            this.line1a.PickableParts = 'none';
+            this.line1b.PickableParts = 'none';          
+            this.line2a.LineWidth = 1.5;
+            this.line2b.LineWidth = 1.5;
+            this.line2a.Color = [0.5 0.75 0.5];
+            this.line2b.Color = [0.5 0.75 0.5];
+            this.line2a.Tag = 'Held';
+            this.line2b.Tag = 'Held';
+            this.line2a.PickableParts = 'none';
+            this.line2b.PickableParts = 'none';
+            
+            % Replace the old with the new
+            this.line1a = l1a;
+            this.line1b = l1b;
+            this.line2a = l2a;
+            this.line2b = l2b;
+            
+             % The line markers now need to be promoted back to the top level.
+             % We do that by constructing fresh copies and deleting the old ones.
+             m1a = copyobj(this.marker1a, this.axes1);
+             m1b = copyobj(this.marker1b, this.axes1);
+             m1c = copyobj(this.marker1c, this.axes1);
+             m2a = copyobj(this.marker2a, this.axes2);
+             m2b = copyobj(this.marker2b, this.axes2);
+             m2c = copyobj(this.marker2c, this.axes2);
+             delete(this.marker1a);
+             delete(this.marker1b);
+             delete(this.marker1c);
+             delete(this.marker2a);
+             delete(this.marker2b);
+             delete(this.marker2c);
+             this.marker1a = m1a;
+             this.marker1b = m1b;
+             this.marker1c = m1c;
+             this.marker2a = m2a;
+             this.marker2b = m2b;
+             this.marker2c = m2c;
+        end
+        
+        % CLEAR menu callback
+        function callbackClear(this)
+            % delete all line plots in axes1 that have Tag='Held'
+            objs = findobj(this.axes1,'Tag','Held');
+            delete(objs);
+
+            % delete all line plots in axes2 that have Tag='Held'
+            objs = findobj(this.axes2,'Tag','Held');
+            delete(objs);
+            
+            % delete all data tips in axes1
+            objs = findobj(this.axes1,'Type','datatip');
+            delete(objs);
+            
+            % delete all data tips in axes2
+            objs = findobj(this.axes2,'Type','datatip');
+            delete(objs);
+        end
+        
+        % RESET menu callback
+        function callbackReset(this)
+            % reset the axes limits (upper plot)
+            this.axes1.YLim = [-1.1 1.1];
+            this.axes1.ZLim = [-1.1 1.1];
+
+            % reset the time axes limits
+            [~,~,ttindx,tdomain] = this.sysobj.tindices([]);
+            [tlim, ~, tlim1] = this.tlim(tdomain,ttindx);
+            switch this.menuTransients.Checked
+                case 'on'
+                    this.axes1.XLim = tlim + [-1e-9 1e-9];
+                case 'off'
+                    this.axes1.XLim = tlim1 + [-1e-9 1e-9];
+            end
+            
+            % reset the azimuth (upper plot)
+            this.axes1.View = [0 0]; 
+            this.azimuthSlider.Value = 0;
+            
+            % reset the axes limits (lower plot)
+            this.axes2.XLim = [-1.6 1.6];
+            this.axes2.YLim = [-1.6 1.6];
+        end        
+
+        % DOCK menu callback
+        function callbackDock(this,menuitem,tabgrp)
+            %disp('callbackDock');
+            switch menuitem.Label
+                case 'Undock'
+                    newfig = bdPanelBase.Undock(this.tab,this.menu);
+                    newfig.DeleteFcn = @(src,~) this.delete();
+                    menuitem.Label='Dock';
+                    menuitem.Tooltip='Dock the display panel';
+                case 'Dock'
+                    bdPanelBase.Dock(this.tab,this.menu,tabgrp);
+                    menuitem.Label='Undock';
+                    menuitem.Tooltip='Undock the display panel';
+            end
+        end
+        
+        % CLOSE menu callback
+        function callbackClose(this,guifig)
+            % find the parents of the panel tab 
+            tabgrp = ancestor(this.tab,'uitabgroup');
+            fig = ancestor(this.tab,'figure');
+            
+            % delete the panel
+            delete(this);
+            
+            % reveal the menu of the newly selected panel 
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % if the parent figure is not the same as the gui figure then ...
+            if fig ~= guifig
+                % The panel is undocked from the gui. Its figure should be closed too. 
+                delete(fig);
+            end
         end
         
     end
     
-    
     methods (Static)
+                
+        % Cylinder mesh coordinates
+        function [X,Y,Z] = CylinderMesh(t0,t1,rot)
+            n=32;
+            m=32;
+            theta = linspace(0,2*pi,n);
+            X = ones(m,n).*linspace(t0,t1,m)';
+            Y = 0.8*ones(m,1).* cos(theta+rot);
+            Z = 0.8*ones(m,1).* sin(theta+rot);
+        end
         
-        function syspanel = syscheck(sys)
-            % Returns a copy of the sys.panels struct with all 
-            % default values appropriately initialised.
+        % Disc mesh coordinates
+        function [X,Y,Z] = DiscMesh(rot)
+            n=32;
+            m=8;
+            theta = linspace(0,2*pi,n);
+            radius = linspace(0.5,1.5,m)';
+            X = radius.* cos(theta-rot);
+            Y = radius.* sin(theta-rot);
+            Z = zeros(m,n);
+        end
 
-            % Default panel settings
-            syspanel.title = bdHilbert.title;
-            syspanel.transients = true;            
-            syspanel.markers = true;
-            syspanel.relphase = false;
-
-            % Nothing more to do if sys.panels.bdHilbert is undefined
-            if ~isfield(sys,'panels') || ~isfield(sys.panels,'bdHilbert')
-                return;
-            end
+        function optout = optcheck(opt)
+            % check the format of incoming options and apply defaults to missing values
+            optout.title         = bdPanelBase.GetOption(opt, 'title', 'Hilbert Phase');
+            optout.transients    = bdPanelBase.GetOption(opt, 'transients', 'on');
+            optout.markers       = bdPanelBase.GetOption(opt, 'markers', 'on');
+            optout.points        = bdPanelBase.GetOption(opt, 'points', 'off');
+            optout.relphase      = bdPanelBase.GetOption(opt, 'relphase', 'off');
+            optout.selector      = bdPanelBase.GetOption(opt, 'selector', {1,1,1});
+            optout.azimuth       = bdPanelBase.GetOption(opt, 'azimuth', 0);
+            optout.elevation     = bdPanelBase.GetOption(opt, 'elevation', 0);
+            optout.opacity       = bdPanelBase.GetOption(opt, 'opacity', 1);
             
-            % sys.panels.bdHilbert.title
-            if isfield(sys.panels.bdHilbert,'title')
-                syspanel.title = sys.panels.bdHilbert.title;
-            end
+            % safety limits
+            optout.azimuth = min(optout.azimuth, 10);
+            optout.azimuth = max(optout.azimuth,-10);
+            optout.elevation = min(optout.elevation, 180);
+            optout.elevation = max(optout.elevation,-180);
+            optout.opacity = min(optout.opacity, 1);
+            optout.opacity = max(optout.opacity, 0);
             
-            % sys.panels.bdHilbert.transients
-            if isfield(sys.panels.bdHilbert,'transients')
-                syspanel.transients = sys.panels.bdHilbert.transients;
+            % warn of unrecognised field in the incoming options
+            infields  = fieldnames(opt);                % the field names we were given
+            outfields = fieldnames(optout);             % the field names we expected
+            newfields = setdiff(infields,outfields);    % unrecognised field names
+            for idx=1:numel(newfields)
+                warning(sprintf('Ignoring unknown panel option ''bdHilbert.%s''',newfields{idx}));
             end
-            
-            % sys.panels.bdHilbert.markers
-            if isfield(sys.panels.bdHilbert,'markers')
-                syspanel.markers = sys.panels.bdHilbert.markers;
-            end
-            
-            % sys.panels.bdHilbert.relphase
-            if isfield(sys.panels.bdHilbert,'relphase')
-                syspanel.markers = sys.panels.bdHilbert.relphase;
+        end
+        
+        function [tlim, tlim0, tlim1] = tlim(tdomain,ttindx)
+            if tdomain(1) < tdomain(end)
+                % tdomain is forward
+                tlim = tdomain([1 end]);
+                tlim0 = tdomain([1 ttindx]);
+                tlim1 = tdomain([ttindx end]);
+            else
+                % tdomain is reversed
+                tlim = tdomain([end 1]);
+                tlim0 = tdomain([ttindx 1]);
+                tlim1 = tdomain([end ttindx]);
             end
         end
         
@@ -592,8 +1003,8 @@ classdef bdHilbert < bdPanel
             % Return the phase angles (if requested)
             if nargout==2
                 P = angle(H);
-            end
+            end 
         end
     end
-    
 end
+

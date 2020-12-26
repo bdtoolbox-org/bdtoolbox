@@ -1,12 +1,11 @@
-classdef bdControlScalar < handle
-   %bdControlScalar  Control panel widget for scalar values.
-    %  This class implements the control panel widgets for scalar values.
-    %  It is not intended to be called directly by users.
+classdef bdControlScalar < handle 
+   %bdControlScalar  Control panel widget for bdGUI.
+    %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2018a,b)
+    %  Stewart Heitmann (2018a,2018b,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -34,355 +33,422 @@ classdef bdControlScalar < handle
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
     
-    properties (Constant)
-        rowh = 24;
-        roww = 220;
-    end
-    
-    properties (Access=private)
-        parent
-        panel
-        minbox
-        maxbox
-        jslider
-        valbox
-        labelbtn
-        listener1
-        listener2
-        dialog
+    properties
+        EditField1   matlab.ui.control.NumericEditField
+        EditField2   matlab.ui.control.NumericEditField
+        EditField3   matlab.ui.control.NumericEditField
+        Button       matlab.ui.control.Button
+        Slider       matlab.ui.control.Slider
+        %DecrButton   matlab.ui.control.Button
+        %IncrButton   matlab.ui.control.Button
+        RandButton   matlab.ui.control.Button
+        PerbButton   matlab.ui.control.Button
+        widgetmode
+        listener1    event.listener
+        listener2    event.proplistener
     end
     
     methods
-        % Constructor
-        function this = bdControlScalar(control,xxxdef,xxxindx,parent,ypos,modecheckbox)
-            %disp('bdControlScalar()');
-            
-            % init empty handle to dialog box
-            this.dialog = bdControlScalarDialog.empty(0);
-            
-            % extract the relevant fields from control.sys.xxxdef
-            xxxname  = control.sys.(xxxdef)(xxxindx).name;
-            xxxvalue = control.sys.(xxxdef)(xxxindx).value;
-            xxxlim   = control.sys.(xxxdef)(xxxindx).lim;
+        function this = bdControlScalar(sysobj,cpanel,xxxdef,xxxindx,xxxmode,gridlayout,gridrow)
+            %UNTITLED2 Construct an instance of this class
+            %   Detailed explanation goes here
 
-            % remember our parent
-            this.parent = parent;
+            % Extract data from sysobj
+            name  = sysobj.(xxxdef)(xxxindx).name;
+            value = sysobj.(xxxdef)(xxxindx).value;
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+                        
+            % Create EditField1
+            this.EditField1 = uieditfield(gridlayout, 'numeric');
+            this.EditField1.Layout.Row = gridrow;
+            this.EditField1.Layout.Column = 1;
+            this.EditField1.HorizontalAlignment = 'center';
+            this.EditField1.Value = limit(1);
+            this.EditField1.Visible = 'off';
+            this.EditField1.ValueChangedFcn = @(~,~) EditField1ValueChanged(this,sysobj,xxxdef,xxxindx);
+            this.EditField1.Tooltip = ['Lower limit of ''',name,''''];
             
-            % define widget geometry
-            colw = 50;
-            gap = 5;
-            col1 = 2;
-            col2 = col1 + colw + gap;
-            col3 = col2 + colw + gap;
-            col4 = col3 + colw + gap;
-            col5 = col4 + colw + gap;
+            % Create EditField2
+            this.EditField2 = uieditfield(gridlayout, 'numeric');
+            this.EditField2.Layout.Row = gridrow;
+            this.EditField2.Layout.Column = 2;
+            this.EditField2.HorizontalAlignment = 'center';
+            this.EditField2.Value = limit(2);
+            this.EditField2.Visible = 'off';
+            this.EditField2.ValueChangedFcn = @(~,~) EditField2ValueChanged(this,sysobj,xxxdef,xxxindx);
+            this.EditField2.Tooltip = ['Upper limit of ''',name,''''];
             
-            % Construct the panel container
-            this.panel = uipanel('Parent',parent, ...
-                'Units','pixels', ...
-                'Position',[2 ypos this.roww this.rowh], ...
-                'BorderType','none', ...
-                'DeleteFcn', @(~,~) delete(this.dialog) );
-                
-            % Get the backgorund colour of our panel
-            bgcolor = this.panel.BackgroundColor;
+            % Create EditField3
+            this.EditField3 = uieditfield(gridlayout, 'numeric');
+            this.EditField3.Layout.Row = gridrow;
+            this.EditField3.Layout.Column = 3;
+            this.EditField3.HorizontalAlignment = 'center';
+            this.EditField3.Value = value;
+            this.EditField3.ValueChangedFcn = @(~,~) EditField3ValueChanged(this,sysobj,xxxdef,xxxindx);
+            %this.EditField3.Tooltip = ['''',name,''''];
             
-            % Construct the slider. I use a java slider because on OS/X the
-            % matlab uicontrol slider ignoes its specified height/width.
-            % See Yair Altman's Undocumented Matlab for the use of java
-            % swing components in matlab.
-            jsliderobj = javax.swing.JSlider;
-            jsliderobj.setBackground(java.awt.Color(bgcolor(1),bgcolor(2),bgcolor(3)));
-            javacomponent(jsliderobj,[col1 2 col3-col1 this.rowh-4],this.panel);
-            this.jslider = handle(jsliderobj,'CallbackProperties');
-            this.jslider.StateChangedCallback = @(~,~) this.sliderCallback(control,xxxdef,xxxindx);
-            this.jslider.ToolTipText = ['slider for ''',xxxname,''''];
+%             spinnerR = uispinner(gridlayout);
+%             spinnerR.Layout.Row = gridrow;
+%             spinnerR.Layout.Column = 3;
+%             spinnerR.Value = 1;
+%             spinnerR.Step = 1;
+%             spinnerR.Limits = [0 1];
+%             spinnerR.Enable = 'on';
+%             spinnerR.LowerLimitInclusive = 'on';
+%             spinnerR.UpperLimitInclusive = 'on';
+%             spinnerR.RoundFractionalValues = 'on';
+%             spinnerR.Tooltip = 'row subscript';
+%             spinnerR.ValueChangingFcn = @(~,evnt) this.EditField3ValueChanged(evnt,sysobj,xxxdef,xxxindx);
+% 
+            % Create Button
+            this.Button = uibutton(gridlayout, 'push');
+            this.Button.Layout.Row = gridrow;
+            this.Button.Layout.Column = 4;
+            this.Button.Text = name;
+            this.Button.ButtonPushedFcn = @(~,~) ButtonPushedFcn(this,sysobj,xxxdef,xxxindx,cpanel);
+            %this.Button.Tooltip = sprintf('%s=%g',name,value);
+            %this.Button.Tooltip = 'Toggle slider/buttons';
+            this.Button.Interruptible = 'off';
+            this.Button.BusyAction = 'cancel';
 
-            % update the value in the slider widget
-            this.sliderUpdate(xxxlim(1), xxxlim(2), xxxvalue);
+            % Widget mode (0=slider, 1=RAND/PERM)
+            this.widgetmode = 0;
 
-            % Construct the min box
-            this.minbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col1 2 colw this.rowh-4], ...
-                'String',num2str(xxxlim(1),'%0.3g'), ...
-                'Value',xxxlim(1), ...
-                'HorizontalAlignment','center', ...
-                'ForegroundColor', 'b', ...
-                'Visible','off', ...
-                'Callback', @(~,~) this.minboxCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['lower limit for ''' xxxname '''']);
+            % Compute the slider value
+            slidervalue = (value-limit(1))./(limit(2)-limit(1));
+            slidervalue = max(slidervalue,0);
+            slidervalue = min(slidervalue,1);
 
-            % Construct the max box
-            this.maxbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col2 2 colw this.rowh-4], ...
-                'String',num2str(xxxlim(2),'%0.3g'), ...
-                'Value',xxxlim(2), ...
-                'HorizontalAlignment','center', ...
-                'ForegroundColor', 'b', ...
-                'Visible','off', ...
-                'Callback', @(~,~) this.maxboxCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['upper limit for ''' xxxname '''']);
-                  
-            % Construct the val box
-            this.valbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col3 2 colw this.rowh-4], ...
-                'String',num2str(xxxvalue,'%0.3g'), ...
-                'Value',xxxvalue, ...
-                'HorizontalAlignment','center', ...
-                'FontWeight','normal', ...
-                'Visible','on', ...
-                'Callback', @(~,~) this.valboxCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['current value of ''' xxxname '''']);
+            % Create Slider
+            this.Slider = uislider(gridlayout);
+            this.Slider.Limits = [0 1];
+            this.Slider.Layout.Row = gridrow;
+            this.Slider.Layout.Column = [1 2];
+            this.Slider.Value = slidervalue;
+            this.Slider.MajorTicksMode = 'manual';
+            this.Slider.MinorTicksMode = 'manual';
+            this.Slider.MajorTicks = [];
+            this.Slider.MinorTicks = [];
+            %this.Slider.Interruptible = 'off';
+            %this.Slider.BusyAction = 'queue';
+            %this.Slider.Tooltip = ['Slider for ''',name,''''];
+            this.Slider.ValueChangingFcn = @(~,evnt) SliderValueChanging(this,sysobj,xxxdef,xxxindx,evnt);
+
             
-            % Construct the label button
-            this.labelbtn = uicontrol('Parent',this.panel, ...
-                'Style', 'pushbutton', ...
-                'Units','pixels',...
-                'Position',[col4 2 colw this.rowh-4], ...
-                'String',xxxname, ...
-            ...    'BackgroundColor','g', ...
-            ...    'FontName','Arial', ...
-                'FontWeight','normal', ...
-                'Callback', @(~,~) this.labelbtnCallback(control,xxxdef,xxxindx,xxxname), ...
-                'ToolTipString',xxxname);
-       
-            % force a refresh at startup
-            this.refresh(control,xxxdef,xxxindx,modecheckbox);
+%             % Create DECR Button
+%             this.DecrButton = uibutton(gridlayout, 'push');
+%             this.DecrButton.Layout.Row = gridrow;
+%             this.DecrButton.Layout.Column = 1;
+%             this.DecrButton.Text = 'DECR';
+%             this.DecrButton.Visible = 'off';
+%             this.DecrButton.ButtonPushedFcn = @(~,~) DecrButtonPushed(this,sysobj,xxxdef,xxxindx);
+%             this.DecrButton.Tooltip = ['Decrement ''',name,''''];
+%             this.DecrButton.Interruptible = 'off';
+%             this.DecrButton.BusyAction = 'cancel';
+%             
+%             % Create INCR Button
+%             this.IncrButton = uibutton(gridlayout, 'push');
+%             this.IncrButton.Layout.Row = gridrow;
+%             this.IncrButton.Layout.Column = 2;
+%             this.IncrButton.Text = 'INCR';
+%             this.IncrButton.Visible = 'off';
+%             this.IncrButton.ButtonPushedFcn = @(~,~) IncrButtonPushed(this,sysobj,xxxdef,xxxindx);
+%             this.IncrButton.Tooltip = ['Increment ''',name,''''];
+%             this.IncrButton.Interruptible = 'off';
+%             this.IncrButton.BusyAction = 'cancel';
 
-            % Listen for widget refresh events from the control panel.
-            this.listener1 = addlistener(control,'refresh', @(~,~) this.refresh(control,xxxdef,xxxindx,modecheckbox));
-            this.listener2 = addlistener(control,xxxdef, @(~,~) this.refresh(control,xxxdef,xxxindx,modecheckbox));
+            % Create RAND Button
+            this.RandButton = uibutton(gridlayout, 'push');
+            this.RandButton.Layout.Row = gridrow;
+            this.RandButton.Layout.Column = 1;
+            this.RandButton.Text = 'RAND';
+            this.RandButton.Visible = 'off';
+            this.RandButton.ButtonPushedFcn = @(~,~) RandButtonPushed(this,sysobj,xxxdef,xxxindx);
+            this.RandButton.Tooltip = ['Random ''',name,''''];
+            this.RandButton.Interruptible = 'off';
+            this.RandButton.BusyAction = 'cancel';
+            
+            % Create PERB Button
+            this.PerbButton = uibutton(gridlayout, 'push');
+            this.PerbButton.Layout.Row = gridrow;
+            this.PerbButton.Layout.Column = 2;
+            this.PerbButton.Text = 'PERB';
+            this.PerbButton.Visible = 'off';
+            this.PerbButton.ButtonPushedFcn = @(~,~) PerbButtonPushed(this,sysobj,xxxdef,xxxindx);
+            this.PerbButton.Tooltip = ['Perturb ''',name,''''];
+            this.PerbButton.Interruptible = 'off';
+            this.PerbButton.BusyAction = 'cancel';
+
+            % listen to sysobj for REDRAW events
+            this.listener1 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(src,evnt,xxxdef,xxxindx));
+
+            % listen to cpanel for changes to the xxxmode switch
+            this.listener2 = listener(cpanel,xxxmode,'PostSet', @(src,evnt) this.ModeListener(cpanel,xxxmode));
         end
         
-       % Destructor
         function delete(this)
-            delete(this.listener2);
+            %disp 'bdControlScalar.delete'
             delete(this.listener1);
+            delete(this.listener2);
+            %delete(this.dialogbox);
         end
-
+        
         function mode(this,flag)            
             %disp('bdControlScalar.mode()');
             if flag
-                set(this.minbox,'Visible','off');
-                set(this.maxbox,'Visible','off');
-                set(this.jslider,'Visible',1);
+                this.EditField1.Visible = 'off';
+                this.EditField2.Visible = 'off';
+                switch this.widgetmode
+                    case 0
+                        this.Slider.Visible = 'on';
+                        this.RandButton.Visible = 'off';
+                        this.PerbButton.Visible = 'off';
+                    case 1
+                        this.Slider.Visible = 'off';
+                        this.RandButton.Visible = 'on';
+                        this.PerbButton.Visible = 'on';
+                end
             else
-                set(this.jslider,'Visible',0);
-                set(this.minbox,'Visible','on');
-                set(this.maxbox,'Visible','on');
+                this.EditField1.Visible = 'on';
+                this.EditField2.Visible = 'on';
+                this.Slider.Visible = 'off';
+                this.RandButton.Visible = 'off';
+                this.PerbButton.Visible = 'off';
             end                        
-        end
-
-    end
-   
-    methods (Access=private)
-        
-        % min box callback function
-        function minboxCallback(this,control,xxxdef,xxxindx)
-            %disp('bdControlScalar.minboxCallback()');
-            % read the minbox string and convert to a number
-            str = this.minbox.String;
-            minval = str2double(str);
-            if isnan(minval)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the minbox string to its previous value
-                this.minbox.String = num2str(this.minbox.Value,'%0.3g');                 
-            else           
-                % update the minbox value
-                this.minbox.Value = minval;
-
-                % update the maxbox widget if necessary
-                if this.maxbox.Value < minval
-                    this.maxbox.Value = minval;
-                    this.maxbox.String = num2str(minval,'%0.3g');                
-                end
-                
-                % update the slider widget
-                this.sliderUpdate(this.minbox.Value, this.maxbox.Value, this.valbox.Value);
-                            
-                % update control.sys
-                control.sys.(xxxdef)(xxxindx).lim(1) = minval;
-                
-                % update the dialog box (if it exists)
-                if isvalid(this.dialog)
-                    this.dialog.refresh(xxxdef,xxxindx);
-                end
-
-                % notify all display panels to redraw themselves
-                notify(control,'redraw');
-            end
-        end        
-
-        % max box callback function
-        function maxboxCallback(this,control,xxxdef,xxxindx)
-            %disp('bdControlScalar.maxboxCallback()');
-            % read the maxbox string and convert to a number
-            str = this.maxbox.String; 
-            maxval = str2double(str);
-            if isnan(maxval)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the maxbox string to its previous value
-                this.maxbox.String = num2str(this.maxbox.Value,'%0.3g');                 
-            else           
-                % update the maxbox value
-                this.maxbox.Value = maxval;
-
-                % update the minbox widget if necessary
-                if this.minbox.Value > maxval
-                    this.minbox.Value = maxval;
-                    this.minbox.String = num2str(maxval,'%0.3g');                
-                end
-                     
-                % update the slider widget
-                this.sliderUpdate(this.minbox.Value, this.maxbox.Value, this.valbox.Value);
-
-                % update control.sys
-                control.sys.(xxxdef)(xxxindx).lim(2) = maxval;
-
-                % update the dialog box (if it exists)
-                if isvalid(this.dialog)
-                    this.dialog.refresh(xxxdef,xxxindx);
-                end
-                
-                % notify all display panels to redraw themselves
-                notify(control,'redraw');
-            end
-        end        
-
-        % val box callback function
-        function valboxCallback(this,control,xxxdef,xxxindx)
-            %disp('bdControlScalar.valboxCallback()');
-            % read the valbox string and convert to a number
-            str = this.valbox.String; 
-            val = str2double(str);
-            if isnan(val)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the valbox string to its previous value
-                this.valbox.String = num2str(this.valbox.Value,'%0.3g');                 
-            else           
-                % update the valbox value
-                this.valbox.Value = val;
-
-                % update the slider widget
-                this.sliderUpdate(this.minbox.Value, this.maxbox.Value, this.valbox.Value);
-
-                % update control.sys
-                control.sys.(xxxdef)(xxxindx).value = val;
-
-                % update the dialog box (if it exists)
-                if isvalid(this.dialog)
-                    this.dialog.refresh(xxxdef,xxxindx);
-                end
-                
-                % tell the control panel to recompute the solution
-                notify(control,'recompute');
-            end
-        end        
-        
-        % jslider callback function
-        function sliderCallback(this,control,xxxdef,xxxindx)
-            %disp('bdControlScalar.sliderCallback()');
-            % get the slider value (0..100)
-            sliderval = get(this.jslider,'Value');
-            
-            % convert the slider value to (min..max) range 
-            minval = this.minbox.Value;
-            maxval = this.maxbox.Value;
-            val = (maxval-minval)*sliderval/100.0 + minval;
-            
-            % assign the new value to the edit box
-            this.valbox.Value = val;
-            this.valbox.String = num2str(val,'%0.3g');
-
-            % update control.sys
-            control.sys.(xxxdef)(xxxindx).value = val;
-
-            % update the dialog box (if it exists)
-            if isvalid(this.dialog)
-                this.dialog.refresh(xxxdef,xxxindx);
-            end
-
-            % tell the control panel to recompute the solution
-            notify(control,'recompute');
-        end
-        
-        % update the jslider widget
-        function sliderUpdate(this,minval,maxval,val)
-            % disable the slider callback function
-            jslidercallback = this.jslider.StateChangedCallback;
-            this.jslider.StateChangedCallback = [];
-            
-            % update the slider value (0..100)
-            sliderval = 100*(val - minval)/(maxval - minval);
-            set(this.jslider,'Value',sliderval);
-            
-            % re-enable the slider callback
-            this.jslider.StateChangedCallback = jslidercallback;
-        end
-        
-        % label button callback function
-        function labelbtnCallback(this,control,xxxdef,xxxindx,xxxname)
-            if isvalid(this.dialog)
-                % a dialog box already exists, make it visible
-                this.dialog.visible('on');
-            else
-                % contruct a new dialog box
-                this.dialog = bdControlScalarDialog(control,xxxdef,xxxindx,['''',xxxname,'''']);
-            end      
-        end
-        
-        % Update the widgets according to the values in control.sys.xxxdef
-        function refresh(this,control,xxxdef,xxxindx,modecheckbox) 
-            %disp(['bdControlScalar.refresh:' xxxdef]);
-            
-            % extract the relevant fields from control.sys.xxxdef
-            xxxvalue = control.sys.(xxxdef)(xxxindx).value;
-            xxxlim   = control.sys.(xxxdef)(xxxindx).lim;
-
-            % update the min box widget
-            this.minbox.Value = xxxlim(1);
-            this.minbox.String = num2str(xxxlim(1),'%0.3g');
-            
-            % update the max box widget
-            this.maxbox.Value = xxxlim(2);
-            this.maxbox.String = num2str(xxxlim(2),'%0.3g');
-            
-            % update the val box widget
-            this.valbox.Value = xxxvalue;
-            this.valbox.String = num2str(xxxvalue,'%0.3g');
-
-            % update the slider widget
-            this.sliderUpdate(xxxlim(1), xxxlim(2), xxxvalue);
-            
-            % show/hide the slider widget according to the state of the caller's modecheckbox
-            this.mode(modecheckbox.Value);
-            
-            % special case: if this is a vardef control and the evolve button
-            % is ON then disable the slider and edit box.
-            switch xxxdef
-                case 'vardef'
-                    if control.sys.evolve
-                        % disable the slider and edit box
-                        set(this.jslider,'Enabled',0);
-                        this.valbox.Enable = 'off';
-                    else
-                        % enable the slider and edit box
-                        set(this.jslider,'Enabled',1);
-                        this.valbox.Enable = 'on';
-                    end
-            end
-        end
-        
+        end                
     end
     
-end
+    % Callbacks that handle component events
+    methods (Access = private)
+            
+        function Redraw(this,sysobj,sysevent,xxxdef,xxxindx)
+            %disp 'bdControlScalar.Redraw()'
+            
+            % Extract data from sysobj
+            name  = sysobj.(xxxdef)(xxxindx).name;
+            value = sysobj.(xxxdef)(xxxindx).value;
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            
+            % Extract data status from sysevent
+            value_changed = sysevent.(xxxdef)(xxxindx).value;
+            limit_changed = sysevent.(xxxdef)(xxxindx).lim;
+            
+            % if the lim in sysobj has changed then ...
+            if limit_changed
+                % update lower and upper edit field widgets
+                this.EditField1.Value = limit(1);
+                this.EditField2.Value = limit(2);
+            end
+            
+            % if the value in sysobj has changed then ...
+            if value_changed
+                % update the value edit field widget
+                this.EditField3.Value = value;
+                % update the Tooltip
+                this.Button.Tooltip = sprintf('%s=%g',name,value);
+            end
+            
+            % if either the limit or the value in sysobj has changed then ...
+            if limit_changed || value_changed
+                % update the slider widget
+                val = (value-limit(1))./(limit(2)-limit(1));
+                val = max(val,0);
+                val = min(val,1);
+                this.Slider.Value = val;
+            end
+        end
+        
+        % Listener for cpanel.xxxmode events
+        function ModeListener(this,cpanel,xxxmode)
+            %disp('bdControlScalar.ModeListener');
+            
+            % extract the relevant mode flag from cpanel
+            flag = cpanel.(xxxmode);
+            
+            % apply the mode to this widget
+            this.mode(flag);
+        end
+        
+        % ButtonPushedFcn callback
+        function ButtonPushedFcn(this,~,xxxdef,xxxindx,cpanel)
+            % toggle the widget mode
+            this.widgetmode = mod(this.widgetmode+1,2);
 
+            % extract the xxxmode flag from cpanel
+            switch xxxdef
+                case 'pardef'
+                    flag = cpanel.parmode;
+                case 'lagdef'
+                    flag = cpanel.lagmode;
+                case 'vardef'
+                    flag = cpanel.varmode;
+            end
+
+            % (re)apply the xxxmode to this widget
+            this.mode(flag);
+        end
+
+        % Slider Value Changing callback
+        function SliderValueChanging(this,sysobj,xxxdef,xxxindx,event)
+            %disp('SliderValueChanging');
+            
+            % extract the relevant fields from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+
+            % convert slider value to editbox value
+            val = event.Value;
+            value = limit(1) + val*(limit(2)-limit(1));
+            
+            % update the edit field widget
+            this.EditField3.Value = value;
+
+            % update sysobj
+            sysobj.(xxxdef)(xxxindx).value = value;
+            
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw(this.listener1);
+        end
+
+        % EditField1 Value Changed callback
+        function EditField1ValueChanged(this,sysobj,xxxdef,xxxindx)
+            % extract the relevant fields from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            
+            % extract value from widget
+            value = this.EditField1.Value;
+            
+            % apply it to the lower limit
+            limit(1) = value;
+            
+            % adjust the upper limit if necessary
+            if limit(2)<limit(1)
+                limit(2) = value;
+            end
+            
+            % write the new limits back to sysobj
+            sysobj.(xxxdef)(xxxindx).lim = limit;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % EditField2 Value Changed callback
+        function EditField2ValueChanged(this,sysobj,xxxdef,xxxindx)
+            % extract the relevant fields from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            
+            % extract value from widget
+            value = this.EditField2.Value;
+            
+            % apply it to the upper limit
+            limit(2) = value;
+            
+            % adjust the lower limit if necessary
+            if limit(1)>limit(2)
+                limit(1) = value;
+            end
+            
+            % write the new limits back to sysobj
+            sysobj.(xxxdef)(xxxindx).lim = limit;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % EditField3 Value Changed callback
+        function EditField3ValueChanged(this,sysobj,xxxdef,xxxindx)
+            % write the new value in sysobj
+            sysobj.(xxxdef)(xxxindx).value = this.EditField3.Value;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);       
+                        
+            % notify the solver to recompute the solution
+            %notify(sysobj,'recompute');
+        end
+        
+%         % DecrButton callback
+%         function DecrButtonPushed(this,sysobj,xxxdef,xxxindx)
+%             disp('DecrButtonPushed');
+%             
+%             % retrieve the relevant data from sysobj
+%             value = sysobj.(xxxdef)(xxxindx).value;
+%             limit = sysobj.(xxxdef)(xxxindx).lim;
+% 
+%             % apply a uniform decrement (5%) to the data 
+%             lo = limit(1);
+%             hi = limit(2);
+%             value = value - 0.05*(hi-lo);
+% 
+%             % do not exceed the lower limit
+%             value = max(value,lo);
+% 
+%             % write the data back to sysobj
+%             sysobj.(xxxdef)(xxxindx).value = value;
+% 
+%             % notify everything to redraw (including self)
+%             sysobj.NotifyRedraw([]);       
+%         end
+% 
+%         % IncrButton callback
+%         function IncrButtonPushed(this,sysobj,xxxdef,xxxindx)
+%             disp('IncrButtonPushed');
+%             
+%             % retrieve the relevant data from sysobj
+%             value = sysobj.(xxxdef)(xxxindx).value;
+%             limit = sysobj.(xxxdef)(xxxindx).lim;
+% 
+%             % apply a uniform increment (5%) to the data 
+%             lo = limit(1);
+%             hi = limit(2);
+%             value = value + 0.05*(hi-lo);
+%             
+%             % do not exceed the upper limit
+%             value = min(value,hi);
+% 
+%             % write the data back to sysobj
+%             sysobj.(xxxdef)(xxxindx).value = value;
+% 
+%             % notify everything to redraw (including self)
+%             sysobj.NotifyRedraw([]);       
+%         end
+        
+        % RandButton callback
+        function RandButtonPushed(~,sysobj,xxxdef,xxxindx)
+            %disp('RandButtonPushed');
+            
+            % retrieve the relevant data from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+
+            % generate uniform random data between the lower and upper limits
+            lo = limit(1);
+            hi = limit(2);
+            value = (hi-lo)*rand + lo;           
+
+            % write the data back to sysobj
+            sysobj.(xxxdef)(xxxindx).value = value;
+
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);       
+        end
+        
+        % PerbButton callback
+        function PerbButtonPushed(~,sysobj,xxxdef,xxxindx)
+            % retrieve the relevant data from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            value = sysobj.(xxxdef)(xxxindx).value;
+
+            % apply a uniform random perturbation to the data
+            lo = limit(1);
+            hi = limit(2);
+            value = value + 0.05*(hi-lo)*(rand-0.5);
+            
+            % write the data back to sysobj
+            sysobj.(xxxdef)(xxxindx).value = value;
+
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);       
+        end
+        
+    end
+end

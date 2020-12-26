@@ -8,9 +8,9 @@
 %
 % Authors
 %   Matthew Aburn (2016a)
-%   Stewart Heitmann (2016a,2017a,2017c,2018a)
+%   Stewart Heitmann (2016a,2017a,2017c,2018a,2020a)
  
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -51,6 +51,7 @@ function sys = KloedenPlaten446()
     
     % Default time span
     sys.tspan = [0 5];
+    sys.tstep = 0.005;
     
     % Specify SDE solvers and default options
     sys.sdesolver = {@sdeEM,@sdeSH};    % Relevant SDE solvers
@@ -59,24 +60,25 @@ function sys = KloedenPlaten446()
 
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
-    sys.panels.bdLatexPanel.latex = {'\textbf{KloedenPlaten446}';
-        '';
-        'Ito Stochastic Differential Equation (4.46) from Kloeden and Platen (1992)';
-        '\qquad $dy = -(a + y\,b^2)(1-y^2)\,dt + b(1-y^2)\,dW_t$';
-        'where';
-        '\qquad $y(t)$ is the dynamic variable,';
-        '\qquad $a$ and $b$ are scalar constants.';
-        '';
-        'It has the explicit solution';
-        '\qquad $y = A/B$';
-        'where';
-        '\qquad $A = (1+y_0) \exp(-2at + 2b W_t) + y_0 - 1$';
-        '\qquad $B = (1+y_0) \exp(-2at + 2b W_t) - y_0 + 1$';
-        '';
-        '';
-        '\textbf{Reference}';
-        'Kloeden and Platen (1992) Numerical Solution of Stochastic Diffrential Equations'; 
-        ''};
+    sys.panels.bdLatexPanel.latex = {
+        '$\textbf{KloedenPlaten446}$'
+        ''
+        'Ito Stochastic Differential Equation (4.46) from Kloeden and Platen (1992)'
+        '{ }{ }{ } $dy = -(a + y\,b^2)(1-y^2)\,dt + b(1-y^2)\,dW_t$'
+        'where'
+        '{ }{ }{ } $y(t)\;$ is the dynamic variable,'
+        '{ }{ }{ } $a\;$ and $b\;$ are scalar constants.'
+        ''
+        'It has the explicit solution'
+        '{ }{ }{ } $y = A/B$'
+        'where'
+        '{ }{ }{ } $A = (1+y_0) \exp(-2at + 2b W_t) + y_0 - 1$'
+        '{ }{ }{ } $B = (1+y_0) \exp(-2at + 2b W_t) - y_0 + 1$'
+        ''
+        ''
+        '$\textbf{Reference}$'
+        'Kloeden and Platen (1992) Numerical Solution of Stochastic Diffrential Equations'
+        };
         
     % Include the Time Portrait panel in the GUI
     sys.panels.bdTimePortrait = [];

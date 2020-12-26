@@ -5,12 +5,12 @@
 %   gui = bdGUI(sys);                 % Open the Brain Dynamics GUI.
 %
 % Authors
-%   Stewart Heitmann (2019a)
+%   Stewart Heitmann (2019a,2020a)
 %
 % References
 %   Strogatz (1994) Nonlinear Dynamics and Chaos. Section 6.7. 
 
-% Copyright (C) 2019 Stewart Heitmann. All rights reserved.
+% Copyright (C) 2019-2020 Stewart Heitmann. All rights reserved.
 function sys = Pendulum()
     % Handle to our ODE function
     sys.odefun = @odefun;
@@ -36,13 +36,13 @@ function sys = Pendulum()
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{Pendulum}';
-        '';
-        'Equations of motion for a damped and driven pendulum';
-        '\qquad $\ddot \theta = -b \, \dot \theta - \sin(\theta) + \gamma$'
-        'where $\dot \theta = \mu$.';
-        '';
-        'See Section 6.7 of Strogatz (1994) Nonlinear Dynamics and Chaos.';
+        '$\textbf{Pendulum}$'
+        ''
+        'Equations of motion for a damped and driven pendulum'
+        '{ }{ }{ } $\ddot \theta = -b \, \dot \theta - \sin(\theta) + \gamma$'
+        'where $\dot \theta = \mu$.'
+        ''
+        'See Section 6.7 of Strogatz (1994) Nonlinear Dynamics and Chaos.'
         };
     
     % Display panels

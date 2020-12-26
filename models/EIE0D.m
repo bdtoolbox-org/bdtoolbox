@@ -2,7 +2,6 @@
 % for the Brain Dynamics Toolbox (https://bdtoolbox.org)
 %
 % EXAMPLE:
-%    addpath ~/bdtoolkit
 %    sys = EIE0D();
 %    gui = bdGUI(sys);
 %
@@ -14,7 +13,7 @@
 %      by traveling waves in visual cortex. PLOS Computational Biology.
 %   Heitmann & Ermentrout (2016) Propagating Waves as a Cortical Mechanism
 %      of Direction-Selectivity in V1 Motion Cells. Proc of BICT'15. New York.
-%   http://modeldb.yale.edu/266770
+%   ModelDB: http://modeldb.yale.edu/266770
 function sys = EIE0D
     % Handle to our ODE function
     sys.odefun = @odefun;
@@ -39,35 +38,39 @@ function sys = EIE0D
 
     % Default time span of the simulation
     sys.tspan = [0 200];
+    sys.tstep = 0.1;
 
     % Default ODE options
     sys.odeoption.AbsTol = 1e-6;
     sys.odeoption.RelTol = 1e-6;
+    sys.odeoption.InitialStep = 0.1;
 
     % Latex Equations panel
     sys.panels.bdLatexPanel.title = 'Equations';
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{EIE1D}'
+        '$\textbf{EIE1D}$'
         ''
         'Point model of an E-I-E assembly,'
-        '\quad $\tau_e \; \dot{U}_{e1} = -U_{e1} + F_e \big( w_{ee} U_{e1} - w_{ei} U_i - b_e + J_1 + \Delta \big)$'
-        '\quad $\tau_i \; \dot{U}_i = -U_i + F_e \big( w_{ie} U_{e1} + w_{ie} U_{e2} - w_{ii} U_i - b_i \big)$'
-        '\quad $\tau_e \; \dot{U}_{e2} = -U_{e2} + F_i(w_{ee} U_{e2} - w_{ei} U_i - b_e + J_2 - \Delta \big)$'
+        '{ }{ }{ } $\tau_e \; \dot{U}_{e1} = -U_{e1} + F_e \big( w_{ee} U_{e1} - w_{ei} U_i - b_e + J_1 + \Delta \big)$'
+        '{ }{ }{ } $\tau_i \; \dot{U}_i = -U_i + F_e \big( w_{ie} U_{e1} + w_{ie} U_{e2} - w_{ii} U_i - b_i \big)$'
+        '{ }{ }{ } $\tau_e \; \dot{U}_{e2} = -U_{e2} + F_i(w_{ee} U_{e2} - w_{ei} U_i - b_e + J_2 - \Delta \big)$'
         'where'
-        '\qquad $U_{e1}(t)$ and $U_{e2}(t)$ are the firing rates of the excitatory populations,'
-        '\qquad $U_i(t)$ is the firing rate of the inhibitory population,'
-        '\qquad $w_{ei}$ is the weight of the connection to $e$ from $i$,'
-        '\qquad $J_1$ and $J_2$ are incoming signals from external stimuli,'
-        '\qquad $\Delta$ is a bias applied to $J_{1}$ versus $J_{2}$,'
-        '\qquad $b_{e}$ and $b_{i}$ are threshold constants,'
-        '\qquad $\tau_{e}$ and $\tau_{i}$ are time constants,'
-        '\qquad $F(v)=1/(1+\exp(-v))$ is a sigmoidal firing-rate function.'
+        '{ }{ }{ } $U_{e1}(t)\;$ and $U_{e2}(t)\;$ are the firing rates of the excitatory populations,'
+        '{ }{ }{ } $U_i(t)~$ is the firing rate of the inhibitory population,'
+        '{ }{ }{ } $w_{ei}~$ is the weight of the connection to $e$ from $i$,'
+        '{ }{ }{ } $J_1\;$ and $J_2\;$ are incoming signals from external stimuli,'
+        '{ }{ }{ } $\Delta~$ is a bias applied to $J_{1}\;$ versus $J_{2}$,'
+        '{ }{ }{ } $b_{e}\;$ and $b_{i}\;$ are threshold constants,'
+        '{ }{ }{ } $\tau_{e}\;$ and $\tau_{i}\;$ are time constants,'
+        '{ }{ }{ } $F(v)=1/(1+\exp(-v))~$ is a sigmoidal firing-rate function.'
         'The external stimulation is not applied for $t<0$.'
         ''
-        '\textbf{Reference}'
-        'Heitmann \& Ermentrout. Propagating Waves as a Cortical Mechanism of'
-        'Direction-Selectivity in V1 Motion Cells. First International Workshop on'
-        'Computational Models of the Visual Cortex (CMVC 2015), New York.'        
+        '$\textbf{References}$'
+        'Heitmann \& Ermentrout (2020) Direction-selective motion discrimination'
+        '{ }{ }{ } by traveling waves in visual cortex. PLOS Computational Biology.'
+        'Heitmann \& Ermentrout (2015) Propagating Waves as a Cortical Mechanism'
+        '{ }{ }{ } of Direction-Selectivity in V1 Motion Cells. First International Workshop'
+        '{ }{ }{ } on Computational Models of the Visual Cortex (CMVC), New York.'
         };
 
     % Time portrait

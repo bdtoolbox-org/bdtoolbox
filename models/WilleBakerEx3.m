@@ -16,9 +16,9 @@
 %   gui = bdGUI(sys);       % open the Brain Dynamics GUI
 %
 % Authors
-%   Stewart Heitmann (2016a-2018a)
+%   Stewart Heitmann (2016a-2018a,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -50,18 +50,24 @@ function sys = WilleBakerEx3()
     sys.ddefun = @ddefun;
     
     % DDE parameters
-    sys.pardef = [ struct('name','a', 'value', 1);
-                   struct('name','b', 'value', 1);
-                   struct('name','c', 'value', 1) ];
+    sys.pardef = [ 
+        struct('name','a', 'value', 1)
+        struct('name','b', 'value', 1)
+        struct('name','c', 'value', 1)
+        ];
                
     % DDE lag parameters
-    sys.lagdef = [ struct('name','tau1', 'value',1.0);
-                   struct('name','tau2', 'value',0.2) ];
+    sys.lagdef = [
+        struct('name','tau1', 'value',1.0)
+        struct('name','tau2', 'value',0.2) 
+        ];
                
     % DDE state variables
-    sys.vardef = [ struct('name','y1', 'value',1);
-                   struct('name','y2', 'value',1);
-                   struct('name','y3', 'value',1) ];
+    sys.vardef = [ 
+        struct('name','y1', 'value',1)
+        struct('name','y2', 'value',1)
+        struct('name','y3', 'value',1)
+        ];
                
     % Default time span
     sys.tspan = [0 20]; 
@@ -73,21 +79,22 @@ function sys = WilleBakerEx3()
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{Will\''e \& Baker (1992) Example 3}';
-        '';
-        'Delay Differential Equations';
-        '\qquad $a\,\dot y_1(t)=y_1(t-\tau_1)$';
-        '\qquad $b\,\dot y_2(t)=y_1(t-\tau_1)+y_2(t-\tau_2)$';
-        '\qquad $c\,\dot y_3(t)=y_2(t)$';
-        'where';
-        '\qquad $y_1(t), y_2(t), y_3(t)$ are state variables,';
-        '\qquad $\tau_1,\tau_2$ are constant time delays.';
-        '\qquad $a,b,c$ are time scale constants.';
-        '';
-        'References';
-        '\qquad 1. Will\''e and Baker (1992) DELSOL. Appl Num Math (9) 3-5.' ;   
-        '\qquad 2. Matlab example code DDEX1.m.' ;
-        '\qquad 3. Shampine and Thompson (2001) Solving DDEs in MATLAB.' };   
+        '$\textbf{Will\''e \& Baker (1992) Example 3}$'
+        ''
+        'Delay Differential Equations'
+        '{ }{ }{ } $a\,\dot y_1(t)=y_1(t-\tau_1)$'
+        '{ }{ }{ } $b\,\dot y_2(t)=y_1(t-\tau_1)+y_2(t-\tau_2)$'
+        '{ }{ }{ } $c\,\dot y_3(t)=y_2(t)$'
+        'where'
+        '{ }{ }{ } $y_1(t), y_2(t), y_3(t)\;$ are state variables,'
+        '{ }{ }{ } $\tau_1,\tau_2\;$ are constant time delays.'
+        '{ }{ }{ } $a,b,c\;$ are time scale constants.'
+        ''
+        'References'
+        '{ }{ }{ } 1. Will\''e and Baker (1992) DELSOL. Appl Num Math (9) 3-5.'
+        '{ }{ }{ } 2. Matlab example code DDEX1.m.'
+        '{ }{ }{ } 3. Shampine and Thompson (2001) Solving DDEs in MATLAB.'
+        };   
     
     % Include the Time Portrait panel in the GUI
     sys.panels.bdTimePortrait = [];

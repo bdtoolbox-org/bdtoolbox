@@ -10,7 +10,7 @@ function sys = Lorenz()
     %   gui = bdGUI(sys);       % open the Brain Dynamics GUI
     %
     % Authors
-    %   Stewart Heitmann (2019b)
+    %   Stewart Heitmann (2019b,2020a)
 
     % Handle to our ODE function
     sys.odefun = @odefun;
@@ -32,32 +32,33 @@ function sys = Lorenz()
     % Latex (Equations) panel
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = { 
-        '\textbf{Lorenz}';
-        '';
-        'The Lorenz equations in three dynamic variables';
-        '\qquad $\dot x = \sigma \, (y - x)$';
-        '\qquad $\dot y = rx - y - xz$';
-        '\qquad $\dot z = xy - bz$';
-        'where $\sigma,r,b$ are scalar constants.';
+        '$\textbf{Lorenz}$'
         ''
-        'Chaos is observed for $\sigma{=}10$, $r{=}28$, $b{=}8/3$ and nearby parameter values.'
+        'The Lorenz equations in three dynamic variables'
+        '{ }{ }{ } $\dot x = \sigma \, (y - x)$'
+        '{ }{ }{ } $\dot y = rx - y - xz$'
+        '{ }{ }{ } $\dot z = xy - bz$'
+        'where $\sigma,r,b\;$ are scalar constants.'
+        ''
+        'Chaos is observed for $\sigma{=}10$, $r{=}28$, $b{=}8/3\;$ and nearby parameter values.'
         };
 
     % Time Portrait panel 
     sys.panels.bdTimePortrait = [];
 
     % Phase Portrait panel
-    sys.panels.bdPhasePortrait = [];
+    sys.panels.bdPhasePortrait3D = [];
   
     % Solver panel
     sys.panels.bdSolverPanel = [];
     
-    % Default time span (optional)
+    % Simulation time span
     sys.tspan = [0 20]; 
+    sys.tstep = 0.01;
 
     % ODE solver options
     sys.odeoption.RelTol = 1e-6;        % Relative Tolerance
-    sys.odeoption.InitialStep = 0.1;    % Required by Euler method
+    sys.odeoption.InitialStep = 0.01;   % Required by Euler method
 end
 
 % The ODE function.

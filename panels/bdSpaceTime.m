@@ -1,12 +1,12 @@
-classdef bdSpaceTime < bdPanel
+classdef bdSpaceTime < bdPanelBase
     %bdSpaceTime Brain Dynamics GUI panel for space-time plots.
     %  The Space-Time panel plots the time trace of vector-valued dynamic 
     %  variables side-by-side as if they were arranged spatially.
     %
     %AUTHORS
-    %  Stewart Heitmann (2016a,2017a-c,2018a,2019a)
+    %  Stewart Heitmann (2016a,2017a-c,2018a,2019a,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -33,512 +33,527 @@ classdef bdSpaceTime < bdPanel
     % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
-
-    properties (Constant)
-        title = 'Space-Time';
-    end    
-
-    properties
-        t               % Time steps of the solution (1 x t)
-        y               % Matrix of space-time trajectories (n x t)
+    
+    properties (Dependent)
+        options
+    end
+    
+    properties (Access=public)
+        axes                matlab.ui.control.UIAxes
+        t                   double 
+        y                   double
+        surf0               matlab.graphics.primitive.Surface
+        surf1               matlab.graphics.primitive.Surface
     end
     
     properties (Access=private)
-        ax              % Handle to the plot axes
-        pc              % handle to the pcolor surface object
-        mk              % handle to the vertical time marker
-        tranmenu        % handle to TRANSIENTS menu item
-        markmenu        % handle to MARKERS menu item
-        blendmenu       % handle to BLEND menu item
-        modulomenu      % handle to MODULO menu item
-        submenu         % handle to subpanel selector menu item
-        listener        % handle to our listener object
+        sysobj              bdSystem
+        selector            bdSelector
+        tab                 matlab.ui.container.Tab           
+        dropdown            matlab.ui.control.DropDown
+        menu                matlab.ui.container.Menu
+        menuTransients      matlab.ui.container.Menu
+        menuBlend           matlab.ui.container.Menu
+        menuClip            matlab.ui.container.Menu        
+        menuModulo          matlab.ui.container.Menu
+        menuYDir            matlab.ui.container.Menu
+        menuAutoStep        matlab.ui.container.Menu
+        menuDock            matlab.ui.container.Menu
+        listener1           event.listener
+        listener2           event.listener
     end
     
     methods
+        function this = bdSpaceTime(tabgrp,sysobj,opt)
+            %disp('bdSpaceTime');
+            
+            % remember the parents
+            this.sysobj = sysobj;
+                        
+            % get the parent figure of the TabGroup
+            fig = ancestor(tabgrp,'figure');
+            
+            % Create the panel menu and assign it a unique Tag to identify it.
+            this.menu = uimenu('Parent',fig, ...
+                'Label','Space Time', ...
+                'Tag', bdPanelBase.FocusMenuID(), ...     % unique Tag used by the FocusMenu function
+                'Visible','off');
+            
+            % construct the CALIBRATE menu item
+            uimenu(this.menu, ...
+                'Label', 'Calibrate', ...
+                'Tooltip', 'Calibrate the colour limits to fit the data', ...
+                'Callback', @(~,~) this.callbackCalibrate() );
+                        
+            % construct the TRANSIENTS menu item
+            this.menuTransients = uimenu(this.menu, ...
+                'Label', 'Transients', ...
+                'Checked', 'on', ...
+                'Tag', 'transients', ...
+                'Tooltip', 'Show the transient part of the trajectory', ...
+                'Callback', @(src,~) this.callbackMenu(src) );
+
+            % construct the BLEND menu item
+            this.menuBlend = uimenu(this.menu, ...
+                'Label', 'Blend', ...
+                'Checked', 'off', ...
+                'Tag', 'modulo', ...
+                'Tooltip', 'Interpolated colour facets', ...            
+                'Callback', @(src,~) this.callbackMenu(src) );
+            
+            % construct the CLIP menu item
+            this.menuClip = uimenu(this.menu, ...
+                'Label', 'Clipping', ...
+                'Checked', 'off', ...
+                'Tag', 'modulo', ...
+                'Tooltip', 'Exclude data that is beyond the colour scale', ...            
+                'Callback', @(src,~) this.callbackMenu(src) );
+            
+            % construct the MODULO menu item
+            this.menuModulo = uimenu(this.menu, ...
+                'Label', 'Modulo', ...
+                'Checked', 'off', ...
+                'Tag', 'modulo', ...
+                'Tooltip', 'Wrap the colour scale at its limits', ...            
+                'Callback', @(src,~) this.callbackMenu(src) );
+                                               
+            % construct the YDIR menu item
+            this.menuYDir = uimenu(this.menu, ...
+                'Label', 'YDir Reverse', ...
+                'Checked', 'on', ...
+                'Tag', 'YDir', ...
+                'Tooltip', 'Reverse the direction of the y-axis', ...            
+                'Callback', @(src,~) this.callbackMenu(src) );
+            
+            % construct the AUTOSTEP menu item
+            this.menuAutoStep = uimenu(this.menu, ...
+                'Label', 'Auto Steps', ...
+                'Checked', 'on', ...
+                'Tag', 'autostep', ...
+                'Tooltip', 'Use the time steps chosen by the solver', ...
+                'Callback', @(src,~) this.callbackMenu(src) );                                
+
+            % construct the RESET menu item
+            uimenu(this.menu, ...
+                'Label', 'Reset', ...
+                'Tooltip', 'Reset the view', ...            
+                'Callback', @(src,~) this.callbackReset(src) );
+
+            % construct the DOCK menu item
+            this.menuDock = uimenu(this.menu, ...
+                'Label', 'Undock', ...
+                'Tooltip', 'Undock the display panel', ...            
+                'Callback', @(src,~) this.callbackDock(src,tabgrp) );
+
+            % construct the CLOSE menu item
+            uimenu(this.menu, ...
+                'Separator','on', ...
+                'Label','Close', ...
+                'Tooltip', 'Close the display panel', ...            
+                'Callback', @(~,~) this.callbackClose(fig) );
+
+            % Create Tab and give it the focus. The tab should have the same
+            % Tag as the panel menu so that each can be found by the other.
+            this.tab = uitab(tabgrp, 'Title','Space Time', 'Tag',this.menu.Tag);
+            tabgrp.SelectedTab = this.tab;
+            
+            % Create GridLayout within the Tab
+            GridLayout = uigridlayout(this.tab);
+            GridLayout.ColumnWidth = {'1x','2x','1x'};
+            GridLayout.RowHeight = {21,'1x'};
+            GridLayout.RowSpacing = 10;
+            GridLayout.Visible = 'off';
+
+            % Create the selector object
+            this.selector = bdSelector(sysobj,'vardef');
+            
+            % Create DropDown for the selector
+            combo = this.selector.DropDown(GridLayout);
+            combo.Layout.Row = 1;
+            combo.Layout.Column = 1;
+
+            % Create DropDown for the colormap
+            this.dropdown = uidropdown(GridLayout);
+            this.dropdown.Layout.Row = 1;
+            this.dropdown.Layout.Column = 3;
+            this.dropdown.Items = {'parula','jet','hsv','hot','cool','spring','summer','autumn','winter','gray','bone','copper','pink','lines','prism','flag','circular'};
+            this.dropdown.ValueChangedFcn = @(~,~) this.ColorMapChanged();
+            this.dropdown.Tooltip = 'Colour Map';
+            
+            % Create axes
+            this.axes = uiaxes(GridLayout);
+            this.axes.Layout.Row = 2;
+            this.axes.Layout.Column = [1 3];
+            this.axes.NextPlot = 'add';
+            this.axes.XGrid = 'off';
+            this.axes.YGrid = 'off';
+            this.axes.Box = 'on';
+            this.axes.CLim = this.selector.lim();
+            this.axes.XLabel.String = 'time';
+            this.axes.YLabel.String = 'space';
+            this.axes.FontSize = 11;
+            colorbar(this.axes);
+            colormap(this.axes,this.dropdown.Value);
+
+            % Customise the axes toolbars
+            axtoolbar(this.axes,{'export','datacursor','rotate'});
+            
+            % Construct the surface mesh for the transients (using zero data)
+            this.surf0 = pcolor(this.axes,zeros(2,2));
+            this.surf0.LineStyle = 'none';
+            this.surf0.Clipping = 'off';
+            this.surf0.FaceAlpha = 0.25;
+            
+            % Construct the surface mesh for the non-transients (using zero data)
+            this.surf1 = pcolor(this.axes,zeros(2,2));
+            this.surf1.LineStyle = 'none';
+            this.surf1.Clipping = 'off';
+
+            % apply the custom options (and render the image)
+            this.options = opt;
+
+            % make our panel menu visible and hide the others
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % make the grid visible
+            GridLayout.Visible = 'on';
+
+            % listen for SelectionChanged events
+            this.listener1 = listener(this.selector,'SelectionChanged',@(src,evnt) this.SelectorChanged());
+            
+            % listen for Redraw events
+            this.listener2 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(evnt));
+        end
         
-        function this = bdSpaceTime(tabgroup,control)
-            % Construct a new Space-Time Portrait in the given tabgroup
+        function opt = get.options(this)
+            opt.title    = this.tab.Title;
+            opt.transients = this.menuTransients.Checked;
+            opt.yreverse = this.menuYDir.Checked;
+            opt.blend    = this.menuBlend.Checked;
+            opt.clipping = this.menuClip.Checked;
+            opt.modulo   = this.menuModulo.Checked;
+            opt.colormap = this.dropdown.Value;
+            opt.autostep = this.menuAutoStep.Checked;
+            opt.selector = this.selector.cellspec();
+        end
+        
+        function set.options(this,opt)   
+            % check the incoming options and apply defaults to missing values
+             opt = this.optcheck(opt);
+             
+            % update the selector
+            this.selector.SelectByCell(opt.selector);
+             
+            % update the colormap dropdown
+            this.dropdown.Value = opt.colormap;
 
-            % initialise the base class (specifically this.menu and this.tab)
-            this@bdPanel(tabgroup);
+            % update the axes colormap
+            colormap(this.axes,opt.colormap);
+
+            % update the tab title
+            this.tab.Title = opt.title;
             
-            % assign default values to missing options in sys.panels.bdSpaceTime
-            control.sys.panels.bdSpaceTime = bdSpaceTime.syscheck(control.sys);
+            % update the menu title
+            this.menu.Text = opt.title;
+                        
+            % update the TRANSIENTS menu
+            this.menuTransients.Checked = opt.transients;
 
-            % configure the pull-down menu
-            this.menu.Label = control.sys.panels.bdSpaceTime.title;
-            this.InitCalibrateMenu(control);
-            this.InitViewMenu(control);
-            this.InitTransientsMenu(control);
-            this.InitMarkerMenu(control);
-            this.InitBlendMenu(control);
-            this.InitClipMenu(control);
-            this.InitModuloMenu(control);
-            this.InitColorMenu(control);
-            this.InitExportMenu(control);
-            this.InitCloseMenu(control);
-
-            % configure the panel graphics
-            this.tab.Title = control.sys.panels.bdSpaceTime.title;
-            this.InitSubpanel(control);
+            % update the YDIR menu
+            this.menuYDir.Checked = opt.yreverse;
             
-            % listen to the control panel for redraw events
-            this.listener = addlistener(control,'redraw',@(~,~) this.redraw(control));    
+            % update the BLEND menu
+            this.menuBlend.Checked = opt.blend;
+            
+            % update the CLIP menu
+            this.menuClip.Checked = opt.clipping;
+            
+            % update the MODULO menu
+            this.menuModulo.Checked = opt.modulo;
+            
+            % update the AUTOSTEP menu
+            this.menuAutoStep.Checked = opt.autostep;
+            
+            % Redraw everything
+            this.Render();
+            drawnow;
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
         end
         
         function delete(this)
-            % Destructor
-            delete(this.listener)
+           %disp('bdSpaceTime.delete()');
+           delete(this.menu);
+           delete(this.tab);
         end
-         
     end
     
     methods (Access=private)
-        
-        % Initialise the CALIBRATE menu item
-        function InitCalibrateMenu(this,control)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Calibrate Axes', ...
-                'Callback', @CalibrateMenuCallback );
+
+        % Listener for REDRAW events
+        function Redraw(this,evnt)
+            %disp('bdSpaceTime.Redraw()');
+            %disp(evnt)
+       
+            % Get the current selector settings
+            [xxxdef,xxxindx] = this.selector.Item();
             
-            % Menu callback function
-            function CalibrateMenuCallback(~,~)
-                % if the TRANSIENT menu is checked then ...
-                switch this.tranmenu.Checked
-                    case 'on'
-                        % adjust the limits using all time steps
-                        tindx = true(size(control.tindx));
-                    case 'off'
-                        % adjust the limits using the non-transient data only
-                        tindx = control.tindx;
-                end
-
-                % adjust the limits to fit the data
-                lo = min(min(this.y(:,tindx)));
-                hi = max(max(this.y(:,tindx)));
-                varindx = this.submenu.UserData.xxxindx;
-                control.sys.vardef(varindx).lim = bdPanel.RoundLim(lo,hi);
-
-                % refresh the vardef control widgets
-                notify(control,'vardef');
-                
-                % redraw all panels (because the new limits apply to all panels)
-                notify(control,'redraw');
-            end
-
+            % if the solution (sol) has changed, or
+            % if time slider value (tval) has changed, or 
+            % if the selected item's limit has changed then
+            if evnt.sol || evnt.tval || evnt.(xxxdef)(xxxindx).lim
+                this.Render();      % Render the data
+            end              
         end
         
-        % Initialise the 3D VIEW menu item
-        function InitViewMenu(this,control)
-            % construct the menu item
-            uimenu(this.menu, ...
-                'Label','3D View', ...
-                'Checked','off', ...
-                'Callback', @ViewMenuCallback);
+        function Render(this)
+            %disp('bdSpaceTime.Render()');
 
-            % Menu callback function
-            function ViewMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        % 3D menu state goes from 'on' to 'off'
-                        menuitem.Checked='off';
-                        this.ax.View = [0 90];
-                    case 'off'
-                        % 3D menu state goes from 'off' to 'on'
-                        menuitem.Checked='on';
-                        this.ax.View = [45 45];
-                end
-            end
-        end
+            % evaluate the selected variable at the selected time point
+            [this.y,~,this.t,tindx0,tindx1,ttindx] = this.selector.Trajectory('autostep',this.menuAutoStep.Checked);
 
-        % Initiliase the TRANISENTS menu item
-        function InitTransientsMenu(this,control)
-            % get the default transient menu setting from sys.panels
-            if control.sys.panels.bdSpaceTime.transients
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
+            % ensure that y is not 3D format
+            nt = numel(this.t);
+            this.y = reshape(this.y,[],nt,1);
+            nr = size(this.y,1);
 
-            % construct the menu item
-            this.tranmenu = uimenu(this.menu, ...
-                'Label','Transients', ...
-                'Checked',checkflag, ...
-                'Callback', @TranMenuCallback);
+            % get the plot limits for the selected variable
+            [plim,lim] = this.selector.lim();
+            [tlim, ~, tlim1] = this.tlim(this.t,ttindx);
 
-            % Menu callback function
-            function TranMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end
-        
-        % Initiliase the MARKERS menu item
-        function InitMarkerMenu(this,control)
-            % get the marker menu setting from sys.panels
-            if control.sys.panels.bdSpaceTime.markers
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
-
-            % construct the menu item
-            this.markmenu = uimenu(this.menu, ...
-                'Label','Markers', ...
-                'Checked',checkflag, ...
-                'Callback', @MarkMenuCallback);
-
-            % Menu callback function
-            function MarkMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked = 'off';
-                        this.mk.Visible = 'off';
-                    case 'off'
-                        menuitem.Checked = 'on';
-                        this.mk.Visible = 'on';
-                end
-            end
-        end
-
-        % Initiliase the BLEND menu item
-        function InitBlendMenu(this,control)
-            % get the default blend menu setting from sys.panels
-            if control.sys.panels.bdSpaceTime.blend
-                blendcheck = 'on';
-            else
-                blendcheck = 'off';
-            end
-
-            % construct the menu item
-            this.blendmenu = uimenu(this.menu, ...
-                'Label','Blend', ...
-                'Checked',blendcheck, ...
-                'Callback', @BlendMenuCallback);
-
-            % Menu callback function
-            function BlendMenuCallback(menuitem,~)
-                % toggle the FaceColor and menu state
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                        this.pc.FaceColor = 'flat';
-                    case 'off'
-                        menuitem.Checked='on';
-                        this.pc.FaceColor = 'interp';
-                end
-            end
-        end
-
-        % Initiliase the CLIPPING menu item
-        function InitClipMenu(this,control)
-            % get the default clipping menu setting from sys.panels
-            if control.sys.panels.bdSpaceTime.clipping
-                clipcheck = 'on';
-            else
-                clipcheck = 'off';
-            end
-
-            % construct the menu item
-            uimenu(this.menu, ...
-                'Label','Clipping', ...
-                'Checked',clipcheck, ...
-                'Callback', @ClipMenuCallback);
-            
-            % Menu callback function
-            function ClipMenuCallback(menuitem,~)
-                % toggle the surface clipping and the menu state
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                        this.pc.Clipping = 'off';
-                    case 'off'
-                        menuitem.Checked='on';
-                        this.pc.Clipping = 'on';
-                end
-            end
-        end
-        
-        % Initiliase the MODULO menu item
-        function InitModuloMenu(this,control)
-            % get the default clipping menu setting from sys.panels
-            if control.sys.panels.bdSpaceTime.modulo
-                modulocheck = 'on';
-            else
-                modulocheck = 'off';
-            end
-
-            % construct the menu item
-            this.modulomenu = uimenu(this.menu, ...
-                'Label','Modulo', ...
-                'Checked',modulocheck, ...
-                'Callback', @ModuloMenuCallback);
-            
-            % Menu callback function
-            function ModuloMenuCallback(menuitem,~)
-                % toggle the modulo menu state
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end
-
-        % Initiliase the COLORMAP menu item
-        function InitColorMenu(this,control)
-            % construct the menu item and its children
-            colormenu = uimenu(this.menu, 'Label','Colormap');
-            uimenu(colormenu, 'Label','parula',    'Checked','on',  'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','jet',       'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','hsv',       'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','hot',       'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','cool',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','spring',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','summer',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','autumn',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','winter',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','gray',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','bone',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','copper',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','pink',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','lines',     'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','colorcube', 'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','prism',     'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','flag',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','circular',  'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-
-            % Menu callback function
-            function ColorMenuCallback(menuitem,~)
-                % uncheck all color menu items
-                objs = findobj(colormenu,'Tag','ColormapMenu');
-                for idx=1:numel(objs)
-                    objs(idx).Checked='off';
-                end
-                
-                % check the chosen menu
-                menuitem.Checked='on';
-                
-                % apply the colormap to the axes
-                switch menuitem.Label
-                    case 'circular'
-                        % custom colormap
-                        x = linspace(-pi,pi,64);
-                        b = 0.5*sin(x-pi/2)+0.5;
-                        r = 0.5*sin(x+pi/2)+0.5;
-                        g = r;
-                        colormap(this.ax,[r',g',b']);
-                    otherwise
-                        colormap(this.ax,menuitem.Label);                
-                end
-            end
-        end
-        
-        % Initialise the EXPORT menu item
-        function InitExportMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Export Figure', ...
-               'Callback',@callback);
-           
-            function callback(~,~)
-                % Construct a new figure
-                fig = figure();    
-                
-                % Change mouse cursor to hourglass
-                set(fig,'Pointer','watch');
-                drawnow;
-                
-                % Copy the plot data to the new figure
-                axnew = copyobj(this.ax,fig);
-                axnew.OuterPosition = [0 0 1 1];
-                
-                % Add a colorbar to the new axis
-                colorbar('peer',axnew);
-
-                % Allow the user to hit everything in the new axes
-                objs = findobj(axnew,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                
-                % Change mouse cursor to arrow
-                set(fig,'Pointer','arrow');
-                drawnow;
-            end
-        end
-
-        % Initialise the CLOSE menu item
-        function InitCloseMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-                   'Label','Close', ...
-                   'Callback',@(~,~) this.close());
-        end
-        
-        % Initialise the upper panel
-        function InitSubpanel(this,control)
-            % construct the subpanel
-            [this.ax,cmenu] = bdPanel.Subpanel(this.tab,[0 0 1 1],[0 0 1 1]);
-            xlabel(this.ax,'time');
-            ylabel(this.ax,'space (node)');
-            
-            % construct the pcolor surface object (using zero data)
-            this.pc = pcolor(this.ax,zeros(2,2));
-            this.pc.LineStyle = 'none';
-            this.pc.Clipping = 'off';
-
-            % add the colorbar
-            colorbar('peer',this.ax);
-            
-            % construct the vertical line marker object
-            this.mk = plot3([0 0 0 0 0],[0 1 1 0 0], [0 0 1 1 0], 'Color','k', 'LineStyle','--', 'LineWidth',1.5);
-
-            % construct a selector menu comprising items from sys.vardef
-            this.submenu = bdPanel.SelectorMenu(cmenu, ...
-                control.sys.vardef, ...
-                @callback, ...
-                'off', 'mb1',1);
-            
-            % Callback function for the subpanel selector menu
-            function callback(menuitem,~)
-                % check 'on' the selected menu item and check 'off' all others
-                bdPanel.SelectorCheckItem(menuitem);
-                % update our handle to the selected menu item
-                this.submenu = menuitem;
-                % redraw the panel
-                this.redraw(control);
-            end
-        end
-   
-        % Redraw the data plots
-        function redraw(this,control)
-            %disp('bdSpaceTime.redraw()')
-            
-            % get the details of the currently selected dynamic variable
-            varname  = this.submenu.UserData.xxxname;           % generic name of variable
-            varlabel = this.submenu.UserData.label;             % plot label for selected variable
-            varindx  = this.submenu.UserData.xxxindx;           % index of selected variable in sys.vardef
-            solindx  = control.sys.vardef(varindx).solindx;     % indices of selected entries in sol
-            varlim   = control.sys.vardef(varindx).lim;         % axis limits of the selected variable
-
-            % get the solution data (including the transient part)
-            this.t = control.sol.x;
-            this.y = control.sol.y(solindx,:);
-
-            % if the MODULO menu is enabled then modulo the data
-            switch this.modulomenu.Checked
+            % modulo the data (if appropriate)
+            switch this.menuModulo.Checked
                 case 'on'
-                    ylo = varlim(1);
-                    yhi = varlim(2);
-                    this.y = mod(this.y-ylo, yhi-ylo) + ylo;
-            end
-            
-            % get the number of rows in the solution
-            n = size(this.y,1);
-
-            % if the TRANSIENT menu is enabled then  ...
-            switch this.tranmenu.Checked
-                case 'on'
-                    % use all time steps
-                    tindx = true(size(control.tindx));  % logical indices of all time steps in this.t
-                    tval = control.sys.tval;            % start of the non-transient time window
-                    tend = control.sys.tspan(2);        % end of simulation time window
-                    tlim = control.sys.tspan;           % limit of plot time
+                    % modulo the data
+                    lo = lim(1);
+                    hi = lim(2);   
+                    this.y = mod(this.y-lo, hi-lo) + lo;
                 case 'off'
-                    % use only the non-transient time steps
-                    tindx = control.tindx;              % logical indices of the non-transient time steps
-                    tval = control.sys.tval;            % start of the non-transient time window
-                    tend = control.sys.tspan(2);        % end of simulation time window
-                    tlim = [tval tend];                 % limit of plot time
+                    % nothing to do
             end
             
-            % update the pcolor surface data
-            this.pc.XData = this.t(tindx);
-            this.pc.YData = 1:n+1;
-            this.pc.CData = this.y([1:n,1],tindx);
-            this.pc.ZData = this.y([1:n,1],tindx);
+            % special case of scalar data
+            if nr==1
+                % update the pcolor surface data (transients)
+                this.surf0.XData = this.t(tindx0);
+                this.surf0.YData = [0 0.5 1];
+                this.surf0.CData = this.y([1 1 1],tindx0);
+                this.surf0.ZData = this.y([1 1 1],tindx0);
 
-            % set the axes limits
-            this.ax.YLim = [1 n+1];
-            this.ax.XLim = tlim + [-1e-6 +1e-6];
-            this.ax.ZLim =  varlim + [-1e-6 1e-6];
+                % update the pcolor surface data (non-transients)
+                this.surf1.XData = this.t(tindx1);
+                this.surf1.YData = [0 0.5 1];
+                this.surf1.CData = this.y([1 1 1],tindx1);
+                this.surf1.ZData = this.y([1 1 1],tindx1);
 
-            % set the color axis limit to match the Z-axis limit
-            caxis(this.ax, this.ax.ZLim);
+                % update the axes limits
+                this.axes.YLim = [0 1];
+                this.axes.ZLim = plim;
+                this.axes.CLim = plim;
+            else
+                % update the pcolor surface data (transients)
+                this.surf0.XData = this.t(tindx0);
+                this.surf0.YData = 1:nr;
+                this.surf0.CData = this.y(1:nr,tindx0);
+                this.surf0.ZData = this.y(1:nr,tindx0);
+
+                % update the pcolor surface data (non-transients)
+                this.surf1.XData = this.t(tindx1);
+                this.surf1.YData = 1:nr;
+                this.surf1.CData = this.y(1:nr,tindx1);
+                this.surf1.ZData = this.y(1:nr,tindx1);
+
+                % update the axes limits
+                this.axes.YLim = [1 nr];
+                this.axes.ZLim = plim;
+                this.axes.CLim = plim;
+            end
             
-            % update the time marker
-            this.mk.YData = [1    n+1  n+1  1    1 ];
-            this.mk.XData = [tval tval tval tval tval];
-            this.mk.ZData = [varlim(1) varlim(1) varlim(2) varlim(2) varlim(1)];
-
-            % update the title
-            title(this.ax,varname);
+            % reverse the Y axis (or not)
+            switch this.menuYDir.Checked
+                case 'on'
+                    this.axes.YDir = 'reverse';
+                otherwise
+                    this.axes.YDir = 'normal';
+            end
             
-            % update the zlabel
-            zlabel(this.ax, varname);
+            % blend the colour facets (or not)
+            switch this.menuBlend.Checked
+                case 'on'
+                    this.surf0.FaceColor = 'interp';
+                    this.surf1.FaceColor = 'interp';
+                otherwise
+                    this.surf0.FaceColor = 'flat';
+                    this.surf1.FaceColor = 'flat';
+            end
+            
+            % clip the colour scale (or not)
+            this.surf0.Clipping = this.menuClip.Checked;
+            this.surf1.Clipping = this.menuClip.Checked;
+            
+            % Visibilty of transients. Update time limits
+            switch this.menuTransients.Checked
+                case 'on'
+                    this.surf0.Visible = 'on';
+                    this.axes.XLim = tlim + [-1e-9 +1e-9];
+                case 'off'
+                    this.surf0.Visible = 'off';
+                    this.axes.XLim = tlim1 + [-1e-9 0];
+            end
+            
+            % Update the time label
+            switch this.menuAutoStep.Checked
+                case 'on'
+                    this.axes.XLabel.String = 'time (dt=auto)';
+                case 'off'
+                    this.axes.XLabel.String = sprintf('time (dt=%g)',this.sysobj.tstep);
+            end
+
+            
+        end        
+                
+        % Selector Changed callback
+        function SelectorChanged(this)
+            %disp('bdSpaceTime.selectorChanged');
+            this.Render();                  % Render the data
+            notify(this.sysobj,'push');     % Push the UNDO stack
         end
+        
+        % Colormap DropDown callback
+        function ColorMapChanged(this)
+            mapname = this.dropdown.Value;  % Get the selected colormap
+            switch mapname
+                case 'circular'
+                    % apply custom colormap
+                    x = linspace(-pi,pi,64);
+                    b = 0.5*sin(x-pi/2)+0.5;
+                    r = 0.5*sin(x+pi/2)+0.5;
+                    g = r;
+                    colormap(this.axes,[r',g',b']);
+                otherwise
+                    % apply standard colormap
+                    colormap(this.axes,mapname);
+            end
+            notify(this.sysobj,'push');     % Push the UNDO stack
+        end
+                      
+        % Generic callback for checked menus. Used by CLIP, BLEND, MODULO, YDIR, etc
+        function callbackMenu(this,menuitem)
+            this.MenuToggle(menuitem);      % Toggle the menu state
+            this.Render();                  % Render the data
+            notify(this.sysobj,'push');     % Push the UNDO stack
+        end
+
+        % CALIBRATE menu callback
+        function callbackCalibrate(this)
+            % time domain
+            tspan = this.sysobj.tspan;
+            
+            % if the TRANSIENTS option is disabled then ...
+            switch this.menuTransients.Checked
+                case 'off'
+                    % do not calibrate the transient data
+                    tspan(1) = this.sysobj.tval;
+            end
+            
+            % Calibrate the vardef limits via the selectors
+            this.selector.Calibrate(tspan);
+                                     
+            % redraw all panels (because the new limits apply to all panels)
+            this.sysobj.NotifyRedraw([]);
+        end
+               
+        % RESET menu callback
+        function callbackReset(this,menuitem)
+            %disp('callbackReset');
+            
+            % delete all data tips
+            objs = findobj(this.axes,'Type','datatip');
+            delete(objs);
+
+            % reset the viewing angle
+            this.axes.View = [0 90];
+            
+            % render the data
+            this.Render();
+        end
+        
+        % DOCK menu callback
+        function callbackDock(this,menuitem,tabgrp)
+            %disp('callbackDock');
+            switch menuitem.Label
+                case 'Undock'
+                    newfig = bdPanelBase.Undock(this.tab,this.menu);
+                    newfig.DeleteFcn = @(src,~) this.delete();
+                    menuitem.Label='Dock';
+                    menuitem.Tooltip='Dock the display panel';
+                case 'Dock'
+                    bdPanelBase.Dock(this.tab,this.menu,tabgrp);
+                    menuitem.Label='Undock';
+                    menuitem.Tooltip='Undock the display panel';
+            end
+        end
+        
+        % CLOSE menu callback
+        function callbackClose(this,guifig)
+            % find the parents of the panel tab 
+            tabgrp = ancestor(this.tab,'uitabgroup');
+            fig = ancestor(this.tab,'figure');
+            
+            % delete the panel
+            delete(this);
+            
+            % reveal the menu of the newly selected panel 
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % if the parent figure is not the same as the gui figure then ...
+            if fig ~= guifig
+                % The panel is undocked from the gui so we need to close its figure too. 
+                delete(fig);
+            end
+        end
+        
 
     end
     
     methods (Static)
         
-        function syspanel = syscheck(sys)
-            % Assign default values to missing fields in sys.panels.bdSpaceTime
-
-            % Default panel settings
-            syspanel.title = bdSpaceTime.title;
-            syspanel.transients = true;
-            syspanel.markers = true;
-            syspanel.blend = false;
-            syspanel.clipping = false;
-            syspanel.modulo = false;
+        function optout = optcheck(opt)
+            % check the format of incoming options and apply defaults to missing values
+            optout.title      = bdPanelBase.GetOption(opt, 'title', 'Space Time');
+            optout.transients = bdPanelBase.GetOption(opt, 'transients', 'on');            
+            optout.yreverse   = bdPanelBase.GetOption(opt, 'yreverse', 'on');
+            optout.blend      = bdPanelBase.GetOption(opt, 'blend', 'off');
+            optout.clipping   = bdPanelBase.GetOption(opt, 'clipping', 'off');
+            optout.modulo     = bdPanelBase.GetOption(opt, 'modulo', 'off');
+            optout.colormap   = bdPanelBase.GetOption(opt, 'colormap', 'parula');
+            optout.autostep   = bdPanelBase.GetOption(opt, 'autostep', 'on');
+            optout.selector   = bdPanelBase.GetOption(opt, 'selector', {1,1,1});
             
-            % Nothing more to do if sys.panels.bdSpaceTime is undefined
-            if ~isfield(sys,'panels') || ~isfield(sys.panels,'bdSpaceTime')
-                return;
+            % warn of unrecognised field in the incoming options
+            infields  = fieldnames(opt);                % the field names we were given
+            outfields = fieldnames(optout);             % the field names we expected
+            newfields = setdiff(infields,outfields);    % unrecognised field names
+            for idx=1:numel(newfields)
+                warning('Ignoring unknown panel option ''bdSpaceTime.%s''',newfields{idx});
             end
-            
-            % sys.panels.bdSpaceTime.title
-            if isfield(sys.panels.bdSpaceTime,'title')
-                syspanel.title = sys.panels.bdSpaceTime.title;
+        end
+        
+        function [tlim, tlim0, tlim1] = tlim(tdomain,ttindx)
+            if tdomain(1) < tdomain(end)
+                % tdomain is forward
+                tlim = tdomain([1 end]);
+                tlim0 = tdomain([1 ttindx]);
+                tlim1 = tdomain([ttindx end]);
+            else
+                % tdomain is reversed
+                tlim = tdomain([end 1]);
+                tlim0 = tdomain([ttindx 1]);
+                tlim1 = tdomain([end ttindx]);
             end
-            
-            % sys.panels.bdSpaceTime.transients
-            if isfield(sys.panels.bdSpaceTime,'transients')
-                syspanel.transients = sys.panels.bdSpaceTime.transients;
-            end
-            
-            % sys.panels.bdSpaceTime.markers
-            if isfield(sys.panels.bdSpaceTime,'markers')
-                syspanel.markers = sys.panels.bdSpaceTime.markers;
-            end
-            
-            % sys.panels.bdSpaceTime.blend
-            if isfield(sys.panels.bdSpaceTime,'blend')
-                syspanel.blend = sys.panels.bdSpaceTime.blend;
-            end
-            
-            % sys.panels.bdSpaceTime.clipping
-            if isfield(sys.panels.bdSpaceTime,'clipping')
-                syspanel.grid = sys.panels.bdSpaceTime.clipping;
-            end
-            
-            % sys.panels.bdSpaceTime.modulo
-            if isfield(sys.panels.bdSpaceTime,'modulo')
-                syspanel.modulo = sys.panels.bdSpaceTime.modulo;
-            end           
         end
         
     end
-    
 end
+

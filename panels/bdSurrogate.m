@@ -1,14 +1,14 @@
-classdef bdSurrogate < bdPanel
-    %bdSurrogate  Display panel for the Surrogate data transform.
+classdef bdSurrogate < bdPanelBase
+    %bdSurrogate Display panel for the Surrogate data transform
     %   This display panel constructs phase-randomized surrogate data from
     %   simulated data by adding random numbers to the phase component of
     %   the data using an amplitude-adjusted algorithm. 
     %   
     %AUTHORS
-    %  Stewart Heitmann (2017b,2017c,2018a)
-    %  Incorporating original code from Michael Breakspear.
-
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    %  Stewart Heitmann (2017b,2017c,2018a,2020a)
+    %  The transform itself is based on original code from Michael Breakspear.
+    
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -36,452 +36,487 @@ classdef bdSurrogate < bdPanel
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
     
-    properties (Constant)
-        title = 'Surrogate';
-    end    
-    
-    properties (Access=public)
-        t               % equi-spaced time points
-        y               % time series of selected variable(s)
-        ysurr           % surrogate version of y
+    properties (Dependent)
+        options
     end
     
-    properties (Access=private) 
-        ax1             % handle to plot 1 axes
-        ax2             % handle to plot 2 axes
-        tranmenu        % handle to TRANSIENTS menu item
-        markmenu        % handle to MARKERS menu item        
-        gridmenu        % handle to GRID menu item
-%        holdmenu        % handle to HOLD menu item
-        submenu         % handle to subpanel selector menu item
-        listener        % handle to our listener object
+    properties (Access=public)
+        axes1       matlab.ui.control.UIAxes    % upper axes
+        axes2       matlab.ui.control.UIAxes    % lower axes
+        t           double                      % equi-spaced time points
+        y           double                      % time series data
+        ysurr       double                      % surrogate version of y
+    end
+    
+    properties (Access=private)
+        sysobj              bdSystem
+        selector            bdSelector
+        
+        menu                matlab.ui.container.Menu
+        menuMarkers         matlab.ui.container.Menu
+        menuDock            matlab.ui.container.Menu
+        
+        tab                 matlab.ui.container.Tab           
+        label               matlab.ui.control.Label
+        button              matlab.ui.control.Button
+        
+        trace1              matlab.graphics.primitive.Line
+        trace2              matlab.graphics.primitive.Line
+        
+        line1               matlab.graphics.primitive.Line
+        line2               matlab.graphics.primitive.Line
+        
+        marker1b            matlab.graphics.primitive.Line
+        marker1c            matlab.graphics.primitive.Line
+        marker2b            matlab.graphics.primitive.Line
+        marker2c            matlab.graphics.primitive.Line
+
+        listener1           event.listener
+        listener2           event.listener
+        listener3           event.listener
     end
     
     methods
-        function this = bdSurrogate(tabgroup,control)
-             % Construct a new Surrogate Panel in the given tabgroup
+        function this = bdSurrogate(tabgrp,sysobj,opt)
+            %disp('bdSurrogate');
+            
+            % remember the parents
+            this.sysobj = sysobj;
+            
+            % get the parent figure of the TabGroup
+            fig = ancestor(tabgrp,'figure');
+            
+            % Create the panel menu and assign it a unique Tag to identify it.
+            this.menu = uimenu('Parent',fig, ...
+                'Label','Surrogate', ...
+                'Tag', bdPanelBase.FocusMenuID(), ...     % unique Tag used by the FocusMenu function
+                'Visible','off');
+            
+            % construct the CALIBRATE menu item
+            uimenu(this.menu, ...
+                'Label', 'Calibrate', ...
+                'Tooltip', 'Calibrate the axes to fit the data', ...
+                'Callback', @(~,~) this.callbackCalibrate() );                        
+            
+            % construct the MARKERS menu item
+            this.menuMarkers = uimenu(this.menu, ...
+                'Label', 'Markers', ...
+                'Checked', 'on', ...
+                'Tag', 'markers', ...
+                'Tooltip', 'Show the trajectory markers', ...               
+                'Callback', @(src,~) this.callbackMarkers(src) );
+                        
+            % construct the DOCK menu item
+            this.menuDock = uimenu(this.menu, ...
+                'Label', 'Undock', ...
+                'Tooltip', 'Undock the display panel', ...            
+                'Callback', @(src,~) this.callbackDock(src,tabgrp) );
 
-            % initialise the base class (specifically this.menu and this.tab)
-            this@bdPanel(tabgroup);
-            
-            % assign default values to missing options in sys.panels.bdSurrogate
-            control.sys.panels.bdSurrogate = bdSurrogate.syscheck(control.sys);
-            
-            % configure the pull-down menu
-            this.menu.Label = control.sys.panels.bdSurrogate.title;
-            this.InitCalibrateMenu(control);
-            this.InitTransientsMenu(control);
-            this.InitMarkerMenu(control);
-            this.InitGridMenu(control);
-            %this.InitHoldMenu(control);
-            this.InitExportMenu(control);
-            this.InitCloseMenu(control);
-            
-            % configure the panel graphics
-            this.tab.Title = control.sys.panels.bdSurrogate.title;
-            this.InitSubpanel(control);
+            % construct the CLOSE menu item
+            uimenu(this.menu, ...
+                'Separator','on', ...
+                'Label','Close', ...
+                'Tooltip', 'Close the display panel', ...            
+                'Callback', @(~,~) this.callbackClose(fig) );
 
-            % listen to the control panel for redraw events
-            this.listener = addlistener(control,'redraw',@(~,~) this.redraw(control));    
+            % Create Tab and give it the focus. The tab should have the same
+            % Tag as the panel menu so that each can be found by the other.
+            this.tab = uitab(tabgrp, 'Title','Surrogate', 'Tag',this.menu.Tag);
+            tabgrp.SelectedTab = this.tab;
+            
+            % Create GridLayout within the Tab
+            GridLayout = uigridlayout(this.tab);
+            GridLayout.ColumnWidth = {'1x','2x','1x'};
+            GridLayout.RowHeight = {21,'1x','1x'};
+            GridLayout.RowSpacing = 10;
+            GridLayout.Visible = 'off';
+
+            % Construct the selector object
+            this.selector = bdSelector(sysobj,'vardef');                  
+          
+            % Create DropDownCombo for selector
+            combo = this.selector.DropDownCombo(GridLayout);
+            combo.Layout.Row = 1;
+            combo.Layout.Column = 1;
+
+            % Create label
+            this.label = uilabel(GridLayout);
+            this.label.Layout.Row = 1;
+            this.label.Layout.Column = 2;
+            this.label.Text = 'Not all background traces are shown';
+            this.label.VerticalAlignment = 'center';
+            this.label.HorizontalAlignment = 'center';
+            this.label.FontColor = [0.5 0.5 0.5];
+            this.label.Visible = 'on';
+
+            % Create button
+            this.button = uibutton(GridLayout);
+            this.button.Layout.Row = 1;
+            this.button.Layout.Column = 3;
+            this.button.Text = 'Recompute';
+            this.button.ButtonPushedFcn = @(~,~) this.callbackButton();
+            
+            % Create axes1
+            this.axes1 = uiaxes(GridLayout);
+            this.axes1.Layout.Row = 2;
+            this.axes1.Layout.Column = [1 3];
+            this.axes1.NextPlot = 'add';
+            this.axes1.XLabel.String = 'time';
+            this.axes1.FontSize = 11;            
+            this.axes1.XGrid = 'off';
+            this.axes1.YGrid = 'off';
+            this.axes1.Box = 'on';
+            this.axes1.XLim = sysobj.tspan + [-1e-9 1e-9];
+            this.axes1.YLim = this.selector.lim();
+            this.axes1.Title.String = 'Original';
+            axtoolbar(this.axes1,{'export','datacursor'});
+            
+            % Create axes2
+            this.axes2 = uiaxes(GridLayout);
+            this.axes2.Layout.Row = 3;
+            this.axes2.Layout.Column = [1 3];
+            this.axes2.NextPlot = 'add';
+            this.axes2.XLabel.String = 'time';
+            this.axes2.FontSize = 11;
+            this.axes2.XGrid = 'off';
+            this.axes2.YGrid = 'off';
+            this.axes2.Box = 'on';
+            this.axes2.XLim = sysobj.tspan + [-1e-9 1e-9];
+            this.axes2.YLim = this.selector.lim();              
+            this.axes2.Title.String = 'Surrogate';
+            axtoolbar(this.axes2,{'export','datacursor'});
+
+            % Construct background traces (containing NaN)
+            this.trace1 = line(this.axes1,NaN,NaN, 'LineStyle','-', 'color',[0.8 0.8 0.8], 'Linewidth',0.5, 'PickableParts','none');
+            this.trace2 = line(this.axes2,NaN,NaN, 'LineStyle','-', 'color',[0.8 0.8 0.8], 'Linewidth',0.5, 'PickableParts','none');
+            
+            % Construct the line plots (containing NaN)
+            this.line1 = line(this.axes1,NaN,NaN,'LineStyle','-','color','k','Linewidth',1.5);
+            this.line2 = line(this.axes2,NaN,NaN,'LineStyle','-','color','k','Linewidth',1.5);
+
+            % Construct the markers
+            this.marker1b = line(this.axes1,NaN,NaN,'Marker','o','color','k','Linewidth',1.25,'MarkerFaceColor','w');
+            this.marker1c = line(this.axes1,NaN,NaN,'Marker','o','color','k','Linewidth',1.25,'MarkerFaceColor',[0.6 0.6 0.6]);
+            this.marker2b = line(this.axes2,NaN,NaN,'Marker','o','color','k','Linewidth',1.25,'MarkerFaceColor','w');
+            this.marker2c = line(this.axes2,NaN,NaN,'Marker','o','color','k','Linewidth',1.25,'MarkerFaceColor',[0.6 0.6 0.6]);
+
+            % apply the custom options (and render the data)
+            this.options = opt;
+
+            % make our panel menu visible and hide the others
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % make the grid visible
+            GridLayout.Visible = 'on';
+
+            % listen for Redraw events
+            this.listener1 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(evnt));
+            
+            % listen for SelectionChanged events
+            this.listener2 = listener(this.selector,'SelectionChanged',@(src,evnt) this.SelectorChanged());
+            
+            % listen for SubscriptChanged events
+            this.listener3 = listener(this.selector,'SubscriptChanged',@(src,evnt) this.SubscriptChanged());
+                       
+        end
+        
+        function opt = get.options(this)
+            opt.title    = this.tab.Title;
+            opt.markers  = this.menuMarkers.Checked;
+            opt.selector = this.selector.cellspec();
+        end
+        
+        function set.options(this,opt)   
+            % check the incoming options and apply defaults to missing values
+            opt = this.optcheck(opt);
+                         
+            % update the selector
+            this.selector.SelectByCell(opt.selector);
+             
+            % update the tab title
+            this.tab.Title = opt.title;
+            
+            % update the menu title
+            this.menu.Text = opt.title;
+                        
+            % update the MARKERS menu
+            this.menuMarkers.Checked = opt.markers;
+            
+            % Recompute the transform
+            this.ComputeSurrogate();
+            
+            % Redraw everything
+            this.RenderBackground();
+            this.RenderForeground();
+            drawnow;
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
         end
         
         function delete(this)
-            % Destructor
-            delete(this.listener)
-        end
-         
-        function redraw(this,control)
-            %disp('bdSurrogate.redraw()')
-            
-            % get the details of the variable currently selected variable
-            varname  = this.submenu.UserData.xxxname;          % generic name of variable
-            varlabel = this.submenu.UserData.label;            % plot label for selected variable
-            varindx  = this.submenu.UserData.xxxindx;          % index of selected variable in sys.vardef
-            valindx  = this.submenu.UserData.valindx;          % indices of selected entries in sys.vardef.value
-            solindx  = control.sys.vardef(varindx).solindx;    % indices of selected entries in sol
-            ylim     = control.sys.vardef(varindx).lim;        % axis limits of the selected variable
-           % tval     = control.sys.tval;                       % current time slider value
-            
-            % clear the axes
-            cla(this.ax1);
-            cla(this.ax2);
-            
-            % set the y-axes limits
-            this.ax1.YLim = ylim + [-1e-4 +1e-4];
-            this.ax2.YLim = ylim + [-1e-4 +1e-4];
-
-            % if the TRANSIENT menu is enabled then  ...
-            switch this.tranmenu.Checked
-                case 'on'
-                    % set the x-axes limits to the full time span
-                    this.ax1.XLim = control.sys.tspan + [-1e-4 0];
-                    this.ax2.XLim = control.sys.tspan + [-1e-4 0];
-
-                    % use all time steps in sol.x
-                    tindx = true(size(control.tindx));  % logical indices of all time steps in this.t
-                    
-                case 'off'
-                    % limit the x-axes to the non-transient part of the time domain
-                    this.ax1.XLim = [control.sys.tval control.sys.tspan(2)] + [-1e-4 0];
-                    this.ax2.XLim = [control.sys.tval control.sys.tspan(2)] + [-1e-4 0];
-                    
-                    % use only the non-transient time steps in sol.x
-                    tindx = control.tindx;              % logical indices of the non-transient time steps
-            end
-            
-            % Our method asumes equi-spaced time steps but many of our
-            % solvers generate variable time steps.  So we interpolate
-            % the time-series to ensure equi-spaced time steps.
-            % How we interpolate depends on the type of solver.
-            switch control.solvertype
-                case 'sde'
-                    % The current SDE solvers only used fixed time steps
-                    % so we can avoid interpolation altogether and simply
-                    % use the solver's own time steps.
-                    this.t = control.sol.x(tindx);
-
-                otherwise
-                    % We use interpolation for all other solvers to ensure
-                    % that our correlation used fixed-size time steps.
-                    % We choose the number of time steps of the interpolant
-                    % to be similar to the number of steps chosen by the
-                    % solver. This avoids over-sampling and under-sampling.
-                    tt = control.sol.x(tindx);
-                    this.t = linspace(tt(1),tt(end),numel(tt));                        
-            end
-            
-            % interpolate the trajectory onto  equi-spaced time points 
-            this.y = bdEval(control.sol,this.t,solindx);
-
-            % compute the surrogate data
-            this.ysurr = bdSurrogate.ampsurr(this.y);
-
-            % update the ylabels
-            ylabel(this.ax1, varlabel);
-            ylabel(this.ax2, varlabel);
-
-            % Plot the original signal in ax1
-            % ... with the background traces in grey
-            plot(this.ax1, this.t, this.y, 'color',[0.75 0.75 0.75], 'HitTest','off');              
-            % ... and variable of interest in black
-            plot(this.ax1, this.t, this.y(valindx,:), 'color','k', 'Linewidth',1.5);
-            
-            % Plot the surrogate signal in ax2
-            % ... with the background traces in grey
-            plot(this.ax2, this.t, this.ysurr, 'color',[0.75 0.75 0.75], 'HitTest','off');              
-            % ... and variable of interest in black
-            plot(this.ax2, this.t, this.ysurr(valindx,:), 'color','k', 'Linewidth',1.5);
-            
-            % if the TRANSIENT menu is enabled then  ...
-            switch this.tranmenu.Checked
-                case 'on'
-                   % plot the pentagram marker (upper plot)
-                    plot(this.ax1, this.t(1), this.y(valindx,1), ...
-                        'Marker','p', 'Color','k', 'MarkerFaceColor','y', 'MarkerSize',10 , ...
-                        'Visible',this.markmenu.Checked);
-
-                    % plot the pentagram marker (lower plot)
-                    plot(this.ax2, this.t(1), this.ysurr(valindx,1), ...
-                        'Marker','p', 'Color','k', 'MarkerFaceColor','y', 'MarkerSize',10 , ...
-                        'Visible',this.markmenu.Checked);
-
-                case 'off'
-                    % plot the circle marker (upper plot)
-                    plot(this.ax1, this.t(1), this.y(valindx,1), ...
-                        'Marker','o', 'Color','k', 'MarkerFaceColor','y', 'MarkerSize',6, ...
-                        'Visible',this.markmenu.Checked);
-
-                    % plot the circle marker (lower plot)
-                    plot(this.ax2, this.t(1), this.ysurr(valindx,1), ...
-                        'Marker','o', 'Color','k', 'MarkerFaceColor','y', 'MarkerSize',6, ...
-                        'Visible',this.markmenu.Checked);
-            end
-            
+           %disp('bdSurrogate.delete()');
+           delete(this.listener1);
+           delete(this.listener2);
+           delete(this.listener3);
+           delete(this.menu);
+           delete(this.tab);
         end
     end
-    
     
     methods (Access=private)
 
-        % Initialise the CALIBRATE menu item
-        function InitCalibrateMenu(this,control)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Calibrate Axes', ...
-               'Callback', @CalibrateMenuCallback );
+        % Listener for REDRAW events
+        function Redraw(this,evnt)
+            %disp('bdSurrogate.Redraw()');
+       
+             % If the solution (sol) or the time slider (tval) have changed
+             % then recompute the surrogate data
+             if evnt.sol || evnt.tval
+                this.ComputeSurrogate();
+                this.RenderBackground();
+                this.RenderForeground();
+             end
+             
+            % Get the current selector settings
+            [xxxdef,xxxindx] = this.selector.Item();
             
-            % Menu callback function
-            function CalibrateMenuCallback(~,~)
-                % if the TRANSIENT menu is checked then ...
-                switch this.tranmenu.Checked
-                    case 'on'
-                        % adjust the limits to fit all of the data
-                        tindx = true(size(control.tindx));
-                    case 'off'
-                        % adjust the limits to fit the non-transient data only
-                        tindx = control.tindx;
-                end
-
-                % find the limits of the original data
-                lo = min(min(this.y));
-                hi = max(max(this.y));
-                
-                % get the index of the plot variable in sys.vardef
-                varindx = this.submenu.UserData.xxxindx;
-                
-                % adjust the limits of the plot variables
-                control.sys.vardef(varindx).lim = bdPanel.RoundLim(lo,hi);
-
-                % refresh the vardef control widgets
-                notify(control,'vardef');
-                
-                % redraw all panels (because the new limits apply to all panels)
-                notify(control,'redraw');
-            end
-
-        end
-        
-        % Initiliase the TRANISENTS menu item
-        function InitTransientsMenu(this,control)
-            % get the default transient menu setting from sys.panels
-            if control.sys.panels.bdSurrogate.transients
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
-
-            % construct the menu item
-            this.tranmenu = uimenu(this.menu, ...
-                'Label','Transients', ...
-                'Checked',checkflag, ...
-                'Callback', @TranMenuCallback);
-
-            % Menu callback function
-            function TranMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
+            % If the plot limit has changed
+            % then update the vertical plot limits
+            if evnt.(xxxdef)(xxxindx).lim
+                plim = this.selector.lim();
+                this.axes1.YLim = plim;
+                this.axes2.YLim = plim; 
             end
         end
         
-        % Initiliase the MARKERS menu item
-        function InitMarkerMenu(this,control)
-            % get the marker menu setting from sys.panels
-            if control.sys.panels.bdSurrogate.markers
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
+        function ComputeSurrogate(this)
+            % Evaluate the selected variable at fixed time steps.
+            [Y,~,tdomain,~,tindx1] = this.selector.Trajectory('autostep','off');
 
-            % construct the menu item
-            this.markmenu = uimenu(this.menu, ...
-                'Label','Markers', ...
-                'Checked',checkflag, ...
-                'Callback', @MarkMenuCallback);
-
-            % Menu callback function
-            function MarkMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end       
-
-        % Initiliase the GRID menu item
-        function InitGridMenu(this,control)
-            % get the default grid menu setting from sys.panels
-            if control.sys.panels.bdSurrogate.grid
-                gridcheck = 'on';
-            else
-                gridcheck = 'off';
-            end
-
-            % construct the menu item
-            this.gridmenu = uimenu(this.menu, ...
-                'Label','Grid', ...
-                'Checked',gridcheck, ...
-                'Callback', @GridMenuCallback);
-
-            % Menu callback function
-            function GridMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                        grid(this.ax1,'off');
-                        grid(this.ax2,'off');
-                    case 'off'
-                        menuitem.Checked='on';
-                        grid(this.ax1,'on');
-                        grid(this.ax2,'on');
-                end
-            end
+            % Ensure that Y is not 3D format
+            Y = reshape(Y,[],numel(tdomain),1);
+                     
+            % We only compute the surrogate data for the non-transient
+            % part of the solution.
+            this.t = tdomain(tindx1);
+            this.y = Y(:,tindx1);
+                          
+            % compute the surrogate data
+            this.ysurr = this.ampsurr(this.y);
         end
-        
-        % Initialise the HOLD menu item
-        function InitHoldMenu(this,control)
-             % get the hold menu setting from sys.panels options
-            if control.sys.panels.bdSurrogate.hold
-                holdcheck = 'on';
+  
+        % Render the background traces
+        function RenderBackground(this)
+            %disp('bdSurrogate.RenderBackground()');
+            
+            % Number of trajectories in our solution
+            ny = size(this.y,1);        
+                
+            % Number of background traces to plot (100 at most)
+            ntrace = min(ny,100);
+            
+            % Warn of suppressed traces
+            if ntrace<ny
+                this.label.Visible = 'on';
             else
-                holdcheck = 'off';
+                this.label.Visible = 'off';
+            end
+                
+            % Update the background traces
+            if ntrace>1
+                % indicies of the selected trajectories
+                yindx = round(linspace(1,ny,ntrace));
+
+                % collate all trajectories into a single trace separated by NaN
+                xtrace1 = (ones(ntrace,1)*[this.t NaN])';
+                ytrace1 = [this.y(yindx,:), NaN(ntrace,1)]';
+                xtrace1 = reshape(xtrace1,1,[]);
+                ytrace1 = reshape(ytrace1,1,[]);
+
+                % collate the surrogates into a single trace separated by NaN
+                xtrace2 = (ones(ntrace,1)*[this.t NaN])';
+                ytrace2 = [this.ysurr(yindx,:), NaN(ntrace,1)]';
+                xtrace2 = reshape(xtrace2,1,[]);
+                ytrace2 = reshape(ytrace2,1,[]);
+
+                % update the line data
+                set(this.trace1, 'XData',xtrace1, 'YData',ytrace1);                
+                set(this.trace2, 'XData',xtrace2, 'YData',ytrace2);                    
+            else
+                set(this.trace1, 'XData',NaN, 'YData',NaN);
+                set(this.trace2, 'XData',NaN, 'YData',NaN);
             end
             
-            % construct the menu item
-            this.holdmenu = uimenu(this.menu, ...
-                'Label','Hold', ...
-                'Checked',holdcheck, ...
-                'Callback', @HoldMenuCallback );
-
-            % Menu callback function
-            function HoldMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel
-                this.redraw(control);
-            end
-        end
-        
-        % Initialise the EXPORT menu item
-        function InitExportMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Export Figure', ...
-               'Callback',@callback);
-           
-            function callback(~,~)
-                % Construct a new figure
-                fig = figure();    
-                
-                % Change mouse cursor to hourglass
-                set(fig,'Pointer','watch');
-                drawnow;
-                
-                % Copy the plot data to the new figure
-                ax1new = copyobj(this.ax1,fig);
-                ax1new.OuterPosition = [0 0.51 1 0.47];
-                ax2new = copyobj(this.ax2,fig);
-                ax2new.OuterPosition = [0 0.03 1 0.47];
-
-                % Allow the user to hit everything in ax1new
-                objs = findobj(ax1new,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                
-                % Allow the user to hit everything in ax2new
-                objs = findobj(ax2new,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                
-                % Change mouse cursor to arrow
-                set(fig,'Pointer','arrow');
-                drawnow;
-            end
-        end
-
-        % Initialise the CLOSE menu item
-        function InitCloseMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-                   'Label','Close', ...
-                   'Callback',@(~,~) this.close());
-        end
-        
-        % Initialise the subpanel
-        function InitSubpanel(this,control)
-            % construct the subpanel
-            [this.ax1,cmenu,spanel] = bdPanel.Subpanel(this.tab,[0 0 1 1],[0 0.51 1 0.47]);
-            xlabel(this.ax1,'time');
-            title(this.ax1,'Original');
-
-            % construct the second axis
-            this.ax2 = axes('Parent',spanel, ...
-                'Units','normal', ...
-                'OuterPosition',[0 0.03 1 0.47], ...
-                'NextPlot','add', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Box','on');
-            xlabel(this.ax2,'time');
-            title(this.ax2,'Surrogate');
-
-            % construct a selector menu comprising items from sys.vardef
-            this.submenu = bdPanel.SelectorMenuFull(cmenu, ...
-                control.sys.vardef, ...
-                @callback, ...
-                'off', 'mb1',1,1);
+            % update the time limits
+            tlim = this.t([1 end]) + [-1e-9 1e-9];
+            this.axes1.XLim = tlim;
+            this.axes2.XLim = tlim;
             
-            % Callback function for the subpanel selector menu
-            function callback(menuitem,~)
-                % check 'on' the selected menu item and check 'off' all others
-                bdPanel.SelectorCheckItem(menuitem);
-                % update our handle to the selected menu item
-                this.submenu = menuitem;
-                % redraw the panel
-                this.redraw(control);
+            % update the time labels
+            this.axes1.XLabel.String = sprintf('time (dt=%g)',this.sysobj.tstep);
+            this.axes2.XLabel.String = sprintf('time (dt=%g)',this.sysobj.tstep);
+        end
+        
+        % Render the trajectories
+        function RenderForeground(this)
+            %disp('bdSurrogate.RenderForeground()');
+            
+            % get the selected subscripts and convert to an index
+            [rindx,cindx] = this.selector.subscripts();
+            [nr,nc] = this.selector.vsize();
+            indx = sub2ind([nr,nc],rindx,cindx);
+            
+            % update the foreground trajectory plot (upper axes)
+            this.line1.XData = this.t;
+            this.line1.YData = this.y(indx,:);
+            
+            % update the foreground surrogate plot (lower axes)
+            this.line2.XData = this.t;
+            this.line2.YData = this.ysurr(indx,:);
+
+            % update the markers (upper axes)
+            set(this.marker1b, 'XData',this.t(1),   'YData',this.y(indx,1));
+            set(this.marker1c, 'XData',this.t(end), 'YData',this.y(indx,end));
+            
+            % update the markers (lower axes)
+            set(this.marker2b, 'XData',this.t(1),   'YData',this.ysurr(indx,1));
+            set(this.marker2c, 'XData',this.t(end), 'YData',this.ysurr(indx,end));
+
+            % visibility of markers
+            this.marker1b.Visible = this.menuMarkers.Checked;
+            this.marker1c.Visible = this.menuMarkers.Checked;
+            this.marker2b.Visible = this.menuMarkers.Checked;
+            this.marker2c.Visible = this.menuMarkers.Checked;
+                               
+            % update the axes labels
+            [~,~,name] = this.selector.name();
+            this.axes1.YLabel.String = name;
+            this.axes2.YLabel.String = name;     
+        end
+                
+        % Selector Changed callback
+        function SelectorChanged(this)
+            %disp('bdSurrogate.SelectorChanged');
+            
+            % Recompute and render the result
+            this.ComputeSurrogate();
+            this.RenderBackground();
+            this.RenderForeground();
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+        
+        % SubscriptChangedCallback
+        function SubscriptChanged(this)
+            %disp('bdSurrogate.SubscriptChanged');
+            
+            % Render the existing result
+            this.RenderForeground();
+                        
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+            
+        % Recompute BUTTON callback
+        function callbackButton(this)
+            % Recompute and render the result
+            this.ComputeSurrogate();
+            this.RenderBackground();
+            this.RenderForeground();
+        end
+        
+        % CALIBRATE menu callback
+        function callbackCalibrate(this)
+            % time domain
+            tspan = this.t([1 end]);
+                        
+            % Calibrate the plot limit via the selector
+            lim = this.selector.Calibrate(tspan);
+                                
+            % Update the plot limits
+            this.axes1.YLim = lim + [-1e-9 1e-9];
+            this.axes2.YLim = lim + [-1e-9 1e-9]; 
+
+            % redraw all panels (because the new limits apply to all panels)
+            this.sysobj.NotifyRedraw([]);
+        end
+            
+        % MARKERS menu callback
+        function callbackMarkers(this,menuitem)
+            this.MenuToggle(menuitem);
+            this.RenderForeground();
+                        
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+        
+        % DOCK menu callback
+        function callbackDock(this,menuitem,tabgrp)
+            %disp('callbackDock');
+            switch menuitem.Label
+                case 'Undock'
+                    newfig = bdPanelBase.Undock(this.tab,this.menu);
+                    newfig.DeleteFcn = @(src,~) this.delete();
+                    menuitem.Label='Dock';
+                    menuitem.Tooltip='Dock the display panel';
+                case 'Dock'
+                    bdPanelBase.Dock(this.tab,this.menu,tabgrp);
+                    menuitem.Label='Undock';
+                    menuitem.Tooltip='Undock the display panel';
             end
         end
         
+        % CLOSE menu callback
+        function callbackClose(this,guifig)
+            % find the parents of the panel tab 
+            tabgrp = ancestor(this.tab,'uitabgroup');
+            fig = ancestor(this.tab,'figure');
+                        
+            % remember sysobj
+            sysobj = this.sysobj;
+
+            % delete the panel
+            delete(this);
+            
+            % reveal the menu of the newly selected panel 
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % if the parent figure is not the same as the gui figure then ...
+            if fig ~= guifig
+                % The panel is undocked from the gui. Its figure should be closed too. 
+                delete(fig);
+            end
+            
+            % Push the new settings onto the UNDO stack
+            notify(sysobj,'push');            
+        end
         
+
     end
-    
     
     methods (Static)
         
-        % Check the sys.panels struct
-        function syspanel = syscheck(sys)
-            % Default panel settings
-            syspanel.title = 'Surrogate';
-            syspanel.transients = false;            
-            syspanel.markers = true;
-            syspanel.grid = false;
-            %syspanel.hold = false;
+        function optout = optcheck(opt)
+            % check the format of incoming options and apply defaults to missing values
+            optout.title        = bdPanelBase.GetOption(opt, 'title', 'Surrogate');
+            optout.transients   = bdPanelBase.GetOption(opt, 'transients', 'on');
+            optout.markers      = bdPanelBase.GetOption(opt, 'markers', 'on');
+            optout.selector     = bdPanelBase.GetOption(opt, 'selector', {1,1,1});
             
-            % Nothing more to do if sys.panels.bdSurrogate is undefined
-            if ~isfield(sys,'panels') || ~isfield(sys.panels,'bdSurrogate')
-                return;
+            % warn of unrecognised field in the incoming options
+            infields  = fieldnames(opt);                % the field names we were given
+            outfields = fieldnames(optout);             % the field names we expected
+            newfields = setdiff(infields,outfields);    % unrecognised field names
+            for idx=1:numel(newfields)
+                warning(sprintf('Ignoring unknown panel option ''bdSurrogate.%s''',newfields{idx}));
             end
-            
-            % sys.panels.bdSurrogate.title
-            if isfield(sys.panels.bdSurrogate,'title')
-                syspanel.title = sys.panels.bdSurrogate.title;
-            end
-            
-            % sys.panels.bdSurrogate.transients
-            if isfield(sys.panels.bdSurrogate,'transients')
-                syspanel.transients = sys.panels.bdSurrogate.transients;
-            end
-            
-            % sys.panels.bdSurrogate.markers
-            if isfield(sys.panels.bdSurrogate,'markers')
-                syspanel.markers = sys.panels.bdSurrogate.markers;
-            end
-            
-            % sys.panels.bdSurrogate.grid
-            if isfield(sys.panels.bdSurrogate,'grid')
-                syspanel.grid = sys.panels.bdSurrogate.grid;
-            end
-            
-          %  % sys.panels.bdSurrogate.hold
-          %  if isfield(sys.panels.bdSurrogate,'hold')
-          %      syspanel.hold = sys.panels.bdSurrogate.hold;
-          %  end
         end
         
-        
         % Creates surrogate multichannel data, by adding random numbers
-        % to phase component of all channel data, using amplitude adjusted algorithm
+        % to phase component of all channel data, using amplitude adjusted algorithm.
+        % Derived from original code by Michael Breakspear.
         function y = ampsurr(x)
             [r,c] = size(x);
             if r < c
@@ -523,5 +558,5 @@ classdef bdSurrogate < bdPanel
         end
         
     end
-    
 end
+

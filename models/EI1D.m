@@ -2,20 +2,19 @@
 % for the Brain Dynamics Toolbox (https://bdtoolbox.org)
 % 
 % EXAMPLE:
-%    addpath ~/bdtoolkit
 %    n = 200;
-%    sys = EI1D(n)
+%    sys = EI1D(n);
 %    gui = bdGUI(sys);
 %
 % AUTHOR
-%   Stewart Heitmann (2018,2019)
+%   Stewart Heitmann (2018,2019,2020)
 %
 % REFERENCES
 %   Heitmann & Ermentrout (2020) Direction-selective motion discrimination
 %      by traveling waves in visual cortex. PLOS Computational Biology.
 %   Heitmann & Ermentrout (2016) Propagating Waves as a Cortical Mechanism
 %      of Direction-Selectivity in V1 Motion Cells. Proc of BICT'15. New York.
-%   http://modeldb.yale.edu/266770
+%   ModelDB: http://modeldb.yale.edu/266770
 function sys = EI1D(n)
     % Handle to the ODE function
     sys.odefun = @odefun;
@@ -54,13 +53,15 @@ function sys = EI1D(n)
  
     % Default time span
     sys.tspan = [0 600];
+    sys.tstep = 0.1;
     
     % Default ODE options
     sys.odeoption.RelTol = 1e-5;
+    sys.odeoption.InitialStep = 0.1;
     
     % Latex Panel
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{EI1D}'
+        '$\textbf{EI1D}$'
         ''
         num2str(n,'A cable of n=%d neural masses where each mass comprises distinct')
         'populations of excitatory and inhibitory cells. The cell dynamics are'
@@ -68,45 +69,47 @@ function sys = EI1D(n)
         'Gaussian with distance.' 
         ''
         'The equations are,'
-        '\qquad $\tau_e \; \dot U_e(x,t) = -U_e(x,t) + F\Big(w_{ee} V_e(x,t) - w_{ei} V_i(x,t) - b_e + J(x) \Big)$'
-        '\qquad $\tau_i \; \dot U_i(x,t) \;\; = -U_i(x,t) \; + F\Big(w_{ie} V_e(x,t) - w_{ii} V_i(x,t) - b_i \Big)$'
+        '{ }{ }{ } $\tau_e \; \dot U_e(x,t) = -U_e(x,t) + F\Big(w_{ee} V_e(x,t) - w_{ei} V_i(x,t) - b_e + J(x) \Big)$'
+        '{ }{ }{ } $\tau_i \; \dot U_i(x,t) \;\; = -U_i(x,t) \; + F\Big(w_{ie} V_e(x,t) - w_{ii} V_i(x,t) - b_i \Big)$'
         'where'
-        '\qquad $U_e(x,t)$ is the firing rate of the \textit{excitatory} population at position $x$,'
-        '\qquad $U_i(x,t)$ is the firing rate of the \textit{inhibitory} population at position $x$,'
-        '\qquad $V(x,t) = \int K(x-y) \; U(x,t) \; dy$ is the spatial sum of activity at $x$,'
-        '\qquad $w_{ei}$ is the weight of the connection to $e$ from $i$,'
-        '\qquad $b_{e}$ and $b_{i}$ are firing thresholds,'
-        '\qquad $\tau_{e}$ and $\tau_{i}$ are time constants,'
-        '\qquad $dx$ is spatial step size.'
+        '{ }{ }{ } $U_e(x,t)~$ is the firing rate of the \textit{excitatory} population at position $x$,'
+        '{ }{ }{ } $U_i(x,t)~$ is the firing rate of the \textit{inhibitory} population at position $x$,'
+        '{ }{ }{ } $V(x,t) = \int K(x-y) \; U(x,t) \; dy~$ is the spatial sum of activity at $x$,'
+        '{ }{ }{ } $w_{ei}~$ is the weight of the connection to $e$ from $i$,'
+        '{ }{ }{ } $b_{e}\;$ and $b_{i}\;$ are firing thresholds,'
+        '{ }{ }{ } $\tau_{e}\;$ and $\tau_{i}\;$ are time constants,'
+        '{ }{ }{ } $dx\;$ is spatial step size.'
         ''
         'The firing-rate function,'
-        '\qquad $F(v)=1/(1+\exp(-v))$'
+        '{ }{ }{ } $F(v)=1/(1+\exp(-v))$'
         'is sigmoidal with unit slope and zero threshold.'
         ''
         'The spatial coupling kernel is,'
-        '\qquad $K(x) = \exp(-(x-\delta)^2/\sigma^2) / (\sigma\sqrt\pi)$'
+        '{ }{ }{ } $K(x) = \exp(-(x-\delta)^2/\sigma^2) / (\sigma\sqrt\pi)$'
         'where'
-        '\qquad $\sigma$ is the spread of the Gaussian coupling profile,'
-        '\qquad $\delta$ is a spatial shift that is applied to $K_e(x)$ only,'
-        '\qquad $r$ is the radius of the kernel domain $(-r<x<r)$.'
+        '{ }{ }{ } $\sigma~$ is the spread of the Gaussian coupling profile,'
+        '{ }{ }{ } $\delta~$ is a spatial shift that is applied to $K_e(x)\;$ only,'
+        '{ }{ }{ } $r~$ is the radius of the kernel domain $(-r<x<r)$.'
         ''
         'The stimulus is a sinusoidal grating,'
-        '\qquad $J(x) = 0.5 \; \alpha \; (\cos(2 \pi F_s x - 2 \pi F_t t)+1) \; S(x)$ '
+        '{ }{ }{ } $J(x) = 0.5 \; \alpha \; (\cos(2 \pi F_s x - 2 \pi F_t t)+1) \; S(x)$ '
         'where'
-        '\qquad $\alpha$ is the stimulus amplitude,'
-        '\qquad $F_s$ is the spatial frequency of the grating,'
-        '\qquad $F_t$ is the temporal frequency of the grating,'
-        '\qquad $S(x)$ is a spatial mask (Smask).'
+        '{ }{ }{ } $\alpha~$ is the stimulus amplitude,'
+        '{ }{ }{ } $F_s~$ is the spatial frequency of the grating,'
+        '{ }{ }{ } $F_t~$ is the temporal frequency of the grating,'
+        '{ }{ }{ } $S(x)~$ is a spatial mask (Smask).'
         ''
-        'Boundary conditions are controlled by the $bflag$ parameter.'
-        '\qquad $bflag=0$ for zero-padded boundaries.'
-        '\qquad $bflag=1$ for periodic boundaries.'
-        '\qquad $bflag=2$ for reflecting boundaries.'
+        'Boundary conditions are controlled by the $bflag\;$ parameter.'
+        '{ }{ }{ } $bflag=0~$ for zero-padded boundaries.'
+        '{ }{ }{ } $bflag=1~$ for periodic boundaries.'
+        '{ }{ }{ } $bflag=2~$ for reflecting boundaries.'
         ''
-        '\textbf{Reference}'
-        'Heitmann \& Ermentrout. Propagating Waves as a Cortical Mechanism of'
-        'Direction-Selectivity in V1 Motion Cells. First International Workshop on'
-        'Computational Models of the Visual Cortex (CMVC 2015), New York.'
+        '$\textbf{References}$'
+        'Heitmann \& Ermentrout (2020) Direction-selective motion discrimination'
+        '{ }{ }{ } by traveling waves in visual cortex. PLOS Computational Biology.'
+        'Heitmann \& Ermentrout (2015) Propagating Waves as a Cortical Mechanism'
+        '{ }{ }{ } of Direction-Selectivity in V1 Motion Cells. First International Workshop'
+        '{ }{ }{ } on Computational Models of the Visual Cortex (CMVC), New York.'
         };
     
     % Other Panels
@@ -183,14 +186,14 @@ end
 
 function UserData = KernelPlot(ax,tt,sol,wee,wei,wie,wii,delta,sigmaE,sigmaI,r,be,bi,Smask,alpha,Fs,Ft,taue,taui,dx,bflag)
     [Ke,Ki,Kx] = kernels(delta,sigmaE,sigmaI,r,dx);
-    plot(Kx,Ke,'g','LineWidth',3);
-    plot(Kx,Ki,'r','Linewidth',3);
-    plot(Kx,Ke-Ki,'k--','Linewidth',1);
-    xlim([Kx(1) Kx(end)]);
-    xlabel('space');
-    title('Spatial Kernels');
-    legend('Ke','Ki','Ke - Ki');
-    grid on;
+    plot(ax,Kx,Ke,'g','LineWidth',3);
+    plot(ax,Kx,Ki,'r','Linewidth',3);
+    plot(ax,Kx,Ke-Ki,'k--','Linewidth',1);
+    xlim(ax,[Kx(1) Kx(end)]);
+    xlabel(ax,'space');
+    title(ax,'Spatial Kernels');
+    legend(ax,'Ke','Ki','Ke - Ki');
+    grid(ax,'on');
     
     % make the kernels accessible to the user's workspace 
     UserData.Kx = Kx;
@@ -201,11 +204,11 @@ end
 function UserData = KernelSpectrum(ax,tt,sol,wee,wei,wie,wii,delta,sigmaE,sigmaI,r,be,bi,Smask,alpha,Fs,Ft,taue,taui,dx,bflag)
     [Ke,Ki,Kx] = kernels(delta,sigmaE,sigmaI,r,dx);
     [px,fx] = pspectrum(Ke-Ki,1/dx);
-    plot(fx,px);
-    xlabel('frequency (cycles/mm)');
-    ylabel('power');
-    title('Kernel Spectrum');
-    grid on
+    plot(ax,fx,px);
+    xlabel(ax,'frequency (cycles/mm)');
+    ylabel(ax,'power');
+    title(ax,'Kernel Spectrum');
+    grid(ax,'on');
     UserData.Kx = Kx;
     UserData.Ke = Ke;
     UserData.Ki = Ki;
@@ -217,11 +220,11 @@ function UserData = SpatialSpectrum(ax,tt,sol,wee,wei,wie,wii,delta,sigmaE,sigma
     Ytt = bdEval(sol,tt);           % Ytt is (2n x 1)
     Ytt = reshape(Ytt,[],2);        % Ytt is (2 x n)
     [px,fx] = pspectrum(Ytt(:,1),1/dx);
-    plot(fx,px);
-    xlabel('frequency (cycles/mm)');
-    ylabel('power');
-    title(num2str(tt,'Spatial Spectrum of Ue at t=%g'));
-    grid on
+    plot(ax,fx,px);
+    xlabel(ax,'frequency (cycles/mm)');
+    ylabel(ax,'power');
+    title(ax,num2str(tt,'Spatial Spectrum of Ue at t=%g'));
+    grid(ax,'on');
     UserData.tt = tt;
     UserData.Ue = Ytt(:,1);
     UserData.px = px;
@@ -240,12 +243,12 @@ function UserData = StimulusPlot(ax,tt,sol,wee,wei,wie,wii,delta,sigmaE,sigmaI,r
     [J,xdomain] = Stimulus(tdomain,Fs,Ft,n,dx,alpha,Smask);
 
     % plot the stimulus
-    imagesc(tdomain,xdomain,J);
-    ylabel('space');
-    xlabel('time');
-    colorbar;
-    axis tight;
-    title('Stimulus Grating');
+    imagesc(ax,tdomain,xdomain,J);
+    ylabel(ax,'space');
+    xlabel(ax,'time');
+    colorbar(ax);
+    axis(ax,'tight');
+    title(ax,'Stimulus Grating');
     
     % return stimulus data to user workspace
     UserData.xdomain = xdomain;

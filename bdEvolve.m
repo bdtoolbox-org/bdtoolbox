@@ -18,6 +18,9 @@
 %   If @solverfun is supplied but it is not known to the sys struct then
 %   you must also supply the solvertype string ('odesolver', 'ddesolver'
 %   or 'sdesolver').
+%   
+%   The sys.evolve, sys.perturb, sys.backward and sys.halt switches are
+%   ignored.
 %
 %RETURNS
 %   sys is updated with new initial conditions that correspond to the final 
@@ -35,9 +38,9 @@
 %   xlabel('E'); ylabel('I');
 %
 %AUTHORS
-%   Stewart Heitmann (2018b)
+%   Stewart Heitmann (2018b,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -77,7 +80,7 @@ function [sys,sol] = bdEvolve(sys,rep,tspan,solverfun,solvertype)
    
         % check the validity of the sys struct and fill missing fields with default values
         try
-            sys = bd.syscheck(sys);
+            sys = bdSystem.syscheck(sys);
         catch ME
             throwAsCaller(ME);
         end
@@ -162,8 +165,8 @@ function [sys,sol] = bdEvolve(sys,rep,tspan,solverfun,solvertype)
         try
             % for each repeat simulation
             for r=1:rep
-                % Call the appropriate solver
-                sol = bd.solve(sys,tspan,solverfun,solvertype);
+                % Run the solver
+                sol = bdSystem.solvesys(sys,tspan,solverfun,solvertype);
             
                 % Update the initial conditions
                 sys.vardef = bdSetValues(sys.vardef,sol.y(:,end));
@@ -174,3 +177,4 @@ function [sys,sol] = bdEvolve(sys,rep,tspan,solverfun,solvertype)
         end
         
 end
+

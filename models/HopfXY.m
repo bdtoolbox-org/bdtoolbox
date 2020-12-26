@@ -9,7 +9,7 @@ function sys = HopfXY()
     %   gui = bdGUI(sys);       % open the Brain Dynamics GUI
     %
     % Authors
-    %   Stewart Heitmann (2020)
+    %   Stewart Heitmann (2020a)
 
     % Copyright (C) 2020 Stewart Heitmann. All rights reserved.
     %
@@ -53,11 +53,11 @@ function sys = HopfXY()
     % Latex (Equations) panel
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = { 
-        '\textbf{Hopf XY}'
+        '$\textbf{Hopf XY}$'
         ''
         'Normal form of the Hopf bifurcation in cartesian coordinates'
-        '\qquad $\dot x = -y + (\alpha - x^2 - y^2)\, x$'
-        '\qquad $\dot y =  x + (\alpha - x^2 - y^2)\, y$'
+        '{ }{ }{ } $\dot x = -y + (\alpha - x^2 - y^2)\, x$'
+        '{ }{ }{ } $\dot y =  x + (\alpha - x^2 - y^2)\, y$'
         'where the radius of the limit cycle is $\sqrt \alpha$.'
         };
 

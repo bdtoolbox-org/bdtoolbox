@@ -13,14 +13,16 @@
 %   n = 20;                           % Number of neurons
 %   Kij = circshift(eye(n),1) + ...   % Connection matrix
 %         circshift(eye(n),-1);       % (a chain in this case)
+%   Iapp = 1.5*ones(n,1);             % Stimulus parameter 
 %   sys = HindmarshRose(Kij);         % Construct the system struct
+%   sys = bdSetPar(sys,'I',Iapp);     % Set the stimulus parameter
 %   gui = bdGUI(sys);                 % Open the Brain Dynamics GUI
 %
 % Authors
-%   Stewart Heitmann (2016a,2017a,2018a)
+%   Stewart Heitmann (2016a,2017a,2018a,2020a)
 
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -55,61 +57,68 @@ function sys = HindmarshRose(Kij)
     sys.odefun = @odefun;
     
     % Our ODE parameters
-    sys.pardef = [ struct('name','Kij',   'value',Kij);
-                   struct('name','a',     'value',1);
-                   struct('name','b',     'value',3);
-                   struct('name','c',     'value',1);
-                   struct('name','d',     'value',5);
-                   struct('name','r',     'value',0.006);
-                   struct('name','s',     'value',4);
-                   struct('name','x0',    'value',-1.6);
-                   struct('name','I',     'value',zeros(n,1));
-                   struct('name','gs',    'value',0.1);
-                   struct('name','Vs',    'value',2);
-                   struct('name','theta', 'value',-0.25) ];
+    sys.pardef = [
+        struct('name','Kij',   'value',Kij,         'lim',[0 1])
+        struct('name','a',     'value',1,           'lim',[0 10])
+        struct('name','b',     'value',3,           'lim',[0 10])
+        struct('name','c',     'value',1,           'lim',[0 10])
+        struct('name','d',     'value',5,           'lim',[0 10])
+        struct('name','r',     'value',0.006,       'lim',[0 0.01])
+        struct('name','s',     'value',4,           'lim',[0 10])
+        struct('name','x0',    'value',-1.6,        'lim',[-5 5])
+        struct('name','I',     'value',zeros(n,1),  'lim',[0 2.5])
+        struct('name','gs',    'value',0.1,         'lim',[0 5])
+        struct('name','Vs',    'value',2,           'lim',[0 10])
+        struct('name','theta', 'value',-0.25,       'lim',[-5 5])
+        ];
                    
     % Our ODE variables
-    sys.vardef = [ struct('name','X', 'value',rand(n,1), 'lim',[-2.5 2.5]);
-                   struct('name','Y', 'value',rand(n,1), 'lim',[ -21   3]);
-                   struct('name','Z', 'value',rand(n,1), 'lim',[   0   4]) ];
+    sys.vardef = [
+        struct('name','X',  'value',rand(n,1),  'lim',[-2.5 2.5])
+        struct('name','Y',  'value',rand(n,1),  'lim',[ -21   3])
+        struct('name','Z',  'value',rand(n,1),  'lim',[   0   4])
+        ];
 
-    % Default time span
+    % Time Domain
     sys.tspan = [0 1000];
+    sys.tstep = 1;
               
     % Specify ODE solvers and default options
-    sys.odesolver = {@ode45,@ode23,@ode113,@odeEul};    % ODE solvers
+    sys.odesolver = {@ode45,@ode23,@ode15s};            % ODE solvers
     sys.odeoption = odeset('RelTol',1e-6);              % ODE solver options
 
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
-    sys.panels.bdLatexPanel.latex = {'\textbf{HindmarshRose}';
-        '';
-        'Network of reciprocally-coupled Hindmarsh-Rose neurons';
-        '\qquad $\dot X_i = Y_i - a\,X_i^3 + b\,X_i^2 - Z_i + I_i - g_s\,(X_i-V_s) \sum_j K_{ij} F(X_j-\theta)$';
-        '\qquad $\dot Y_i = c - d\,X_i^2 - Y_i$';
-        '\qquad $\dot Z_i = r\,(s\,(X_i-x_0) - Z_i)$';
-        'where';
-        '\qquad $K_{ij}$ is the connectivity matrix ($n$ x $n$),';
-        '\qquad $g_s$ is the conductance of synaptic connections,';
-        '\qquad $I_{i}$ is the external current applied to the $i^{th}$ neuron,';
-        '\qquad $a, b, c, d, r, s, x_0, V_s$ and $\theta$ are constants,';
-        '\qquad $F(x) = 1/(1+\exp(-x))$ is the firing-rate function,';
-        '\qquad $i{=}1 \dots n$,';
-        ['\qquad $n{=}',num2str(n),'$.'];
-        '';
-        '';
-        '';
-        'Hindmarsh \& Rose (1984) A model of neuronal bursting using three';
-        'coupled first order differential equations. Proc R Soc London, Ser B.'};
+    sys.panels.bdLatexPanel.latex = {
+        '$\textbf{HindmarshRose}$'
+        ''
+        'Network of reciprocally-coupled Hindmarsh-Rose neurons'
+        '{ }{ }{ } $\dot X_i = Y_i - a\,X_i^3 + b\,X_i^2 - Z_i + I_i - g_s\,(X_i-V_s) \sum_j K_{ij} F(X_j-\theta)$'
+        '{ }{ }{ } $\dot Y_i = c - d\,X_i^2 - Y_i$'
+        '{ }{ }{ } $\dot Z_i = r\,(s\,(X_i-x_0) - Z_i)$'
+        'where'
+        '{ }{ }{ } $K_{ij}~$ is the connectivity matrix ($n\;$ x $n$),'
+        '{ }{ }{ } $g_s~$ is the conductance of synaptic connections,'
+        '{ }{ }{ } $I_{i}~$ is the external current applied to the $i^{th}\;$ neuron,'
+        '{ }{ }{ } $a, b, c, d, r, s, x_0, V_s\;$ and $\theta\;$ are constants,'
+        '{ }{ }{ } $F(x) = 1/(1+\exp(-x))~$ is the firing-rate function,'
+        '{ }{ }{ } $i{=}1 \dots n$,'
+        ['{ }{ }{ } $n{=}',num2str(n),'$.']
+        ''
+        ''
+        ''
+        'Hindmarsh \& Rose (1984) A model of neuronal bursting using three'
+        'coupled first order differential equations. Proc R Soc London, Ser B.'
+        };
     
     % Include the Time Portrait panel in the GUI
     sys.panels.bdTimePortrait = [];
  
-    % Include the Phase Portrait panel in the GUI
-    sys.panels.bdPhasePortrait = [];
+    % Include the 3D Phase Portrait panel in the GUI
+    sys.panels.bdPhasePortrait3D = [];
 
     % Include the Space-Time panel in the GUI
-    sys.panels.bdSpaceTime = [];
+    sys.panels.bdSpaceTime.autostep = 'off';
 
     % Include the Solver panel in the GUI
     sys.panels.bdSolverPanel = [];                 

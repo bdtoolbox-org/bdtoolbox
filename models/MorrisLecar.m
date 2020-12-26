@@ -13,7 +13,7 @@
 %   gui = bdGUI(sys);                 % Open the Brain Dynamics GUI.
 %
 % Authors
-%   Stewart Heitmann (2019a)
+%   Stewart Heitmann (2019a,2020a)
 %
 % References
 %   Morris and Lecar (1981) Voltage Oscillations in the Barnicle Giant Muscle Fiber. Biophys J, 35:193-213.
@@ -78,34 +78,34 @@ function sys = MorrisLecar(flag)
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{Morris-Lecar}';
-        '';
-        'The Morris-Lecar conductance-based model of neural excitability';
-        '\qquad $C_m \dot V = -g_{Ca} m_{\infty} (V-E_{Ca}) - g_K n (V-E_K) - g_L(V-E_L) + I_{app}$'
-        '\qquad $\tau \dot n = \phi (n_{\infty} - n)$'
-        'where';
-        '\qquad $V(t)$ is the membrane voltage,';
-        '\qquad $n(t)$ is the potassium gating variable,';
-        '\qquad $m_\infty(V) = 0.5 (1 + \tanh((V-V_1)/V_2))$ is the voltage-dependent calcium gate,';
-        '\qquad $n_\infty(V) = 0.5 (1 + \tanh((V-V_3)/V_4))$ is the voltage-dependent potassium gate,';
-        '\qquad $\tau(V) = 1 / \cosh((V-V_3)/(2V_4))$ is the time course of the potassium gate.';
+        '$\textbf{Morris-Lecar}$'
         ''
-        'Parameters';
-        '\qquad $C_m$ is the membrane capacitance,';
-        '\qquad $g_{Ca}$ is the maximal conductance of the calcium channel,';
-        '\qquad $g_{K}$ is the maximal conductance of the potassium channel,';
-        '\qquad $g_L$ is the leak conductance,';
-        '\qquad $E_{Ca}$ is the reversal potential of the calcium channel,';
-        '\qquad $E_{K}$ is the reversal potential of the potassium channel,';
-        '\qquad $E_{L}$ is the reversal potential of the leak channel,';
-        '\qquad $V_1,V_2,V_3,V4$ are parameters chosen to fit the voltage-clamp data,';
-        '\qquad $I_{app}$ is an external current that is applied to the membrane,';
-        '\qquad $\phi$ is the rate of the potassium channel.';
-        '';
-        'References:';
-        '\quad Morris and Lecar (1981) Voltage Oscillations in the Barnicle Giant Muscle Fiber. Biophys J, 35:193-213.';
-        '\quad Lecar (2007) Morris-Lecar model. Scholarpedia, 2(10):1333.';
-        '\quad Ermentrout and Terman (2010) Mathematical Foundations of Neuroscience. Chapter 3.';
+        'The Morris-Lecar conductance-based model of neural excitability'
+        '{ }{ }{ } $C_m \dot V = -g_{Ca} m_{\infty} (V-E_{Ca}) - g_K n (V-E_K) - g_L(V-E_L) + I_{app}$'
+        '{ }{ }{ } $\tau \; \dot n = \phi (n_{\infty} - n)$'
+        'where'
+        '{ }{ }{ } $V(t)~$ is the membrane voltage,'
+        '{ }{ }{ } $n(t)~$ is the potassium gating variable,'
+        '{ }{ }{ } $m_\infty(V) = 0.5 (1 + \tanh((V-V_1)/V_2))~$ is the voltage-dependent calcium gate,'
+        '{ }{ }{ } $n_\infty(V) = 0.5 (1 + \tanh((V-V_3)/V_4))~$ is the voltage-dependent potassium gate,'
+        '{ }{ }{ } $\tau(V) = 1 / \cosh((V-V_3)/(2V_4))~$ is the time course of the potassium gate.'
+        ''
+        'Parameters'
+        '{ }{ }{ } $C_m~$ is the membrane capacitance,'
+        '{ }{ }{ } $g_{Ca}~$ is the maximal conductance of the calcium channel,'
+        '{ }{ }{ } $g_{K}~$ is the maximal conductance of the potassium channel,'
+        '{ }{ }{ } $g_L~$ is the leak conductance,'
+        '{ }{ }{ } $E_{Ca}~$ is the reversal potential of the calcium channel,'
+        '{ }{ }{ } $E_{K}~$ is the reversal potential of the potassium channel,'
+        '{ }{ }{ } $E_{L}~$ is the reversal potential of the leak channel,'
+        '{ }{ }{ } $V_1,V_2,V_3,V4~$ are parameters chosen to fit the voltage-clamp data,'
+        '{ }{ }{ } $I_{app}~$ is an external current that is applied to the membrane,'
+        '{ }{ }{ } $\phi~$ is the rate of the potassium channel.'
+        ''
+        'References:'
+        '{ }{ }{ } Morris and Lecar (1981) Voltage Oscillations in the Barnicle Giant Muscle Fiber. Biophys J, 35:193-213.'
+        '{ }{ }{ } Lecar (2007) Morris-Lecar model. Scholarpedia, 2(10):1333.'
+        '{ }{ }{ } Ermentrout and Terman (2010) Mathematical Foundations of Neuroscience. Chapter 3.'
         };
     
     % Display panels

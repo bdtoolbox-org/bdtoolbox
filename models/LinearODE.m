@@ -25,9 +25,9 @@ function sys = LinearODE()
     %   xlabel('time'); ylabel('x,y');
     %
     % Authors
-    %   Stewart Heitmann (2017a,2018a,2019)
+    %   Stewart Heitmann (2017a,2018a,2019ab,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -59,37 +59,41 @@ function sys = LinearODE()
     sys.odefun = @odefun;
     
     % ODE parameter definitions
-    sys.pardef = [ struct('name','a', 'value', 1);
-                   struct('name','b', 'value',-1);
-                   struct('name','c', 'value',10);
-                   struct('name','d', 'value',-2) ];
+    sys.pardef = [
+        struct('name','a', 'value', 1)
+        struct('name','b', 'value',-1)
+        struct('name','c', 'value',10)
+        struct('name','d', 'value',-2)
+        ];
     
     % ODE variable definitions
-    sys.vardef = [ struct('name','x', 'value',2*rand-1);
-                   struct('name','y', 'value',2*rand-1) ];
+    sys.vardef = [
+        struct('name','x', 'value',2*rand-1, 'lim',[-1 1])
+        struct('name','y', 'value',2*rand-1, 'lim',[-1 1])
+        ];
 
     % Latex (Equations) panel
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = { 
-        '\textbf{LinearODE}';
-        '';
-        'System of linear ordinary differential equations';
-        '\qquad $\dot x(t) = a\,x(t) + b\,y(t)$';
-        '\qquad $\dot y(t) = c\,x(t) + d\,y(t)$';
-        'where $a,b,c,d$ are scalar constants.';
+        '$\textbf{LinearODE}$'
+        ''
+        'System of linear ordinary differential equations'
+        '{ }{ }{ } $\dot x(t) = a\,x(t) + b\,y(t)$'
+        '{ }{ }{ } $\dot y(t) = c\,x(t) + d\,y(t)$'
+        'where $a,b,c,d\;$ are scalar constants.'
         };
 
     % Time Portrait panel 
     sys.panels.bdTimePortrait = [];
 
     % Phase Portrait panel
-    sys.panels.bdPhasePortrait = [];
+    sys.panels.bdPhasePortrait.nullclines = 'on';
   
     % Solver panel
     sys.panels.bdSolverPanel = [];
     
     % Default time span (optional)
-    sys.tspan = [0 20]; 
+    sys.tspan = [0 20];
 
     % Specify the relevant ODE solvers (optional)
     sys.odesolver = {@ode45,@ode23,@odeEul};

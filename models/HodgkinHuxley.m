@@ -25,7 +25,7 @@
 %    gui = bdGUI(sys);
 %
 % Authors
-%   Stewart Heitmann (2018b)
+%   Stewart Heitmann (2018b,2020a)
 %
 % References:
 % Hodgkin and Huxley (1952) A quantitative description of membrane current
@@ -65,38 +65,38 @@ function sys = HodgkinHuxley()
 
     % Latex (Equations) panel
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{HodgkinHuxley}';
-        '';
-        'The Hodgkin-Huxley (1952) equations describe the action potential';
-        'in the squid giant axon by the kinetics of voltage-dependent sodium';
-        'and potassium ion channels in the cell membrane. ';
-        '';
-        'The differential equations are,';
-        '\qquad $C \; \dot V = I - I_{Na} - I_K - I_L$';
-        '\qquad $\tau_m(V) \; \dot m = m_{\infty}(V) - m$';
-        '\qquad $\tau_h(V) \; \dot h = h_{\infty}(V) - h$';
-        '\qquad $\tau_n(V) \; \dot n = n_{\infty}(V) - n$';
-        'where';
-        '\qquad $V(t)$ is the electrical potential across the membrane,';
-        '\qquad $m(t)$ is the activation variable of the sodium channel,';
-        '\qquad $h(t)$ is the inactivation variable of the sodium channel,';
-        '\qquad $n(t)$ is the activation variable of the potassium channel,';
-        '\qquad $C$ is the membrane capacitance,';
-        '\qquad $I$ is an external current that is applied to the membrane,';
-        '\qquad $I_{Na} = g_{Na}\; m^3 \; h \; (V-E_{Na})$ is the sodium current,';
-        '\qquad $I_{K} = g_K \; n^4 \; (V-E_K)$ is the potassium current,';
-        '\qquad $I_{L} = g_L \; (V-E_L)$ is the membrane leak current,';
-        '\qquad $g_{Na}, g_K, g_L$ are the maximal conductances of the ion channels,';
-        '\qquad $E_{Na}, E_K, E_L$ are the reversal potentials of the ion chanels.';
-        '';
-        'The external current ($I$) is the principal parameter of interest.';
-        '';
-        '\textbf{References}';
-        'Hodgkin, Huxley (1952) A quantitative description of membrane current and';
-        '\quad its application to conduction and excitation in a nerve. J Physiol 117';
-        'Hansel, Mato, Meunier (1993) Phase Dynamics for Weakly Coupled Hodgkin-';
-        '\quad Huxley Neurons. Europhys Lett 23 (5)';
-        'Handbook for the Brain Dynamics Toolbox (Version 2018b), Chapter 6.';
+        '$\textbf{HodgkinHuxley}$'
+        ''
+        'The Hodgkin-Huxley (1952) equations describe the action potential'
+        'in the squid giant axon by the kinetics of voltage-dependent sodium'
+        'and potassium ion channels in the cell membrane. '
+        ''
+        'The differential equations are,'
+        '{ }{ }{ } $C \; \dot V = I - I_{Na} - I_K - I_L$'
+        '{ }{ }{ } $\tau_m(V) \; \dot m = m_{\infty}(V) - m$'
+        '{ }{ }{ } $\tau_h(V) \; \dot h = h_{\infty}(V) - h$'
+        '{ }{ }{ } $\tau_n(V) \; \dot n = n_{\infty}(V) - n$'
+        'where'
+        '{ }{ }{ } $V(t)~$ is the electrical potential across the membrane,'
+        '{ }{ }{ } $m(t)~$ is the activation variable of the sodium channel,'
+        '{ }{ }{ } $h(t)~$ is the inactivation variable of the sodium channel,'
+        '{ }{ }{ } $n(t)~$ is the activation variable of the potassium channel,'
+        '{ }{ }{ } $C~$ is the membrane capacitance,'
+        '{ }{ }{ } $I~$ is an external current that is applied to the membrane,'
+        '{ }{ }{ } $I_{Na} = g_{Na}\; m^3 \; h \; (V-E_{Na})~$ is the sodium current,'
+        '{ }{ }{ } $I_{K} = g_K \; n^4 \; (V-E_K)~$ is the potassium current,'
+        '{ }{ }{ } $I_{L} = g_L \; (V-E_L)~$ is the membrane leak current,'
+        '{ }{ }{ } $g_{Na}, g_K, g_L~$ are the maximal conductances of the ion channels,'
+        '{ }{ }{ } $E_{Na}, E_K, E_L~$ are the reversal potentials of the ion chanels.'
+        ''
+        'The external current ($I$) is the principal parameter of interest.'
+        ''
+        '$\textbf{References}$'
+        'Hodgkin, Huxley (1952) A quantitative description of membrane current and'
+        '{ }{ }{ } its application to conduction and excitation in a nerve. J Physiol 117'
+        'Hansel, Mato, Meunier (1993) Phase Dynamics for Weakly Coupled Hodgkin-'
+        '{ }{ }{ } Huxley Neurons. Europhys Lett 23 (5)'
+        'Handbook for the Brain Dynamics Toolbox (Version 2018b), Chapter 6.'
         };
     
     % Time-Portrait panel
@@ -159,14 +159,14 @@ function UserData = sodium(ax,tt,sol,C,I,gNa,gK,gL,ENa,EK,EL)
     h = sol.y(4,:);
 
     % Plot the conductances.
-    plot(t, m.^3, 'b-');
-    plot(t, h, 'b--');
-    plot(t, m.^3 .* h , 'k-', 'Linewidth',1.5);
-    ylim([-0.1 1.1]);
-    xlim([t(1) t(end)]);
-    legend('activation, m^3','inactivation, h','combined, m^3h');
-    title('sodium channel activation and inactivation'); 
-    xlabel('time');
+    plot(ax, t, m.^3, 'b-');
+    plot(ax, t, h, 'b--');
+    plot(ax, t, m.^3 .* h , 'k-', 'Linewidth',1.5);
+    ylim(ax, [-0.1 1.1]);
+    xlim(ax, [t(1) t(end)]);
+    legend(ax, 'activation, m^3','inactivation, h','combined, m^3h');
+    title(ax, 'sodium channel activation and inactivation'); 
+    xlabel(ax, 'time');
     
     % Make a copy of the data accessible to the workspace
     UserData.t = t;
@@ -186,12 +186,12 @@ function UserData = potassium(ax,tt,sol,C,I,gNa,gK,gL,ENa,EK,EL)
     h = sol.y(4,:);
 
     % Plot the conductances.
-    plot(t, n.^4 , 'r-', 'Linewidth',1.5);
-    ylim([-0.1 1.1]);
-    xlim([t(1) t(end)]);
-    legend('activation, n^4');
-    title('potassium channel activation'); 
-    xlabel('time');
+    plot(ax, t, n.^4 , 'r-', 'Linewidth',1.5);
+    ylim(ax, [-0.1 1.1]);
+    xlim(ax, [t(1) t(end)]);
+    legend(ax, 'activation, n^4');
+    title(ax, 'potassium channel activation'); 
+    xlabel(ax, 'time');
     
     % Make a copy of the data accessible to the workspace
     UserData.t = t;
@@ -211,13 +211,13 @@ function UserData = combined(ax,tt,sol,C,I,gNa,gK,gL,ENa,EK,EL)
     h = sol.y(4,:);
 
     % Plot the conductances.
-    plot(t, m.^3 .* h , 'k-', 'Linewidth',1.5);
-    plot(t, n.^4 , 'r-', 'Linewidth',1.5);
-    ylim([-0.1 1.1]);
-    xlim([t(1) t(end)]);
-    legend('sodium','potassium');
-    title('sodium and potassium channel activation'); 
-    xlabel('time');
+    plot(ax, t, m.^3 .* h , 'k-', 'Linewidth',1.5);
+    plot(ax, t, n.^4 , 'r-', 'Linewidth',1.5);
+    ylim(ax, [-0.1 1.1]);
+    xlim(ax, [t(1) t(end)]);
+    legend(ax, 'sodium','potassium');
+    title(ax, 'sodium and potassium channel activation'); 
+    xlabel(ax, 'time');
     
     % Make a copy of the data accessible to the workspace
     UserData.t = t;
@@ -246,14 +246,14 @@ function UserData = VoltageGates(ax,tt,sol,C,I,gNa,gK,gL,ENa,EK,EL)
     hinf = ah ./ (ah + bh); 
 
     % Plot minf, hinf and ninf.
-    plot(V, minf , 'b-', 'Linewidth',1.5);
-    plot(V, hinf , 'b--', 'Linewidth',1.5);
-    plot(V, ninf , 'r-', 'Linewidth',1.5);
-    ylim([-0.1 1.1]);
-    xlim([-90 50]);
-    legend('minf','hinf','ninf');
-    title('Steady-state Voltage-dependent Channel Activations'); 
-    xlabel('V');
+    plot(ax, V, minf , 'b-', 'Linewidth',1.5);
+    plot(ax, V, hinf , 'b--', 'Linewidth',1.5);
+    plot(ax, V, ninf , 'r-', 'Linewidth',1.5);
+    ylim(ax, [-0.1 1.1]);
+    xlim(ax, [-90 50]);
+    legend(ax, 'minf','hinf','ninf');
+    title(ax, 'Steady-state Voltage-dependent Channel Activations'); 
+    xlabel(ax, 'V');
     
     % Make a copy of the data accessible to the workspace
     UserData.V = V;
@@ -286,15 +286,15 @@ function UserData = IonCurrents(ax,tt,sol,C,I,gNa,gK,gL,ENa,EK,EL)
     end
     
     % plot the ionic currents
-    plot(UserData.t,UserData.INa,'r');
-    plot(UserData.t,UserData.IK,'b');
-    plot(UserData.t,UserData.IL,'g');
-    plot(UserData.t,UserData.INa+UserData.IK+UserData.IL,'k', 'Linewidth',1.5);
-    xlim(UserData.t([1 end]));
-    ylim([-800 800]);
-    xlabel('time');
-    ylabel('current density');
-    legend('INa','IK','IL','combined');
-    title('Ionic Currents'); 
+    plot(ax, UserData.t,UserData.INa,'r');
+    plot(ax, UserData.t,UserData.IK,'b');
+    plot(ax, UserData.t,UserData.IL,'g');
+    plot(ax, UserData.t,UserData.INa+UserData.IK+UserData.IL,'k', 'Linewidth',1.5);
+    xlim(ax, UserData.t([1 end]));
+    ylim(ax, [-800 800]);
+    xlabel(ax, 'time');
+    ylabel(ax, 'current density');
+    legend(ax, 'INa','IK','IL','combined');
+    title(ax, 'Ionic Currents'); 
 end
 

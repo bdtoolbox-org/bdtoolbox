@@ -6,9 +6,9 @@
 % for a description of the BOLD haemodynamic model.
 %
 % Authors
-%   Stewart Heitmann (2018b)
+%   Stewart Heitmann (2018b,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -69,50 +69,50 @@ function sys = BOLDHRF()
 
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
-    sys.panels.bdLatexPanel.latex = {'\textbf{BOLDHRF}';
-        '';
-        'The haemodynamic model of the fMRI BOLD response is';
-        '\qquad $y(t) = V_0 \; ( k_1\;(1-q) + k_2\;(1-q/v) + k_3\;(1-v))$';
-        'where';
-        '\qquad $v(t)$ is the normalised volume of blood';
-        '\qquad $q(t)$ is the normalised deoxyhaemoglobin content';
-        '\qquad $V_0 \approx 0.02$ is the resting blood volume';
-        '\qquad $k_1 = 7 E_0$';
-        '\qquad $k_2 = 2$';
-        '\qquad $k_3 = 2 E_0 - 0.2$';
-        '\qquad $E_0 \approx 0.34$ is the resting oxygen extraction fraction';
-        '';
-        'The changes in blood volume and deoxyhaemoglobin are governed';
-        'by the net inflow and outflow of blood acording to the equations,';
-        '\qquad $\tau_0 \; \dot v = f_{in} - f_{out}$';
-        '\qquad $\tau_0 \; \dot q = f_{in} \, E(f_{in})/E_0 - f_{out} \, q/v$';
-        'where $\tau_0 \approx 0.98$ seconds and $E(f)=1-(1{-}E_0)^{1/f}$.';
-        '';
-        '\textbf{Blood outflow}';
-        'The rate of blood outflow depends on the volume of blood,';
-        '\qquad $f_{out}(v) = v^{1/\alpha}$';       
-        'where $\alpha \approx 0.33$ is the stiffness of the venous balloon.';
-        '';
-        '\textbf{Blood inflow}';
-        'The inflow of blood changes in response to an unspecified';
-        'vasodilatory signal that is mediated by neural activity,';
-        '\qquad $\tau_1 \dot f = s$';       
-        '\qquad $\tau_1 \dot s = u(t) - \kappa s - \gamma\; (f-1)$';
-        'where';
-        '\qquad $s(t)$ is the vasodilatory signal';
-        '\qquad $u(t)$ is the neural activity in the voxel';
-        '\qquad $\kappa \approx 0.65$ represents the decay rate of $s(t)$';
-        '\qquad $\gamma \approx 0.41$ represents autoregulatory feedback for $s(t)$';
-        '';
-        '\textbf{Neuronal activity}';
-        'The neuronal activity in this simulation is a square pulse, ';
-        '\qquad $u(t) = Z$ when $t_{on} \leq t < t_{off}$';
-        '\qquad $u(t) = 0$ otherwise.';
-        'The response to the pulse can be used to create a convolution kernel.';
-        '';
-        '\textbf{Further Reading}';
-        'A complete description of the haemodynamic model is included';
-        'in the Handbook for the Brain Dynamics Toolbox (2018b).';
+    sys.panels.bdLatexPanel.latex = {
+        '$\textbf{BOLDHRF}$'
+        ''
+        'The haemodynamic model of the fMRI BOLD response is'
+        '{ }{ }{ } $y(t) = V_0 \; ( k_1\;(1-q) + k_2\;(1-q/v) + k_3\;(1-v))$'
+        'where'
+        '{ }{ }{ } $v(t)~$ is the normalised volume of blood'
+        '{ }{ }{ } $q(t)~$ is the normalised deoxyhaemoglobin content'
+        '{ }{ }{ } $V_0 \approx 0.02~$ is the resting blood volume'
+        '{ }{ }{ } $k_1 = 7 E_0$'
+        '{ }{ }{ } $k_2 = 2$'
+        '{ }{ }{ } $k_3 = 2 E_0 - 0.2$'
+        '{ }{ }{ } $E_0 \approx 0.34~$ is the resting oxygen extraction fraction'
+        ''
+        'The changes in blood volume and deoxyhaemoglobin are governed'
+        'by the net inflow and outflow of blood acording to the equations,'
+        '{ }{ }{ } $\tau_0 \; \dot v = f_{in} - f_{out}$'
+        '{ }{ }{ } $\tau_0 \; \dot q = f_{in} \, E(f_{in})/E_0 - f_{out} \, q/v$'
+        'where $\tau_0 \approx 0.98\;$ seconds and $E(f)=1-(1{-}E_0)^{1/f}$.'
+        ''
+        '$\textbf{Blood outflow}$'
+        'The rate of blood outflow depends on the volume of blood,'
+        '{ }{ }{ } $f_{out}(v) = v^{1/\alpha}$'
+        'where $\alpha \approx 0.33\;$ is the stiffness of the venous balloon.'
+        ''
+        '$\textbf{Blood inflow}$'
+        'The inflow of blood changes in response to an unspecified'
+        'vasodilatory signal that is mediated by neural activity,'
+        '{ }{ }{ } $\tau_1 \dot f = s$'
+        '{ }{ }{ } $\tau_1 \dot s = u(t) - \kappa s - \gamma\; (f-1)$'
+        'where'
+        '{ }{ }{ } $s(t)~$ is the vasodilatory signal'
+        '{ }{ }{ } $u(t)~$ is the neural activity in the voxel'
+        '{ }{ }{ } $\kappa \approx 0.65~$ represents the decay rate of $s(t)$'
+        '{ }{ }{ } $\gamma \approx 0.41~$ represents autoregulatory feedback for $s(t)$'
+        ''
+        '$\textbf{Neuronal activity}$'
+        'The neuronal activity in this simulation is a square pulse, '
+        '{ }{ }{ } $u(t) = Z~$ when $~t_{on} \leq t < t_{off}$'
+        '{ }{ }{ } $u(t) = 0~$ otherwise.'
+        'The response to the pulse can be used to create a convolution kernel.'
+        ''
+        '$\textbf{Further Reading}$'
+        'Ch 5 of the Handbook for the Brain Dynamics Toolbox (2018b).'
         };
     
     % Display Panels
@@ -165,10 +165,10 @@ function UserData = BOLD(ax,t,sol,V0,E0,tau0,tau1,alpha,kappa,gamma,Z,ton,toff)
     t = sol.x;
     
     % plot the BOLD signal
-    plot(t, 100*y, 'color','k', 'LineWidth',1);
-    ylabel('BOLD (%)');
-    xlabel('time');
-    title('BOLD Haemodynamic Response');
+    plot(ax,t, 100*y, 'color','k', 'LineWidth',1);
+    ylabel(ax,'BOLD (%)');
+    xlabel(ax,'time');
+    title(ax,'BOLD Haemodynamic Response');
     
     % make the data accessible to the workspace
     UserData.t = t;
@@ -185,10 +185,10 @@ function UserData = NeuralActivity(ax,t,sol,V0,E0,tau0,tau1,alpha,kappa,gamma,Z,
     tindx = (ton<=t & t<toff);
     u(tindx) = Z;
     
-    stairs(t, u, 'color','k', 'LineWidth',1);
-    ylabel('u(t)');
-    xlabel('time');
-    title('Neural Activity Pulse');
+    stairs(ax, t, u, 'color','k', 'LineWidth',1);
+    ylabel(ax,'u(t)');
+    xlabel(ax,'time');
+    title(ax,'Neural Activity Pulse');
     
     % make the data accessible to the workspace
     UserData.t = t;

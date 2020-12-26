@@ -11,9 +11,13 @@
 % Henry Markram and Alain Destexhe in 2008. This implementation of the model
 % for the Brain Dynamics Toolbox was written by Stewart Heitmann in 2020. 
 %
+% Usage
+%    sys = Posischil2008('RS');     % Regular-Spiking regime
+%    sys = Posischil2008('FS');     % Fast Spiking regime
+%    sys = Posischil2008('IB');     % Intrinsically Bursting regime
+%
 % Example
-%    addpath <your bdtoolbox installation directory>
-%    sys = Pospischil2008();        % construct the model
+%    sys = Pospischil2008('RS');    % construct the model
 %    gui = bdGUI(sys);              % run the model in the GUI
 %
 % References:
@@ -140,38 +144,39 @@ function sys = Pospischil2008(flag)
     
     % Our ODE parameters
     sys.pardef = [
-        struct('name','Cm',    'value',Cm,    'lim',[0.01 2]); 
-        struct('name','Iamp',  'value',Iamp,  'lim',[0 10]);
-        struct('name','Idur',  'value',Idur,  'lim',[0 1000]);
-        struct('name','gleak', 'value',gleak, 'lim',[0 0.0001]);
-        struct('name','gNa',   'value',gNa,   'lim',[0 1]);
-        struct('name','gKd',   'value',gKd,   'lim',[0 1]);
-        struct('name','gM',    'value',gM,    'lim',[0 0.001]);
-        struct('name','gL',    'value',gL,    'lim',[0 0.001]);
-        struct('name','gT',    'value',gT,    'lim',[0 0.001]);
-        struct('name','Eleak', 'value',Eleak, 'lim',[-100 100]);
-        struct('name','ENa',   'value',ENa,   'lim',[-100 100]);
-        struct('name','EK',    'value',EK,    'lim',[-100 100]);
-        struct('name','ECa',   'value',ECa,   'lim',[0 200]);
-        struct('name','VT',    'value',VT,    'lim',[-100 100]);
-        struct('name','Vx',    'value',Vx,    'lim',[0 10]);
-        struct('name','tau',   'value',tau,   'lim',[1 10000]);        
+        struct('name','Cm',    'value',Cm,    'lim',[0.01 2])
+        struct('name','Iamp',  'value',Iamp,  'lim',[0 10])
+        struct('name','Idur',  'value',Idur,  'lim',[0 1000])
+        struct('name','gleak', 'value',gleak, 'lim',[0 0.0001])
+        struct('name','gNa',   'value',gNa,   'lim',[0 1])
+        struct('name','gKd',   'value',gKd,   'lim',[0 1])
+        struct('name','gM',    'value',gM,    'lim',[0 0.001])
+        struct('name','gL',    'value',gL,    'lim',[0 0.001])
+        struct('name','gT',    'value',gT,    'lim',[0 0.001])
+        struct('name','Eleak', 'value',Eleak, 'lim',[-100 100])
+        struct('name','ENa',   'value',ENa,   'lim',[-100 100])
+        struct('name','EK',    'value',EK,    'lim',[-100 100])
+        struct('name','ECa',   'value',ECa,   'lim',[0 200])
+        struct('name','VT',    'value',VT,    'lim',[-100 100])
+        struct('name','Vx',    'value',Vx,    'lim',[0 10])
+        struct('name','tau',   'value',tau,   'lim',[1 10000])
         ];
                
     % Our ODE variables        
     sys.vardef = [ 
-        struct('name','V', 'value',V0,   'lim',[-80 80]);
-        struct('name','m', 'value',m0,   'lim',[-0.1 1.1]);
+        struct('name','V', 'value',V0,   'lim',[-80 80])
+        struct('name','m', 'value',m0,   'lim',[-0.1 1.1])
         struct('name','h', 'value',h0,   'lim',[-0.1 1.1])
-        struct('name','n', 'value',n0,   'lim',[-0.1 1.1]);
-        struct('name','p', 'value',p0,   'lim',[-0.1 1.1]);
-        struct('name','q', 'value',q0,   'lim',[-0.1 1.1]);
-        struct('name','r', 'value',r0,   'lim',[-0.1 1.1]);
-        struct('name','u', 'value',u0,   'lim',[-0.1 1.1]);
+        struct('name','n', 'value',n0,   'lim',[-0.1 1.1])
+        struct('name','p', 'value',p0,   'lim',[-0.1 1.1])
+        struct('name','q', 'value',q0,   'lim',[-0.1 1.1])
+        struct('name','r', 'value',r0,   'lim',[-0.1 1.1])
+        struct('name','u', 'value',u0,   'lim',[-0.1 1.1])
         ];
     
     % Default time span
     sys.tspan = tspan;
+    sys.tstep = 0.1;
     
     % Default solver options
     sys.odeoption = odeset('RelTol',1e-6, 'InitialStep',0.01);
@@ -179,7 +184,7 @@ function sys = Pospischil2008(flag)
     
     % Latex (Equations) panel
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{Pospischil2008}'
+        '$\textbf{Pospischil2008}$'
         ''
         'A conductance-based model of the four most prominent classes of'
         'neurons in the cerebral cortex and thalamus by Pospischil et al (2008).'
@@ -187,65 +192,65 @@ function sys = Pospischil2008(flag)
         'cell dynamics.'
         ''
         'The membrane equations are,'
-        '\qquad $C_m \; \frac{dV}{dt} = -I_{leak} - I_{Na} - I_{Kd} - I_M - I_T - I_L + I_{stim}$'
+        '{ }{ }{ } $C_m \; \frac{dV}{dt} = -I_{leak} - I_{Na} - I_{Kd} - I_M - I_T - I_L + I_{stim}$'
         'where'
-        '\qquad $V(t)$ is the electrical potential across the membrane,'
-        '\qquad $C_m$ is the membrane capacitance,'
-        '\qquad $I_{stim}$ is an external current that is applied to the membrane.'
+        '{ }{ }{ } $V(t)~$ is the electrical potential across the membrane,'
+        '{ }{ }{ } $C_m~$ is the membrane capacitance,'
+        '{ }{ }{ } $I_{stim}~$ is an external current that is applied to the membrane.'
         ''
         'The leak current is'
-        '\qquad $I_{leak} = g_{leak} (V - E_{leak})$'
+        '{ }{ }{ } $I_{leak} = g_{leak} (V - E_{leak})$'
         ''
         'The sodium current is'
-        '\qquad $I_{Na} = g_{Na} m^3 h (V - E_{Na})$'
-        'where the kinetics of the activation variable $m(t)$ are'
-        '\qquad $\frac{dm}{dt} = \alpha_m (1-m) - \beta_m m$'
-        '\qquad $\alpha_m = \frac{-0.32 (V-V_T-13)}{\exp(-(V-V_T-13)/4) - 1}$'
-        '\qquad $\beta_m =  \frac{0.28 (V-V_T-40)}{\exp( (V-V_T-40)/5) - 1}$'
-        'and the kinetics of the inactivation variable $h(t)$ are'
-        '\qquad $\frac{dh}{dt} = \alpha_h (1-h) - \beta_h h$'
-        '\qquad $\alpha_h = 0.128 \exp(-(V-V_T-17)/18)$'
-        '\qquad $\beta_h = \frac{4}{1 + \exp(-(V-V_T-40)/5)}$'
+        '{ }{ }{ } $I_{Na} = g_{Na} m^3 h (V - E_{Na})$'
+        'where the kinetics of the activation variable $m(t)~$ are'
+        '{ }{ }{ } $\frac{dm}{dt} = \alpha_m (1-m) - \beta_m m$'
+        '{ }{ }{ } $\alpha_m = \frac{-0.32 (V-V_T-13)}{\exp(-(V-V_T-13)/4) - 1}$'
+        '{ }{ }{ } $\beta_m =  \frac{0.28 (V-V_T-40)}{\exp( (V-V_T-40)/5) - 1}$'
+        'and the kinetics of the inactivation variable $h(t)~$ are'
+        '{ }{ }{ } $\frac{dh}{dt} = \alpha_h (1-h) - \beta_h h$'
+        '{ }{ }{ } $\alpha_h = 0.128 \exp(-(V-V_T-17)/18)$'
+        '{ }{ }{ } $\beta_h = \frac{4}{1 + \exp(-(V-V_T-40)/5)}$'
         ''
         'The delayed-rectifier potassium current is'
-        '\qquad $I_{Kd} = g_{Kd} \, n^4 \, (V - E_{K})$'
-        'where the kinetics of the activation variable $n(t)$ are'
-        '\qquad $\frac{dn}{dt} = \alpha_n (1-n) - \beta_n n$'
-        '\qquad $\alpha_n = \frac{-0.032 (V-V_T-15)}{\exp(-(V-V_T-15)/5) - 1}$'
-        '\qquad $\beta_n = 0.5 \exp(-(V-V_T-10)/40)$'
+        '{ }{ }{ } $I_{Kd} = g_{Kd} \, n^4 \, (V - E_{K})$'
+        'where the kinetics of the activation variable $n(t)~$ are'
+        '{ }{ }{ } $\frac{dn}{dt} = \alpha_n (1-n) - \beta_n n$'
+        '{ }{ }{ } $\alpha_n = \frac{-0.032 (V-V_T-15)}{\exp(-(V-V_T-15)/5) - 1}$'
+        '{ }{ }{ } $\beta_n = 0.5 \exp(-(V-V_T-10)/40)$'
         ''
         'The slow potassium current for spike-frequency adaptation is'
-        '\qquad $I_{M} = g_{M} \, p \, (V - E_{K})$'
-        'where the kinetics of the activation variable $p(t)$ are'
-        '\qquad $\tau_p \frac{dp}{dt} = p_\infty - p$'
-        '\qquad $p_\infty = \frac{1}{1 + \exp(-(V+35)/10)}$'
-        '\qquad $\tau_p = \frac{\tau}{3.3 \exp((V+35)/20) + \exp(-(V+35)/20)}$'
+        '{ }{ }{ } $I_{M} = g_{M} \, p \, (V - E_{K})$'
+        'where the kinetics of the activation variable $p(t)~$ are'
+        '{ }{ }{ } $\tau_p \frac{dp}{dt} = p_\infty - p$'
+        '{ }{ }{ } $p_\infty = \frac{1}{1 + \exp(-(V+35)/10)}$'
+        '{ }{ }{ } $\tau_p = \frac{\tau}{3.3 \exp((V+35)/20) + \exp(-(V+35)/20)}$'
         ''
         'The high-threshold calcium current for burst generation is'
-        '\qquad $I_L = g_L \, q^2 \, r \, (V-E_{Ca})$'
-        'where the kinetics of the activation variable $q(t)$ are'
-        '\qquad $\frac{dq}{dt} = \alpha_q (1-q) - \beta_q q$'
-        '\qquad $\alpha_q = \frac{0.055 (-27-V)}{\exp((-27-V)/3.8) - 1}$'
-        '\qquad $\beta_q = 0.94 \exp((-75-V)/17)$'
-        'and the kinetics of the inactivation variable $r(t)$ are'
-        '\qquad $\frac{dr}{dt} = \alpha_r (1-r) - \beta_r r$'
-        '\qquad $\alpha_r = 0.000457 \exp((-13-V)/50)$'
-        '\qquad $\beta_r = \frac{0.0065}{\exp((-15-V)/28) + 1}$'
+        '{ }{ }{ } $I_L = g_L \, q^2 \, r \, (V-E_{Ca})$'
+        'where the kinetics of the activation variable $q(t)~$ are'
+        '{ }{ }{ } $\frac{dq}{dt} = \alpha_q (1-q) - \beta_q q$'
+        '{ }{ }{ } $\alpha_q = \frac{0.055 (-27-V)}{\exp((-27-V)/3.8) - 1}$'
+        '{ }{ }{ } $\beta_q = 0.94 \exp((-75-V)/17)$'
+        'and the kinetics of the inactivation variable $r(t)~$ are'
+        '{ }{ }{ } $\frac{dr}{dt} = \alpha_r (1-r) - \beta_r r$'
+        '{ }{ }{ } $\alpha_r = 0.000457 \exp((-13-V)/50)$'
+        '{ }{ }{ } $\beta_r = \frac{0.0065}{\exp((-15-V)/28) + 1}$'
         ''
         'The low-threshold calcium current for burst generation is'
-        '\qquad $I_T = g_T \, s_\infty^2 \, u \, (V-E_{Ca})$'
-        'where the activation variable $s$ is only considered at steady-state'
-        '\qquad $s_\infty = 1 / (1 + \exp(-(V+V_x+57)/6.2))$'
+        '{ }{ }{ } $I_T = g_T \, s_\infty^2 \, u \, (V-E_{Ca})$'
+        'where the activation variable $s~$ is only considered at steady-state'
+        '{ }{ }{ } $s_\infty = 1 / (1 + \exp(-(V+V_x+57)/6.2))$'
         'and the kinetics of the inactivation variable $u(t)$ are'
-        '\qquad $\tau_u \frac{du}{dt} = u_\infty - u$'
-        '\qquad $u_\infty = 1 / (1 + \exp((V+V_x+81)/4))$'
-        '\qquad $\tau_u = \frac{30.8 + (211.4 + \exp((V+V_x+113.2)/5))}{(3.7 (1 + \exp((V+V_x+84)/3.2))}$'
+        '{ }{ }{ } $\tau_u \frac{du}{dt} = u_\infty - u$'
+        '{ }{ }{ } $u_\infty = 1 / (1 + \exp((V+V_x+81)/4))$'
+        '{ }{ }{ } $\tau_u = \frac{30.8 + (211.4 + \exp((V+V_x+113.2)/5))}{(3.7 (1 + \exp((V+V_x+84)/3.2))}$'
         ''
         'The external stimulation current is'
-        '\qquad $I_{stim} = I_{amp}$ when $0\leq t \leq I_{dur}$'
+        '{ }{ }{ } $I_{stim} = I_{amp}$ when $0\leq t \leq I_{dur}$'
         'and zero otherwise.'
         ''
-        '\textbf{Reference}'
+        '$\textbf{Reference}$'
         'Pospischil, Toledo-Rodriguez, Monier, Piwkowska, Bal, Fregnac,'
         'Markram, Destexhe (2008) Minimal Hodgkin-Huxley type models'
         'for different classes of cortical and thalamic neurons. Biological'

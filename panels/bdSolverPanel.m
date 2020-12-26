@@ -1,13 +1,13 @@
-classdef bdSolverPanel < bdPanel
+classdef bdSolverPanel < bdPanelBase
     %bdSolverPanel Display panel for solver options in bdGUI.
     %   The solver panel allows the user to modify the various options
     %   for the solver algorithm, such as the error tolerances and step
     %   size control.
     %
     %AUTHORS
-    %  Stewart Heitmann (2016a,2017a,2018a)
+    %  Stewart Heitmann (2016a,2017a,2018a,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -35,478 +35,392 @@ classdef bdSolverPanel < bdPanel
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
     
-    properties (Constant)
-        title = 'Solver';
-    end    
-
-    properties
-        dt              % Time steps of the solution (1 x t-1)
-        dy              % Increments of the solution (1 x t-1)
+    properties (Dependent)
+        options
     end
     
-    properties (Access=private) 
-        ax1             % Handle to the upper plot axes
-        ax2             % Handle to the lower plot axes
-        gridmenu        % handle to GRID menu item
-        plt1            % handle to plot line (axis 1)
-        plt2            % handle to plot line (axis 2)     
-        AbsTol          % handle to AbsTol edit box
-        RelTol          % handle to RelTol edit box
-        InitialStep     % handle to InitialStep edit box
-        MaxStep         % handle to MaxStep edit box
-        listener        % handle to listener
-    end
- 
-    methods        
-        function this = bdSolverPanel(tabgroup,control)
-            % Construct a new Solver Panel in the given tabgroup
-            
-            % initialise the base class (specifically this.menu and this.tab)
-            this@bdPanel(tabgroup);
-
-            % assign default values to missing options in sys.panels.bdSolverPanel
-            control.sys.panels.bdSolverPanel = bdSolverPanel.syscheck(control.sys);
-
-            % configure the pull-down menu
-            this.menu.Label = control.sys.panels.bdSolverPanel.title;
-            this.InitCalibrateMenu(control);
-            this.InitGridMenu(control);
-            this.InitExportMenu(control);
-            this.InitCloseMenu(control);
-
-            % configure the panel graphics
-            this.tab.Title = control.sys.panels.bdSolverPanel.title;
-            this.InitPanel(control);
-
-            % register a callback for resizing the panel
-            set(this.tab,'SizeChangedFcn', @(~,~) this.SizeChanged());
-
-            % listen to the control panel for redraw events
-            this.listener = addlistener(control,'redraw',@(~,~) this.redraw(control));    
-        end
-        
-        % Destructor
-        function delete(this)
-            delete(this.listener);
-            delete(this.tab);          
-        end       
-        
+    properties (Access=public)
+        axes1               matlab.ui.control.UIAxes
+        axes2               matlab.ui.control.UIAxes
     end
     
-    methods (Access=private)
-                
-        % Initialise the CALIBRATE menu item
-        function InitCalibrateMenu(this,control)
-            % construct the menu item
+    properties (Access=private)
+        sysobj              bdSystem
+        tab                 matlab.ui.container.Tab           
+        menu                matlab.ui.container.Menu
+        menuDock            matlab.ui.container.Menu
+        AbsTol              matlab.ui.control.EditField
+        RelTol              matlab.ui.control.EditField
+        InitialStep         matlab.ui.control.EditField
+        MaxStep             matlab.ui.control.EditField
+
+        line1               matlab.graphics.primitive.Line
+        line2               matlab.graphics.primitive.Line
+                    
+        listener1           event.listener
+    end
+    
+    methods
+        function this = bdSolverPanel(tabgrp,sysobj,opt)
+            %disp('bdSolverPanel');
+            
+            % remember the parents
+            this.sysobj = sysobj;
+                        
+            % get the parent figure of the TabGroup
+            fig = ancestor(tabgrp,'figure');
+            
+            % Create the panel menu and assign it a unique Tag to identify it.
+            this.menu = uimenu('Parent',fig, ...
+                'Label','Phase Portrait', ...
+                'Tag', bdPanelBase.FocusMenuID(), ...     % unique Tag used by the FocusMenu function
+                'Visible','off');
+
+            % construct the CALIBRATE menu item
             uimenu(this.menu, ...
-               'Label','Calibrate Axes', ...
-                'Callback', @CalibrateMenuCallback );
-            
-            % Menu callback function
-            function CalibrateMenuCallback(~,~)
-                % find the limits of the upper and lower plots
-                hi1 = max(this.plt1.YData);
-                hi2 = max(this.plt2.YData);
-                
-                % adjust the y-limits of the upper and lower plots
-                this.ax1.YLim = bdPanel.RoundLim(-1e-4, hi1 + 1e-4);
-                this.ax2.YLim = bdPanel.RoundLim(-1e-4, hi2 + 1e-4);
-            end
+                'Label', 'Calibrate', ...
+                'Tooltip', 'Calibrate the axes1 to fit the data', ...
+                'Callback', @(~,~) this.callbackCalibrate() );
+                                    
+            % construct the DOCK menu item
+            this.menuDock = uimenu(this.menu, ...
+                'Label', 'Undock', ...
+                'Tooltip', 'Undock the display panel', ...            
+                'Callback', @(src,~) this.callbackDock(src,tabgrp) );
 
-        end       
-
-        % Initiliase the GRID menu item
-        function InitGridMenu(this,control)
-            % get the default grid menu setting from sys.panels
-            if control.sys.panels.bdSolverPanel.grid
-                gridcheck = 'on';
-            else
-                gridcheck = 'off';
-            end
-
-            % construct the menu item
-            this.gridmenu = uimenu(this.menu, ...
-                'Label','Grid', ...
-                'Checked',gridcheck, ...
-                'Callback', @GridMenuCallback);
-
-            % Menu callback function
-            function GridMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                        grid(this.ax1,'off');
-                        grid(this.ax2,'off');
-                    case 'off'
-                        menuitem.Checked='on';
-                        grid(this.ax1,'on');
-                        grid(this.ax2,'on');
-                end
-            end
-        end     
-        
-        % Initialise the EXPORT menu item
-        function InitExportMenu(this,control)
-            % construct the menu item
+            % construct the CLOSE menu item
             uimenu(this.menu, ...
-               'Label','Export Figure', ...
-               'Callback',@callback);
-           
-            function callback(~,~)
-                % Construct a new figure
-                fig = figure();    
-                
-                % Change mouse cursor to hourglass
-                set(fig,'Pointer','watch');
-                drawnow;
-                
-                % Copy the upper axes to the new figure
-                ax1new = copyobj(this.ax1,fig);
-                ax1new.Units = 'normal';
-                ax1new.OuterPosition = [0 0.5 1 0.5];
-                xlabel(ax1new,'time (t)');
-                title(ax1new,'Vector Norm of the Solution Increment');
+                'Separator','on', ...
+                'Label','Close', ...
+                'Tooltip', 'Close the display panel', ...            
+                'Callback', @(~,~) this.callbackClose(fig) );
 
-               % Copy the lower axes to the new figure
-                ax2new = copyobj(this.ax2,fig);
-                ax2new.Units = 'normal';
-                ax2new.OuterPosition = [0 0 1 0.5];
-                title(ax2new,'Time Steps');
-
-                % Allow the user to hit everything in the new figure
-                objs = findobj(ax1new,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                objs = findobj(ax2new,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                
-                % Change mouse cursor to arrow
-                set(fig,'Pointer','arrow');
-                drawnow;
-            end
-        end
-
-        % Initialise the CLOSE menu item
-        function InitCloseMenu(this,control)
-            % construct the menu item
-            uimenu(this.menu, ...
-                   'Label','Close', ...
-                   'Callback',@(~,~) this.close());
-        end
-        
-        % Initialise the panel
-        function InitPanel(this,control)
-            %disp('bdSolverPanel.InitPanel');
+            % Create Tab and give it the focus. The tab should have the same
+            % Tag as the panel menu so that each can be found by the other.
+            this.tab = uitab(tabgrp, 'Title','Solver', 'Tag',this.menu.Tag);
+            tabgrp.SelectedTab = this.tab;
             
-            % Construct the uipanel container
-            spanel = uipanel(this.tab, ...
-                        'Units','normal', ...
-                        'Position',[0 0 1 1], ...
-                        'BorderType','beveledout');
+            % Create GridLayout within the Tab
+            GridLayout = uigridlayout(this.tab);
+            GridLayout.ColumnWidth = {'1x','1x','1x','1x','1x'};
+            GridLayout.RowHeight = {'1x','1x',21,21};
+            GridLayout.ColumnSpacing = 10;
+            GridLayout.RowSpacing = 0;
+            GridLayout.Visible = 'off';
 
-            % get tab geometry
-            tabw = this.tab.Position(3);
-            tabh = this.tab.Position(4);
-
-            % compute axes geometry
-            axesh = (tabh-160)/2;
-            axesw = tabw-120;
-
-            % construct the dydt axes
-            this.ax1 = axes('Parent',spanel, ...
-                'Units','pixels', ...
-                'Position', [70 140+axesh  axesw axesh], ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Box','on');
-            this.plt1 = stairs(0,0, 'parent',this.ax1, 'color','k', 'Linewidth',1);
-            set(this.ax1,'TickDir','out');
-            %xlabel('time','FontSize',14);
-            ylabel(this.ax1,'||dY||');
-            ylim(this.ax1,[-0.1 1.1]);
-            %title(this.ax1,'Vector Norm of Solution Increment');
-
-            % construct the step-size axes
-            this.ax2 = axes('Parent',spanel, ...
-                'Units','pixels', ...
-                'Position', [70 110 axesw axesh], ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Box','on');
-            this.plt2 = stairs(0,0, 'parent',this.ax2, 'color','k', 'Linewidth',1);
-            set(this.ax2,'TickDir','out');
-            xlabel(this.ax2,'time (t)');
-            ylabel(this.ax2,'time step (dt)');
-            ylim(this.ax2,[-0.1 1.1]);
-            %title(this.ax2,'Step Size');
-
-            % edit box geometry
-            boxw = 50;
-            boxh = 20;
-            boxx = 5;
-
-            % Error Control
-            uicontrol('Style','text', ...
-                'String','Error Control', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontWeight','bold', ...
-                'FontSize',12, ...
-            ... 'BackgroundColor', 'w', ...
-                'Parent', spanel, ...
-                'Position',[boxx 10+2*boxh 2*boxw+5 boxh]);
-
-            % construct edit box for AbsTol
-            fieldname = 'AbsTol';
-            this.AbsTol = uicontrol('Style','edit', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'TooltipString', 'Absolute error tolerance', ...
-                'Parent', spanel, ...
-                'Callback', @(hObj,~) editboxCallback(control,hObj,fieldname), ...
-                'Position',[boxx 10 boxw boxh]);
-            uicontrol('Style','text', ...
-                'String',fieldname, ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-            ... 'BackgroundColor', 'w', ...
-                'Parent', spanel, ...
-                'Position',[boxx 10+boxh boxw boxh]);
-
-            % next col
-            boxx = boxx + boxw + 5;
+            % Create axes1
+            this.axes1 = uiaxes(GridLayout);
+            this.axes1.Layout.Row = 1;
+            this.axes1.Layout.Column = [1 5];
+            this.axes1.NextPlot = 'add';
+            this.axes1.XGrid = 'on';
+            this.axes1.YGrid = 'on';
+            this.axes1.Box = 'on';
+            this.axes1.FontSize = 11;
+            this.axes1.XLabel.String = ' ';
+            this.axes1.YLabel.String = 'norm dY';
+            axtoolbar(this.axes1,{});
             
-            % construct edit box for RelTol
-            fieldname = 'RelTol';
-            this.RelTol = uicontrol('Style','edit', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'TooltipString', 'Relative error tolerance', ...
-                'Parent', spanel, ...
-                'Callback', @(hObj,~) editboxCallback(control,hObj,fieldname), ...
-                'Position',[boxx 10 boxw boxh]);
-            uicontrol('Style','text', ...
-                'String',fieldname, ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-            ... 'BackgroundColor', 'w', ...
-                'Parent', spanel, ...
-                'Position',[boxx 10+boxh boxw boxh]);
-
-            % next col
-            boxx = boxx + boxw + 20;
-
-            % Step Size
-            uicontrol('Style','text', ...
-                'String','Step Size', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontWeight','bold', ...
-                'FontSize',12, ...
-            ... 'BackgroundColor', 'w', ...
-                'Parent', spanel, ...
-                'Position',[boxx 10+2*boxh 2*boxw+5 boxh]);
-
-            % construct edit box for InitialStep
-            fieldname = 'InitialStep';
-            this.InitialStep = uicontrol('Style','edit', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'TooltipString', 'Initial step size', ...
-                'Parent', spanel, ...
-                'Callback', @(hObj,~) editboxCallback(control,hObj,fieldname), ...
-                'Position',[boxx 10 boxw boxh]);
-            uicontrol('Style','text', ...
-                'String','Initial', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-            ... 'BackgroundColor', 'w', ...
-                'Parent', spanel, ...
-                'Position',[boxx 10+boxh boxw boxh]);
-
-            % next col
-            boxx = boxx + boxw + 5;
-
-            % construct edit box for MaxStep
-            fieldname = 'MaxStep';
-            this.MaxStep = uicontrol('Style','edit', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Parent', spanel, ...
-                'TooltipString', 'Maximum step size', ...
-                'Callback', @(hObj,~) editboxCallback(control,hObj,fieldname), ...
-                'Position',[boxx 10 boxw boxh]);
-            uicontrol('Style','text', ...
-                'String',fieldname, ...
-                'HorizontalAlignment','left', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-            ... 'BackgroundColor', 'w', ...
-                'Parent', spanel, ...
-                'Position',[boxx 10+boxh boxw boxh]);
+            % Create axes2
+            this.axes2 = uiaxes(GridLayout);
+            this.axes2.Layout.Row = 2;
+            this.axes2.Layout.Column = [1 5];
+            this.axes2.NextPlot = 'add';
+            this.axes2.XGrid = 'on';
+            this.axes2.YGrid = 'on';
+            this.axes2.Box = 'on';
+            this.axes2.FontSize = 11;
+            this.axes2.XLabel.String = 'time';
+            this.axes2.YLabel.String = 'time step (dt)';
+            axtoolbar(this.axes2,{});
             
-            % fill the edit boxes
-            switch control.solvertype
+            % Construct the line plots (containing NaN)
+            this.line1 = line(this.axes1,NaN,NaN,'color','k','Linewidth',1);
+            this.line2 = line(this.axes2,NaN,NaN,'color','k','Linewidth',1);
+                        
+            % Construct ABSTOL label
+            label = uilabel(GridLayout);
+            label.Layout.Row = 3;
+            label.Layout.Column = 1;
+            label.Text = 'AbsTol';
+            label.HorizontalAlignment = 'center';
+            
+            % Construct ABSTOL edit box
+            this.AbsTol = uieditfield(GridLayout);
+            this.AbsTol.Layout.Row = 4;
+            this.AbsTol.Layout.Column = 1;
+            this.AbsTol.HorizontalAlignment = 'center';
+            this.AbsTol.ValueChangedFcn = @(src,~) callbackEditField(this,src,'AbsTol');
+
+            % Construct RELTOL label
+            label = uilabel(GridLayout);
+            label.Layout.Row = 3;
+            label.Layout.Column = 2;
+            label.Text = 'RelTol';
+            label.HorizontalAlignment = 'center';
+            
+            % Construct RELTOL edit box
+            this.RelTol = uieditfield(GridLayout);
+            this.RelTol.Layout.Row = 4;
+            this.RelTol.Layout.Column = 2;
+            this.RelTol.HorizontalAlignment = 'center';
+            this.RelTol.ValueChangedFcn = @(src,~) callbackEditField(this,src,'RelTol');
+   
+            % Construct INITIALSTEP label
+            label = uilabel(GridLayout);
+            label.Layout.Row = 3;
+            label.Layout.Column = 4;
+            label.Text = 'InitialStep';
+            label.HorizontalAlignment = 'center';
+
+            % Construct INITIALSTEP edit box
+            this.InitialStep = uieditfield(GridLayout);
+            this.InitialStep.Layout.Row = 4;
+            this.InitialStep.Layout.Column = 4;
+            this.InitialStep.HorizontalAlignment = 'center';
+            this.InitialStep.Enable = 'off';
+            
+            % Construct MAXSTEP label
+            label = uilabel(GridLayout);
+            label.Layout.Row = 3;
+            label.Layout.Column = 5;
+            label.Text = 'MaxStep';
+            label.HorizontalAlignment = 'center';
+            
+            % Construct MAXSTEP edit box
+            this.MaxStep = uieditfield(GridLayout);
+            this.MaxStep.Layout.Row = 4;
+            this.MaxStep.Layout.Column = 5;
+            this.MaxStep.HorizontalAlignment = 'center';
+            this.MaxStep.ValueChangedFcn = @(src,~) callbackEditField(this,src,'MaxStep');
+            
+            % initialise the edit box values
+            switch this.sysobj.solvertype
                 case 'odesolver'
-                    this.AbsTol.String = num2str(odeget(control.sys.odeoption,'AbsTol'),'%g');
-                    this.RelTol.String = num2str(odeget(control.sys.odeoption,'RelTol'),'%g');
-                    this.InitialStep.String = num2str(odeget(control.sys.odeoption,'InitialStep'),'%g');
-                    this.MaxStep.String = num2str(odeget(control.sys.odeoption,'MaxStep'),'%g');
+                    this.AbsTol.Value = num2str(odeget(this.sysobj.odeoption,'AbsTol'));
+                    this.RelTol.Value = num2str(odeget(this.sysobj.odeoption,'RelTol'));
+                    this.InitialStep.Value = num2str(this.sysobj.tstep);
+                    this.MaxStep.Value = num2str(odeget(this.sysobj.odeoption,'MaxStep'));
                 case 'ddesolver'
-                    this.AbsTol.String = num2str(ddeget(control.sys.ddeoption,'AbsTol'),'%g');
-                    this.RelTol.String = num2str(ddeget(control.sys.ddeoption,'RelTol'),'%g');
-                    this.InitialStep.String = num2str(ddeget(control.sys.ddeoption,'InitialStep'),'%g');
-                    this.MaxStep.String = num2str(ddeget(control.sys.ddeoption,'MaxStep'),'%g');
+                    this.AbsTol.Value = num2str(odeget(this.sysobj.ddeoption,'AbsTol'));
+                    this.RelTol.Value = num2str(odeget(this.sysobj.ddeoption,'RelTol'));
+                    this.InitialStep.Value = num2str(this.sysobj.tstep);
+                    this.MaxStep.Value = num2str(odeget(this.sysobj.ddeoption,'MaxStep'));
                 case 'sdesolver'
-                    if isfield(control.sys.sdeoption,'InitialStep')
-                        this.InitialStep.String = num2str(control.sys.sdeoption.InitialStep,'%g');
-                    end
-            end
+                    this.AbsTol.Value = num2str(odeget(this.sysobj.sdeoption,'AbsTol'));
+                    this.RelTol.Value = num2str(odeget(this.sysobj.sdeoption,'RelTol'));
+                    this.InitialStep.Value = num2str(this.sysobj.tstep);
+                    this.MaxStep.Value = num2str(odeget(this.sysobj.sdeoption,'MaxStep'));
+            end          
             
+            % apply the custom options (and render the image)
+            this.options = opt;
+
+            % make our panel menu visible and hide the others
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % make the grid visible
+            GridLayout.Visible = 'on';
+
+            % render the data
+            this.Render();
+            
+            % listen for Redraw events
+            this.listener1 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(evnt));            
         end
         
+        function opt = get.options(this)
+            opt.title = this.tab.Title;
+        end
+        
+        function set.options(this,opt)   
+            % check the incoming options and apply defaults to missing values
+            opt = this.optcheck(opt);
+
+            % update the tab title
+            this.tab.Title = opt.title;
+            
+            % update the menu title
+            this.menu.Text = opt.title;
+                                    
+            % Redraw everything
+            this.Render();
+            drawnow;
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+        
+        function delete(this)
+           %disp('bdSolverPanel.delete()');
+           delete(this.listener1);
+           delete(this.menu);
+           delete(this.tab);
+        end
     end
     
-    methods (Access=private)
-        
-        % Redraw the data plots
-        function redraw(this,control)
-            %disp('bdSolverPanel.redraw()')
-            
-            % compute the time steps
-            this.dt = diff(control.sol.x);
+    methods %(Access=private)
+
+        % Listener for REDRAW events
+        function Redraw(this,evnt)
+            %disp('bdSolverPanel.Redraw()');
+            %disp(evnt)      
+            if evnt.tstep
+                this.InitialStep.Value = num2str(this.sysobj.tstep);
+            end
+            if evnt.sol
+                this.Render();
+            end                        
+        end
+                        
+        function Render(this)
+            %disp('bdSolverPanel.Render()');
+
+            % compute the time increments
+            dt = diff(this.sysobj.sol.x);
             
             % compute dy
-            this.dy = diff(control.sol.y,1,2);
+            dy = diff(this.sysobj.sol.y,1,2);
+
+            % time points
+            t = this.sysobj.sol.x;
             
-            % render the norm of dy versus time
-            nrm = sqrt( sum(this.dy.^2,1) );
-            set(this.plt1, 'XData',control.sol.x, 'YData',nrm([1:end,end]));
+            % plot the norm of dy (upper axes)
+            nrm = sqrt( sum(dy.^2,1) );
+            [this.line1.XData,this.line1.YData] = stairs(t,nrm([1:end,end]));
+
+            % plot the time steps (lower axes)
+            [this.line2.XData,this.line2.YData] = stairs(t,dt([1:end,end]));
             
-            % render the step size versus time
-            set(this.plt2, 'XData',control.sol.x, 'YData',this.dt([1:end,end]));
+            % adjust the horizontal plot limits
+            this.axes1.XLim = this.sysobj.tspan + [-1e-9 1e-9];   
+            this.axes2.XLim = this.sysobj.tspan + [-1e-9 1e-9];   
             
-            % Enable/Disable the edit boxes for special cases
-            switch control.solvertype
+            % calibrate the vertical plot limits (if necessary)
+            switch this.axes1.YLimMode
+                case 'manual'
+                    % do nothing
+                case 'auto'
+                    % calibrate the axes
+                    this.callbackCalibrate();
+            end
+        end        
+              
+        function callbackEditField(this,src,fieldname)
+            % get the existing value of the solver option
+            switch this.sysobj.solvertype
                 case 'odesolver'
-                    switch func2str(control.solver)
-                        case 'odeEul'
-                            this.AbsTol.Enable = 'off';
-                            this.RelTol.Enable = 'off';
-                            this.InitialStep.Enable = 'on';
-                            this.MaxStep.Enable = 'off';
-                        otherwise
-                            this.AbsTol.Enable = 'on';
-                            this.RelTol.Enable = 'on';
-                            this.InitialStep.Enable = 'on';
-                            this.MaxStep.Enable = 'on';
-                    end
+                    oldval = odeget(this.sysobj.odeoption,fieldname);
                 case 'ddesolver'
-                    this.AbsTol.Enable = 'on';
-                    this.RelTol.Enable = 'on';
-                    this.InitialStep.Enable = 'on';
-                    his.MaxStep.Enable = 'on';
+                    oldval = ddeget(this.sysobj.ddeoption,fieldname);
                 case 'sdesolver'
-                    this.AbsTol.Enable = 'off';
-                    this.RelTol.Enable = 'off';
-                    this.InitialStep.Enable = 'on';
-                    this.MaxStep.Enable = 'off';
+                    oldval = odeget(this.sysobj.sdeoption,fieldname);
+            end
+            
+            % convert the edit Field string into an odeoption value
+            if isempty(src.Value)
+                value = [];
+            else    
+                value = str2double(src.Value);
+                if isnan(value)
+                    % invalid number
+                    dlg = errordlg(['''', src.Value, ''' is not a valid number'],'Invalid Number','modal');
+                    % restore the old value
+                    src.Value = sprintf('%s',oldval);
+                    % wait for dialog box to close
+                    uiwait(dlg);
+                    return
+                end
             end
 
-        end
-          
-        % Callback for panel resizing.
-        function SizeChanged(this)
-            %disp('bdSolverPanel.SizeChanged()')
-            
-            % get new parent geometry
-            tabw = this.tab.Position(3);
-            tabh = this.tab.Position(4);
+            % update the solver options
+            switch this.sysobj.solvertype
+                case 'odesolver'
+                    this.sysobj.odeoption.(fieldname) = value;
+                case 'ddesolver'
+                    this.sysobj.ddeoption.(fieldname) = value;
+                case 'sdesolver'
+                    this.sysobj.sdeoption.(fieldname) = value;
+                    this.sysobj.sdeoption.randn = [];
+            end
 
-            % compute axes geometry
-            axesh = (tabh-160)/2;       axesh = max(axesh,0);
-            axesw = tabw-120;           axesw = max(axesw,0);
-
-            % resize axes
-            this.ax1.Position(2) = 140 + axesh;
-            this.ax1.Position(3) = axesw;
-            this.ax1.Position(4) = axesh;
-            this.ax2.Position(3) = axesw;
-            this.ax2.Position(4) = axesh;
+            % tell the solver to recompute
+            this.sysobj.NotifyRedraw(this.listener1);
+        end           
+                
+        % CALIBRATE menu callback
+        function callbackCalibrate(this)
+            ymax1 = max(this.line1.YData);  
+            ymax2 = max(this.line2.YData);
+            if isnan(ymax1)
+                ymax1=1;
+            end
+            if isnan(ymax2)
+                ymax2=1;
+            end;
+            this.axes1.YLim = [0 1.2*ymax1];
+            this.axes2.YLim = [0 1.2*ymax2];
         end
         
+        % DOCK menu callback
+        function callbackDock(this,menuitem,tabgrp)
+            %disp('callbackDock');
+            switch menuitem.Label
+                case 'Undock'
+                    newfig = bdPanelBase.Undock(this.tab,this.menu);
+                    newfig.DeleteFcn = @(src,~) this.delete();
+                    menuitem.Label='Dock';
+                    menuitem.Tooltip='Dock the display panel';
+                case 'Dock'
+                    bdPanelBase.Dock(this.tab,this.menu,tabgrp);
+                    menuitem.Label='Undock';
+                    menuitem.Tooltip='Undock the display panel';
+            end
+        end
+        
+        % CLOSE menu callback
+        function callbackClose(this,guifig)
+            % find the parents of the panel tab 
+            tabgrp = ancestor(this.tab,'uitabgroup');
+            fig = ancestor(this.tab,'figure');
+                       
+            % remember sysobj
+            sysobj = this.sysobj;
+
+            % delete the panel
+            delete(this);
+            
+            % reveal the menu of the newly selected panel 
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % if the parent figure is not the same as the gui figure then ...
+            if fig ~= guifig
+                % The panel is undocked from the gui. Its figure should be closed too. 
+                delete(fig);
+            end
+            
+            % Push the new settings onto the UNDO stack
+            notify(sysobj,'push');            
+        end
+        
+
     end
-    
     
     methods (Static)
         
-        % Check the sys.panels struct
-        function syspanel = syscheck(sys)
-            % Default panel settings
-            syspanel.title = bdSolverPanel.title;
-            syspanel.grid = false;
+        function optout = optcheck(opt)
+            % check the format of incoming options and apply defaults to missing values
+            optout.title       = bdPanelBase.GetOption(opt, 'title', 'Solver');
             
-            % Nothing more to do if sys.panels.bdSolverPanel is undefined
-            if ~isfield(sys,'panels') || ~isfield(sys.panels,'bdSolverPanel')
-                return;
+            % warn of unrecognised field in the incoming options
+            infields  = fieldnames(opt);                % the field names we were given
+            outfields = fieldnames(optout);             % the field names we expected
+            newfields = setdiff(infields,outfields);    % unrecognised field names
+            for idx=1:numel(newfields)
+                warning('Ignoring unknown panel option ''bdSolverPanel.%s''',newfields{idx});
             end
-            
-            % sys.panels.bdSolverPanel.title
-            if isfield(sys.panels.bdSolverPanel,'title')
-                syspanel.title = sys.panels.bdSolverPanel.title;
-            end
-            
-            % sys.panels.bdSolverPanel.grid
-            if isfield(sys.panels.bdSolverPanel,'grid')
-                syspanel.grid = sys.panels.bdSolverPanel.grid;
-            end
-        end
+        end        
         
-    end    
-
+    end
 end
-
-% Callback for user input to the edit boxes
-function editboxCallback(control,uibox,fieldname)
-    %disp('bdSolverPanel.odePanel.editboxCallback()')
-    % convert the edit box string into an odeoption value
-    if isempty(uibox.String)
-        val = [];               % use an empty odeoption value for an empty edit box
-    else    
-        % get the incoming value from a non-empty edit box
-        val = str2double(uibox.String);
-        if isnan(val)
-            % invalid number
-            dlg = errordlg(['''', uibox.String, ''' is not a valid number'],'Invalid Number','modal');
-            % restore previous edit box value/string
-            val = uibox.Value;    
-            uibox.String = num2str(val,'%0.4g');
-            % wait for dialog box to close
-            uiwait(dlg);
-        end
-    end
-
-    % remember the new value
-    uibox.Value = val;
-
-    % update the solver options
-    switch control.solvertype
-        case 'odesolver'
-            control.sys.odeoption.(fieldname) = val;
-        case 'ddesolver'
-            control.sys.ddeoption.(fieldname) = val;
-        case 'sdesolver'
-            control.sys.sdeoption.(fieldname) = val;
-            control.sys.sdeoption.randn = [];
-    end
-
-    % recompute
-    notify(control,'recompute');
-end           
 

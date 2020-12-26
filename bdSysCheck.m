@@ -1,54 +1,71 @@
-function syscheck(sys)
-    %syscheck - Verifies the format of a sys struct.
-    %Use syscheck to check the validity of a user-defined sys struct.
-    %
-    %EXAMPLE
-    %  >> sys = LinearODE();
-    %  >> syscheck(sys);
-    %
-    %  sys struct format is OK
-    %  Calling Y = sys.odefun(t,Y0,a,b,c,d) where
-    %  t is size [1  1]
-    %  Y0 is size [2  1]
-    %  a is size [1  1]
-    %  b is size [1  1]
-    %  c is size [1  1]
-    %  d is size [1  1]
-    %  returns Y as size [2 1]
-    %  sys.odefun format is OK
-    %  ALL TESTS PASSED OK
-    %
-    %AUTHORS
-    %  Stewart Heitmann (2016a,2017a,2018a)
-    
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
-    % All rights reserved.
-    %
-    % Redistribution and use in source and binary forms, with or without
-    % modification, are permitted provided that the following conditions
-    % are met:
-    %
-    % 1. Redistributions of source code must retain the above copyright
-    %    notice, this list of conditions and the following disclaimer.
-    % 
-    % 2. Redistributions in binary form must reproduce the above copyright
-    %    notice, this list of conditions and the following disclaimer in
-    %    the documentation and/or other materials provided with the
-    %    distribution.
-    %
-    % THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-    % "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-    % LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-    % FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-    % COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-    % INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-    % BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    % LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-    % CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-    % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-    % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    % POSSIBILITY OF SUCH DAMAGE.
+%bdSysCheck - Verifies the format of a Brain Dynamics Toolbox system struct.
+%Use bdSysCheck to validate the system structure of a new model.
+%
+%SYNTAX
+%  bdSysCheck(sys) verifies the sys structure and reports errors.
+%  bdSysCheck(sys,'run','on') also runs the model on all solvers.
+%
+%EXAMPLE
+%  sys = LinearODE;
+%  bdSysCheck(sys,'run','on')
+%
+%sys struct format is OK
+%Calling Y = sys.odefun(t,Y0,a,b,c,d) where
+%  t is size [1  1]
+%  Y0 is size [2  1]
+%  a is size [1  1]
+%  b is size [1  1]
+%  c is size [1  1]
+%  d is size [1  1]
+%  Returns Y as size [2 1]
+%  sys.odefun format is OK
+%Calling sol = ode45(sys.odefun,tspan,Y0,odeoption,a,b,c,d) returns
+%  sol.x is size [1 134]
+%  sol.y is size [2 134]
+%Calling sol = ode23(sys.odefun,tspan,Y0,odeoption,a,b,c,d) returns
+%  sol.x is size [1 672]
+%  sol.y is size [2 672]
+%Calling sol = odeEul(sys.odefun,tspan,Y0,odeoption,a,b,c,d) returns
+%  sol.x is size [1 2001]
+%  sol.y is size [2 2001]
+%ALL TESTS PASSED OK
+%
+%AUTHORS
+%  Stewart Heitmann (2016a,2017a,2018a,2020a)
 
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+% All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions
+% are met:
+%
+% 1. Redistributions of source code must retain the above copyright
+%    notice, this list of conditions and the following disclaimer.
+% 
+% 2. Redistributions in binary form must reproduce the above copyright
+%    notice, this list of conditions and the following disclaimer in
+%    the documentation and/or other materials provided with the
+%    distribution.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+% "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+% LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+% FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+% COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+% INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+% BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+% CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+% LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+% ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+% POSSIBILITY OF SUCH DAMAGE.
+function bdSysCheck(sys,NameValue)
+    arguments
+        sys (1,1)         struct
+        NameValue.run     char = 'off'
+    end
+    
     % check for deprecated fields that bd.syscheck ordinarily fixes
     % without complaint but we want to want the user to know about them here.
     
@@ -60,11 +77,9 @@ function syscheck(sys)
         throw(MException('bdtoolkit:syscheck:obsolete','The system structure contains a ''self'' field. This field was deprecated after version 2017c. Remove the ''sys.self'' field and try again.'));               
     end
 
-    
-
     % check that sys is valid and fill missing fields with defaults   
     try
-        sys = bd.syscheck(sys);
+        sys = bdSystem.syscheck(sys);
     catch ME
         throwAsCaller(MException('bdtoolkit:syscheck',ME.message));
     end
@@ -96,25 +111,6 @@ function syscheck(sys)
         disp('  sys.odefun format is OK');
     end
 
-    % test sys.odefun with each ODE solver
-    if isfield(sys,'odefun')
-        if isempty(sys.pardef)
-            parnames=',';
-        else            
-            parnames = sprintf('%s,',sys.pardef.name);
-        end
-        for solveridx = 1:numel(sys.odesolver)
-            solverfun = sys.odesolver{solveridx};
-            solverstr = func2str(solverfun);
-            disp(['Calling sol = ',solverstr,'(sys.odefun,tspan,Y0,odeoption,',parnames(1:end-1),') returns']);
-            sol = bdSolve(sys,sys.tspan,solverfun);
-            solx = num2str(size(sol.x),'[%d %d]');
-            soly = num2str(size(sol.y),'[%d %d]');
-            disp(['  sol.x is size ', solx]);
-            disp(['  sol.y is size ', soly]);
-        end
-    end
-    
     % test sys.ddefun
     if isfield(sys,'ddefun')
         if isempty(sys.pardef)
@@ -148,27 +144,7 @@ function syscheck(sys)
         end
         disp('sys.ddefun format is OK');
     end
-
-    % test sys.ddefun and sys.auxfun with each DDE solver
-    if isfield(sys,'ddefun')
-        if isempty(sys.pardef)
-            parnames=',';
-        else            
-            parnames = sprintf('%s,',sys.pardef.name);
-        end
-        for solveridx = 1:numel(sys.ddesolver)
-            solverfun = sys.ddesolver{solveridx};
-            solverstr = func2str(solverfun);
-            disp(['Calling sol = ',solverstr,'(sys.ddefun,lags,Y0,tspan,ddeoption,',parnames(1:end-1),') returns']);
-            sol = bdSolve(sys,sys.tspan,solverfun);
-            solx = num2str(size(sol.x),'[%d %d]');
-            soly = num2str(size(sol.y),'[%d %d]');
-            disp(['  sol.x is size ', solx]);
-            disp(['  sol.y is size ', soly]);
-        end
-    end
-    
-    
+        
     % test sys.sdeF
     if isfield(sys,'sdeF')
         if isempty(sys.pardef)
@@ -224,26 +200,72 @@ function syscheck(sys)
         disp('  sys.sdeG format is OK');
     end
        
-    % test sys.sdeF abd sys.sdeG with each SDE solver
-    if isfield(sys,'sdeF') && isfield(sys,'sdeG')
-        if isempty(sys.pardef)
-            parnames=',';
-        else            
-            parnames = sprintf('%s,',sys.pardef.name);
-        end
-        for solveridx = 1:numel(sys.sdesolver)
-            solverfun = sys.sdesolver{solveridx};
-            solverstr = func2str(solverfun);
-            disp(['Calling sol = ',solverstr,'(sys.sdeF,sys.sdeG,tspan,Y0,ddeoption,',parnames(1:end-1),') returns']);
-            sol = bdSolve(sys,sys.tspan,solverfun);
-            solx = num2str(size(sol.x),'[%d %d]');
-            soly = num2str(size(sol.y),'[%d %d]');
-            solW = num2str(size(sol.dW),'[%d %d]');
-            disp(['  sol.x is size ', solx]);
-            disp(['  sol.y is size ', soly]);
-            disp(['  sol.dW is size ', solW]);
-        end
+    % Input parameter 'run'='on|off'
+    switch NameValue.run
+        case 'off'
+            % do nothing
+        
+        otherwise            
+            % test sys.odefun with each ODE solver
+            if isfield(sys,'odefun')
+                if isempty(sys.pardef)
+                    parnames=',';
+                else            
+                    parnames = sprintf('%s,',sys.pardef.name);
+                end
+                for solveridx = 1:numel(sys.odesolver)
+                    solverfun = sys.odesolver{solveridx};
+                    solverstr = func2str(solverfun);
+                    disp(['Calling sol = ',solverstr,'(sys.odefun,tspan,Y0,odeoption,',parnames(1:end-1),') returns']);
+                    sol = bdSolve(sys,sys.tspan,solverfun);
+                    solx = num2str(size(sol.x),'[%d %d]');
+                    soly = num2str(size(sol.y),'[%d %d]');
+                    disp(['  sol.x is size ', solx]);
+                    disp(['  sol.y is size ', soly]);
+                end
+            end
+    
+            % test sys.ddefun and sys.auxfun with each DDE solver
+            if isfield(sys,'ddefun')
+                if isempty(sys.pardef)
+                    parnames=',';
+                else            
+                    parnames = sprintf('%s,',sys.pardef.name);
+                end
+                for solveridx = 1:numel(sys.ddesolver)
+                    solverfun = sys.ddesolver{solveridx};
+                    solverstr = func2str(solverfun);
+                    disp(['Calling sol = ',solverstr,'(sys.ddefun,lags,Y0,tspan,ddeoption,',parnames(1:end-1),') returns']);
+                    sol = bdSolve(sys,sys.tspan,solverfun);
+                    solx = num2str(size(sol.x),'[%d %d]');
+                    soly = num2str(size(sol.y),'[%d %d]');
+                    disp(['  sol.x is size ', solx]);
+                    disp(['  sol.y is size ', soly]);
+                end
+            end
+            
+            % test sys.sdeF abd sys.sdeG with each SDE solver
+            if isfield(sys,'sdeF') && isfield(sys,'sdeG')
+                if isempty(sys.pardef)
+                    parnames=',';
+                else            
+                    parnames = sprintf('%s,',sys.pardef.name);
+                end
+                for solveridx = 1:numel(sys.sdesolver)
+                    solverfun = sys.sdesolver{solveridx};
+                    solverstr = func2str(solverfun);
+                    disp(['Calling sol = ',solverstr,'(sys.sdeF,sys.sdeG,tspan,Y0,ddeoption,',parnames(1:end-1),') returns']);
+                    sol = bdSolve(sys,sys.tspan,solverfun);
+                    solx = num2str(size(sol.x),'[%d %d]');
+                    soly = num2str(size(sol.y),'[%d %d]');
+                    solW = num2str(size(sol.dW),'[%d %d]');
+                    disp(['  sol.x is size ', solx]);
+                    disp(['  sol.y is size ', soly]);
+                    disp(['  sol.dW is size ', solW]);
+                end
+            end
     end
+    
   
     disp('ALL TESTS PASSED OK');
 end

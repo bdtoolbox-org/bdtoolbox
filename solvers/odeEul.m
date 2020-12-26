@@ -16,7 +16,7 @@
 %   Solver-specific options are passed via the OPTIONS struct.
 %
 %   OPTIONS =
-%       InitialStep: [dt]          integrator time step (optional)
+%       InitialStep: [dt]          integrator time step (default=1)
 %         OutputFcn: @(t,Y,flag)   handle to user-defined output function
 %
 %   The solution is returned in the SOL struct as per ode45, ode23, etc.
@@ -42,9 +42,9 @@
 %  plot(T,Y);                       % plot the results
 %
 %AUTHORS
-%  Stewart Heitmann (2016a,2017a,2018a)
+%  Stewart Heitmann (2016a,2017a,2018a,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -81,7 +81,13 @@ function sol = odeEul(ode,tspan,y0,options,varargin)
     end
 
     % span the time domain in fixed steps
-    sol.x = tspan(1):dt:tspan(end);
+    if tspan(1)<=tspan(end)
+        sol.x = tspan(1):dt:tspan(end);     % forward simulation
+        dt = abs(dt);                       % force dt to be positive
+    else
+        sol.x = tspan(1):-dt:tspan(end);    % backward simulation
+        dt = -abs(dt);                      % force dt to be negative
+    end
     tcount = numel(sol.x);
 
     % allocate space for the results
@@ -101,21 +107,11 @@ function sol = odeEul(ode,tspan,y0,options,varargin)
         OutputFcn(tspan,sol.y(:,1),'init');
     end
     
-    % We call OutputFcn whenever the integration time exceeds a time
-    % point listed in tspan. We assume that entries in tspan are 
-    % monotonic so that we can simply iterate from the first entry of
-    % tspan to the last.
-    tspanidx = 1;           % Current index of tspan
-        
     % Fixed-step Euler method
     sol.y(:,1) = y0;
     for indx=1:tcount-1 
-        % Execute the OutputFcn whenever the time step reaches the next
-        % time point listed in tspan. Ordinarily, there would be multiple
-        % Euler steps between calls to OutputFcn. Nonetheless, a single
-        % Euler step might (perversely) span multiple time points in tspan.
-        % Hence the while loop.
-        while ~isempty(OutputFcn) && sol.x(indx)>=tspan(tspanidx)
+        % Execute the OutputFcn (if it exists)
+        if ~isempty(OutputFcn)
             % call the output function
             status = OutputFcn(sol.x(indx),sol.y(:,indx),'');
             if status==1
@@ -123,10 +119,10 @@ function sol = odeEul(ode,tspan,y0,options,varargin)
                 sol.stats.nsteps = indx;
                 sol.stats.nfailed = 0;
                 sol.stats.nfevals = tcount;
+                % cleanup the OutputFcn
+                OutputFcn([],[],'done');
                 return
-            end
-            % Advance to the next entry in tspan
-            tspanidx = tspanidx+1;
+            end          
         end
         
         % Euler step
@@ -140,6 +136,8 @@ function sol = odeEul(ode,tspan,y0,options,varargin)
             sol.stats.nsteps = indx;
             sol.stats.nfailed = 1;
             sol.stats.nfevals = tcount;
+            % cleanup the OutputFcn
+            OutputFcn([],[],'done');
             return
         end
     end
@@ -154,6 +152,8 @@ function sol = odeEul(ode,tspan,y0,options,varargin)
         sol.stats.nsteps = tcount;
         sol.stats.nfailed = 1;
         sol.stats.nfevals = tcount;
+        % cleanup the OutputFcn
+        OutputFcn([],[],'done');
         return
     end
     
@@ -166,6 +166,8 @@ function sol = odeEul(ode,tspan,y0,options,varargin)
             sol.stats.nsteps = tcount;
             sol.stats.nfailed = 0;
             sol.stats.nfevals = tcount;
+            % cleanup the OutputFcn
+            OutputFcn([],[],'done');
             return
         end        
         % cleanup the OutputFcn

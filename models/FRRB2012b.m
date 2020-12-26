@@ -16,9 +16,9 @@
 %   gui = bdGUI(sys);               % open the Brain Dynamics GUI
 %
 % Authors
-%   Stewart Heitmann (2017b,2017c)
+%   Stewart Heitmann (2017b,2017c,2020a)
  
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -62,10 +62,11 @@ function sys = FRRB2012b(Kij)
                    struct('name','rho',    'value',0.5) ];
 
     % Our SDE variables           
-    sys.vardef = struct('name','r', 'value',rand(n,1));
+    sys.vardef = struct('name','r', 'value',rand(n,1), 'lim',[-4 4]);
     
     % Default time span
     sys.tspan = [0 100];
+    sys.tstep = 0.005;
     
     % Specify SDE solvers and default options
     sys.sdesolver = {@sdeEM};           % Pertinent SDE solvers
@@ -75,25 +76,25 @@ function sys = FRRB2012b(Kij)
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{FRRB2012b}';
+        '$\textbf{FRRB2012b}$';
         '';
         'A bi-directional network of nodes with canonical Hopf dynamics and multiplicative noise following';
         'Freyer F, Roberts JA, Ritter P, Breakspear M (2012) A Canonical Model of Multistability and Scale-';
-        'Invariance in Biological Systems. \textit{PLoS Comput Biol} 8(8): e1002634. doi:10.1371/journal.pcbi.1002634.';
+        'Invariance in Biological Systems. PLoS Comput Biol 8(8): e1002634. doi:10.1371/journal.pcbi.1002634.';
         '';
         'The dynamics of each node is governed by';
-        '\qquad $dr_i = \big( -r_i^5 + \lambda r_i^3 + \beta r_i + \frac{k}{N}\, \sum_j  K_{ij} r_j\big)\,dt + \eta\, \big( (1-\rho)\,\xi_i(t) + \rho\,r_i\,\zeta_i(t) \big) $';
+        '{ }{ }{ } $dr_i = \big( -r_i^5 + \lambda r_i^3 + \beta r_i + \frac{k}{N}\, \sum_j  K_{ij} r_j\big)\,dt + \eta\, \big( (1-\rho)\,\xi_i(t) + \rho\,r_i\,\zeta_i(t) \big) $';
         'where';
-        '\qquad $r_i(t)$ is the instantaneous amplitude of the limit cycle at the $i^{th}$ network node,';
-        '\qquad $\lambda$ controls the shape of the $r$ nullcline,';
-        '\qquad $\beta$ is the bifucation parameter,';
-        '\qquad $K_{ij}$ is the network connectivity matrix ($n$ x $n$) ,';
-        '\qquad $k$ scales the network connectivity,';
-        num2str(n,'\\qquad $N$=%d is the number of network nodes,');        
-        '\qquad $\eta$ scales the overall influence of the noise,';
-        '\qquad $\rho$ controls the balance of multiplicative versus additive noise,';
-        '\qquad $\xi_i(t)$ and $\zeta_i(t)$ are independent Weiner noise processes,';
-        '\qquad $i = 1 \dots N$.'
+        '{ }{ }{ } $r_i(t)~$ is the instantaneous amplitude of the limit cycle at the $i^{th}$ network node,';
+        '{ }{ }{ } $\lambda~$ controls the shape of the $r$ nullcline,';
+        '{ }{ }{ } $\beta~$ is the bifucation parameter,';
+        '{ }{ }{ } $K_{ij}~$ is the network connectivity matrix ($n\;$ x $n$) ,';
+        '{ }{ }{ } $k~$ scales the network connectivity,';
+        num2str(n,'{ }{ }{ } $N$=%d~ is the number of network nodes,');        
+        '{ }{ }{ } $\eta~$ scales the overall influence of the noise,';
+        '{ }{ }{ } $\rho~$ controls the balance of multiplicative versus additive noise,';
+        '{ }{ }{ } $\xi_i(t)~$ and $\zeta_i(t)~$ are independent Weiner noise processes,';
+        '{ }{ }{ } $i = 1 \dots N$.'
         };
     
     % Include the Time Portrait panel in the GUI

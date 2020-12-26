@@ -29,7 +29,7 @@
 %
 %   OPTIONS =
 %      NoiseSources: [m]           number of noise processes in dW
-%       InitialStep: [dt]          integrator time step (optional)
+%       InitialStep: [dt]          integrator time step (default=1)
 %             randn: [mxT]         pre-generated standard normal random values
 %         OutputFcn: @(t,Y,flag)   handle to user-defined output function
 %
@@ -46,16 +46,13 @@
 %  The Wiener increments are computed as dW=sqrt(dt)*randn(m,T) where m is
 %  the number of driving Wiener processes (NoiseSources) and T is the number
 %  of time points in the solution. The time points [T0:dt:TFINAL]
-%  are equi-spaced with time step dt defined by the INITIALSTEP option. If
-%  INITIALSTEP is undefined then the solver defaults to 101 time steps
-%  by setting dt=(TFINAL-T0)/100. 
+%  are equi-spaced with time step dt defined by the INITIALSTEP option.
 %
 %  Alternatvely, the user may supply pre-computed random values via the
 %  RANDN field of the OPTIONS struct. Those values must be drawn from a normal
 %  distribution with mean 0 and std 1 using the Matlab RANDN(m,T) function.
-%  The INITIALSTEP option is ignored becasue the step size dt=(TFINAL-T0)/(T-1)
-%  is determined by TSPAN=[T0 TFINAL] and the number of time points (T)
-%  in RANDN.
+%  The INITIALSTEP option is ignored and the step size is defined as 
+%  dt=(TFINAL-T0)/(T-1) where T and the number of time points in RANDN.
 %
 %EXAMPLE
 %  % anonymous versions of the F() and G() functions shown above.
@@ -75,10 +72,10 @@
 %  plot(T,Y);                       % plot the results
 %
 %AUTHORS
-%  Stewart Heitmann (2016a,2017a,2018a)
 %  Matthew Aburn (2016a)
+%  Stewart Heitmann (2016a,2017a,2018a,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -174,22 +171,12 @@ function sol = sdeSH(odefun,sdefun,tspan,y0,options,varargin)
         % initialize the OutputFcn
         OutputFcn(tspan,sol.y(:,1),'init');
     end
-    
-    % We call OutputFcn whenever the integration time exceeds a time
-    % point listed in tspan. We assume that entries in tspan are 
-    % monotonic so that we can simply iterate from the first entry of
-    % tspan to the last.
-    tspanidx = 1;           % Current index of tspan
-        
+            
     % Fixed-step Stratonovich-Heun method
     sol.y(:,1) = y0;
     for indx=1:tcount-1        
-        % Execute the OutputFcn whenever the time step reaches the next
-        % time point listed in tspan. Ordinarily, there would be multiple
-        % Euler steps between calls to OutputFcn. Nonetheless, a single
-        % Euler step might (perversely) span multiple time points in tspan.
-        % Hence the while loop.
-        while ~isempty(OutputFcn) && sol.x(indx)>=tspan(tspanidx)
+        % Execute the OutputFcn (if it exists)
+        if ~isempty(OutputFcn)
             % call the output function
             status = OutputFcn(sol.x(indx),sol.y(:,indx),'');
             if status==1
@@ -197,10 +184,10 @@ function sol = sdeSH(odefun,sdefun,tspan,y0,options,varargin)
                 sol.stats.nsteps = indx;
                 sol.stats.nfailed = 0;
                 sol.stats.nfevals = tcount;
+                % cleanup the OutputFcn
+                OutputFcn([],[],'done');
                 return
             end
-            % Advance to the next entry in tspan
-            tspanidx = tspanidx+1;
         end
 
         % Stratonovich-Heun step
@@ -223,6 +210,8 @@ function sol = sdeSH(odefun,sdefun,tspan,y0,options,varargin)
             sol.stats.nsteps = indx;
             sol.stats.nfailed = 1;
             sol.stats.nfevals = tcount;
+            % cleanup the OutputFcn
+            OutputFcn([],[],'done');
             return
         end
 
@@ -247,6 +236,8 @@ function sol = sdeSH(odefun,sdefun,tspan,y0,options,varargin)
         sol.stats.nsteps = tcount;
         sol.stats.nfailed = 1;
         sol.stats.nfevals = tcount;
+        % cleanup the OutputFcn
+        OutputFcn([],[],'done');
         return
     end
 
@@ -259,6 +250,8 @@ function sol = sdeSH(odefun,sdefun,tspan,y0,options,varargin)
             sol.stats.nsteps = tcount;
             sol.stats.nfailed = 0;
             sol.stats.nfevals = tcount;
+            % cleanup the OutputFcn
+            OutputFcn([],[],'done');
             return
         end        
         % cleanup the OutputFcn

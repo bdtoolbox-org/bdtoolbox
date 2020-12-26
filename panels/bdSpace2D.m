@@ -1,11 +1,11 @@
-classdef bdSpace2D < bdPanel
+classdef bdSpace2D < bdPanelBase
     %bdSpace2D Brain Dynamics GUI panel for 2D spatial plots.
     %  The Space2D panel plots a snapshot of a matrix-based (2D) state variable.
     %
     %AUTHORS
-    %  Stewart Heitmann (2018b)
+    %  Stewart Heitmann (2018b,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -32,300 +32,400 @@ classdef bdSpace2D < bdPanel
     % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
-
-    properties (Constant)
-        title = 'Space 2D';
-    end    
-
-    properties
-        t               % Time steps of the solution (1 x t)
-        y               % Matrix of space-time trajectories (n x t)
+    
+    properties (Dependent)
+        options
+    end
+    
+    properties (Access=public)
+        axes                matlab.ui.control.UIAxes
+        img                 matlab.graphics.primitive.Image
+        cdata               double
     end
     
     properties (Access=private)
-        ax              % handle to the plot axes
-        img             % handle to the image object
-        modulomenu      % handle to MODULO menu item        
-        submenu         % handle to subpanel selector menu item
-        listener        % handle to our listener object
+        sysobj              bdSystem
+        selector            bdSelector
+        tab                 matlab.ui.container.Tab           
+        label               matlab.ui.control.Label
+        dropdown            matlab.ui.control.DropDown
+        menu                matlab.ui.container.Menu
+        menuModulo          matlab.ui.container.Menu
+        menuYDir            matlab.ui.container.Menu
+        menuDock            matlab.ui.container.Menu
+        listener1           event.listener
+        listener2           event.listener
     end
     
     methods
+        function this = bdSpace2D(tabgrp,sysobj,opt)
+            %disp('bdSpace2D');
+            
+            % remember the parents
+            this.sysobj = sysobj;
+                        
+            % get the parent figure of the TabGroup
+            fig = ancestor(tabgrp,'figure');
+            
+            % Create the panel menu and assign it a unique Tag to identify it.
+            this.menu = uimenu('Parent',fig, ...
+                'Label','Space 2D', ...
+                'Tag', bdPanelBase.FocusMenuID(), ...     % unique Tag used by the FocusMenu function
+                'Visible','off');
+            
+            % construct the CALIBRATE menu item
+            uimenu(this.menu, ...
+                'Label', 'Calibrate', ...
+                'Tooltip', 'Calibrate the colour limits to fit the data', ...
+                'Callback', @(~,~) this.callbackCalibrate() );
+            
+            % construct the MODULO menu item
+            this.menuModulo = uimenu(this.menu, ...
+                'Label', 'Modulo', ...
+                'Checked', 'off', ...
+                'Tag', 'modulo', ...
+                'Tooltip', 'Wrap the colour scale at its limits', ...            
+                'Callback', @(src,~) this.callbackModulo(src) );
+                                               
+            % construct the YDIR menu item
+            this.menuYDir = uimenu(this.menu, ...
+                'Label', 'YDir Reverse', ...
+                'Checked', 'on', ...
+                'Tag', 'YDir', ...
+                'Tooltip', 'Reverse the direction of the y-axis', ...            
+                'Callback', @(src,~) this.callbackYDir(src) );
+
+            % construct the DOCK menu item
+            this.menuDock = uimenu(this.menu, ...
+                'Label', 'Undock', ...
+                'Tooltip', 'Undock the display panel', ...            
+                'Callback', @(src,~) this.callbackDock(src,tabgrp) );
+
+            % construct the CLOSE menu item
+            uimenu(this.menu, ...
+                'Separator','on', ...
+                'Label','Close', ...
+                'Tooltip', 'Close the display panel', ...            
+                'Callback', @(~,~) this.callbackClose(fig) );
+
+            % Create Tab and give it the focus. The tab should have the same
+            % Tag as the panel menu so that each can be found by the other.
+            this.tab = uitab(tabgrp, 'Title','Space 2D', 'Tag',this.menu.Tag);
+            tabgrp.SelectedTab = this.tab;
+            
+            % Create GridLayout within the Tab
+            GridLayout = uigridlayout(this.tab);
+            GridLayout.ColumnWidth = {'1x','2x','1x'};
+            GridLayout.RowHeight = {21,'1x'};
+            GridLayout.RowSpacing = 10;
+            GridLayout.Visible = 'off';
+
+            % Create the selector object
+            this.selector = bdSelector(sysobj,'vardef');
+            
+            % Create DropDown for the selector
+            combo = this.selector.DropDown(GridLayout);
+            combo.Layout.Row = 1;
+            combo.Layout.Column = 1;
+
+            % Create time label
+            this.label = uilabel(GridLayout);
+            this.label.Layout.Row = 1;
+            this.label.Layout.Column = 2;
+            this.label.Text = 't=?';
+            this.label.VerticalAlignment = 'bottom';
+            this.label.HorizontalAlignment = 'center';
+            this.label.FontWeight = 'bold';            
+            this.label.FontSize = 14;
+            
+            % Create DropDown for the colormap
+            this.dropdown = uidropdown(GridLayout);
+            this.dropdown.Layout.Row = 1;
+            this.dropdown.Layout.Column = 3;
+            this.dropdown.Items = {'parula','jet','hsv','hot','cool','spring','summer','autumn','winter','gray','bone','copper','pink','lines','prism','flag','circular'};
+            this.dropdown.ValueChangedFcn = @(~,~) this.ColorMapChanged();
+            this.dropdown.Tooltip = 'Colour Map';
+            
+            % Create axes
+            this.axes = uiaxes(GridLayout);
+            this.axes.Layout.Row = 2;
+            this.axes.Layout.Column = [1 3];
+            this.axes.NextPlot = 'add';
+            this.axes.XGrid = 'off';
+            this.axes.YGrid = 'off';
+            this.axes.Box = 'on';
+            this.axes.CLim = this.selector.lim();
+            this.axes.XLabel.String = 'space';
+            this.axes.YLabel.String = 'space';
+            this.axes.FontSize = 11;
+            colorbar(this.axes);
+            colormap(this.axes,this.dropdown.Value);
+
+            % Customise the axes toolbars
+            axtoolbar(this.axes,{'export','datacursor'});
+            
+            % Create the image
+            this.img = image(this.axes,[]);
+            this.img.CDataMapping = 'scaled';
+            
+            % apply the custom options (and render the image)
+            this.options = opt;
+
+            % make our panel menu visible and hide the others
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % make the grid visible
+            GridLayout.Visible = 'on';
+
+            % listen for SelectionChanged events
+            this.listener1 = listener(this.selector,'SelectionChanged',@(src,evnt) this.SelectorChanged());
+            
+            % listen for Redraw events
+            this.listener2 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(evnt));
+        end
         
-        function this = bdSpace2D(tabgroup,control)
-            % Construct a new Space-Time Portrait in the given tabgroup
+        function opt = get.options(this)
+            opt.title = this.tab.Title;
+            opt.modulo = this.menuModulo.Checked;
+            opt.yreverse = this.menuYDir.Checked;
+            opt.colormap = this.dropdown.Value;
+            opt.selector = this.selector.cellspec();
+        end
+        
+        function set.options(this,opt)   
+            % check the incoming options and apply defaults to missing values
+             opt = this.optcheck(opt);
+             
+            % update the selector
+            this.selector.SelectByCell(opt.selector);
+             
+            % update the colormap dropdown
+            this.dropdown.Value = opt.colormap;
 
-            % initialise the base class (specifically this.menu and this.tab)
-            this@bdPanel(tabgroup);
+            % update the axes colormap
+            colormap(this.axes,opt.colormap);
+
+            % update the tab title
+            this.tab.Title = opt.title;
             
-            % assign default values to missing options in sys.panels.bdSpace2D
-            control.sys.panels.bdSpace2D = bdSpace2D.syscheck(control.sys);
-
-            % configure the pull-down menu
-            this.menu.Label = control.sys.panels.bdSpace2D.title;
-            this.InitCalibrateMenu(control);
-            this.InitModuloMenu(control);            
-            this.InitColorMenu(control);
-            this.InitExportMenu(control);
-            this.InitCloseMenu(control);
-
-            % configure the panel graphics
-            this.tab.Title = control.sys.panels.bdSpace2D.title;
-            this.InitSubpanel(control);
+            % update the menu title
+            this.menu.Text = opt.title;
+                        
+            % update the YDIR menu
+            this.menuYDir.Checked = opt.yreverse;
             
-            % listen to the control panel for redraw events
-            this.listener = addlistener(control,'redraw',@(~,~) this.redraw(control));    
+            % update the MODULO menu
+            this.menuModulo.Checked = opt.modulo;
+            
+            % Redraw everything
+            this.Render();
+            drawnow;
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
         end
         
         function delete(this)
-            % Destructor
-            delete(this.listener)
+           %disp('bdSpace2D.delete()');
+           delete(this.menu);
+           delete(this.tab);
         end
-         
     end
     
     methods (Access=private)
-        
-        % Initialise the CALIBRATE menu item
-        function InitCalibrateMenu(this,control)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Calibrate Axes', ...
-                'Callback', @CalibrateMenuCallback );
+
+        % Listener for REDRAW events
+        function Redraw(this,evnt)
+            %disp('bdSpace2D.Redraw()');
+            %disp(evnt)
+       
+            % Get the current selector settings
+            [xxxdef,xxxindx] = this.selector.Item();
             
-            % Menu callback function
-            function CalibrateMenuCallback(~,~)
-                % adjust the limits to fit the current data
-                lo = min(this.y(:));
-                hi = max(this.y(:));
-                varindx = this.submenu.UserData.xxxindx;
-                control.sys.vardef(varindx).lim = bdPanel.RoundLim(lo,hi);
+            % If the selected item's limit has changed then
+            if evnt.(xxxdef)(xxxindx).lim
+                % Update the axes color limits
+                this.axes.CLim = this.selector.lim();
+            end  
 
-                % refresh the vardef control widgets
-                notify(control,'vardef');
-                
-                % redraw all panels (because the new limits apply to all panels)
-                notify(control,'redraw');
-            end
-
+            % if the solution (sol) has changed, or
+            % if time slider value (tval) has changed then ....
+            if evnt.sol || evnt.tval
+                % Render the image data
+                this.Render();
+            end              
         end
         
-        % Initiliase the MODULO menu item
-        function InitModuloMenu(this,control)
-            % get the default clipping menu setting from sys.panels
-            if control.sys.panels.bdSpace2D.modulo
-                modulocheck = 'on';
-            else
-                modulocheck = 'off';
-            end
-
-            % construct the menu item
-            this.modulomenu = uimenu(this.menu, ...
-                'Label','Modulo', ...
-                'Checked',modulocheck, ...
-                'Callback', @ModuloMenuCallback);
-            
-            % Menu callback function
-            function ModuloMenuCallback(menuitem,~)
-                % toggle the modulo menu state
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end
-        
-        % Initiliase the COLORMAP menu item
-        function InitColorMenu(this,control)
-            % construct the menu item and its children
-            colormenu = uimenu(this.menu, 'Label','Colormap');
-            uimenu(colormenu, 'Label','parula',    'Checked','on',  'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','jet',       'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','hsv',       'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','hot',       'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','cool',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','spring',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','summer',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','autumn',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','winter',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','gray',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','bone',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','copper',    'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','pink',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','lines',     'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','colorcube', 'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','prism',     'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','flag',      'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-            uimenu(colormenu, 'Label','circular',  'Checked','off', 'Callback', @ColorMenuCallback, 'Tag','ColormapMenu');
-
-            % Menu callback function
-            function ColorMenuCallback(menuitem,~)
-                % uncheck all color menu items
-                objs = findobj(colormenu,'Tag','ColormapMenu');
-                for idx=1:numel(objs)
-                    objs(idx).Checked='off';
-                end
-                
-                % check the chosen menu
-                menuitem.Checked='on';
-                
-                % apply the colormap to the axes
-                switch menuitem.Label
-                    case 'circular'
-                        % custom colormap
-                        x = linspace(-pi,pi,64);
-                        b = 0.5*sin(x-pi/2)+0.5;
-                        r = 0.5*sin(x+pi/2)+0.5;
-                        g = r;
-                        colormap(this.ax,[r',g',b']);
-                    otherwise
-                        colormap(this.ax,menuitem.Label);                
-                end
-            end
-        end       
-
-        % Initialise the EXPORT menu item
-        function InitExportMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Export Figure', ...
-               'Callback',@callback);
-           
-            function callback(~,~)
-                % Construct a new figure
-                fig = figure();    
-                
-                % Change mouse cursor to hourglass
-                set(fig,'Pointer','watch');
-                drawnow;
-                
-                % Copy the plot data to the new figure
-                axnew = copyobj(this.ax,fig);
-                axnew.OuterPosition = [0 0 1 1];
-                
-                % Add a colorbar to the new axis
-                colorbar('peer',axnew);
-
-                % Allow the user to hit everything in the new axes
-                objs = findobj(axnew,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                
-                % Change mouse cursor to arrow
-                set(fig,'Pointer','arrow');
-                drawnow;
-            end
-        end
-
-        % Initialise the CLOSE menu item
-        function InitCloseMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-                   'Label','Close', ...
-                   'Callback',@(~,~) this.close());
-        end
-        
-        % Initialise the upper panel
-        function InitSubpanel(this,control)
-            % construct the subpanel
-            [this.ax,cmenu] = bdPanel.Subpanel(this.tab,[0 0 1 1],[0 0 1 1]);
-            xlabel(this.ax,'column');
-            ylabel(this.ax,'row');
-            
-            % construct the image data object (using zero data)
-            this.img = imagesc(0,'Parent',this.ax);
-            this.img.Clipping='off';             % Clipping is not necessary
-
-            axis(this.ax,'tight','ij');
-            
-            % add the colorbar
-            colorbar('peer',this.ax);
-            
-            % construct a selector menu comprising items from sys.vardef
-            this.submenu = bdPanel.SelectorMenu(cmenu, ...
-                control.sys.vardef, ...
-                @callback, ...
-                'off', 'mb1',1);
-            
-            % Callback function for the subpanel selector menu
-            function callback(menuitem,~)
-                % check 'on' the selected menu item and check 'off' all others
-                bdPanel.SelectorCheckItem(menuitem);
-                % update our handle to the selected menu item
-                this.submenu = menuitem;
-                % redraw the panel
-                this.redraw(control);
-            end
-        end
-   
-        % Redraw the data plots
-        function redraw(this,control)
-            %disp('bdSpace2D.redraw()')
-            
-            % get the details of the currently selected dynamic variable
-            varname  = this.submenu.UserData.xxxname;           % generic name of variable
-            varlabel = this.submenu.UserData.label;             % plot label for selected variable
-            varindx  = this.submenu.UserData.xxxindx;           % index of selected variable in sys.vardef
-            solindx  = control.sys.vardef(varindx).solindx;     % indices of selected entries in sol
-            varlim   = control.sys.vardef(varindx).lim;         % axis limits of the selected variable
-            [nr nc]  = size(control.sys.vardef(varindx).value); % size of the selected variable
+        function Render(this)
+            %disp('bdSpace2D.Render()');
 
             % get the time slider value
-            this.t = control.sys.tval;                          % current time point
+            tval = this.sysobj.tval;
+                        
+            % evaluate the selected variable at the selected time point
+            this.cdata = this.selector.Eval(tval);
             
-            % interpolate the solution at the current time value
-            this.y = reshape( bdEval(control.sol,this.t,solindx), nr, nc);
-
-            % if the MODULO menu is enabled then modulo the data
-            switch this.modulomenu.Checked
+            % modulo the data (if appropriate)
+            switch this.menuModulo.Checked
                 case 'on'
-                    ylo = varlim(1);
-                    yhi = varlim(2);
-                    this.y = mod(this.y-ylo, yhi-ylo) + ylo;
+                    % get the plot limits for the selected variable
+                    [~,lim] = this.selector.lim();
+                    % modulo the cdata
+                    lo = lim(1);
+                    hi = lim(2);   
+                    this.cdata = mod(this.cdata-lo, hi-lo) + lo;
+                case 'off'
+                    % nothing to do
             end
-
-            % update the image data
-            this.img.CData = this.y;
-            caxis(this.ax,varlim);
+            
+            % update the image contents
+            this.img.CData = this.cdata;
 
             % update the axes limits
-            this.ax.XLim = [0.5 nc+0.5];
-            this.ax.YLim = [0.5 nr+0.5];
-
+            [nr,nc] = size(this.cdata);
+            this.axes.XLim = [0.5 nc];
+            this.axes.YLim = [0.5 nr];
+            
+            % reverse the Y axis (or not)
+            switch this.menuYDir.Checked
+                case 'on'
+                    this.axes.YDir = 'reverse';
+                otherwise
+                    this.axes.YDir = 'normal';
+            end
+            
             % update the title
-            title(this.ax,num2str(this.t,[varname '(t=%g)']));
+            this.label.Text = sprintf('t=%g',tval);
+        end        
+                
+        % Selector Changed callback
+        function SelectorChanged(this)
+            %disp('bdSpace2D.selectorChanged');
+            this.Render();
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
         end
+        
+        % Colormap DropDown callback
+        function ColorMapChanged(this)
+            % Get the selected colormap
+            mapname = this.dropdown.Value;
+            
+            % Apply it to the axes
+            switch mapname
+                case 'circular'
+                    % apply custom colormap
+                    x = linspace(-pi,pi,64);
+                    b = 0.5*sin(x-pi/2)+0.5;
+                    r = 0.5*sin(x+pi/2)+0.5;
+                    g = r;
+                    colormap(this.axes,[r',g',b']);
+                otherwise
+                    % apply standard colormap
+                    colormap(this.axes,mapname);
+            end
+            
+            % Push the UNDO stack
+            notify(this.sysobj,'push');       
+        end
+                      
+        % CALIBRATE menu callback
+        function callbackCalibrate(this)
+            % get the time slider value
+            tval = this.sysobj.tval;
+                        
+            % evaluate the selected variable at the selected time point
+            data = this.selector.Eval(tval);
+            
+            % find the min and max data values (in the absence of modulo)
+            cmin = min(data(:));
+            cmax = max(data(:));
+            
+            % update the limits
+            this.selector.lim([cmin cmax]);
+             
+            % redraw all panels (because the new limits apply to all panels)
+            this.sysobj.NotifyRedraw([]);
+        end
+               
+        % MODULO menu callback
+        function callbackModulo(this,menuitem)
+            % update the menu state
+            this.MenuToggle(menuitem);
+            % render the data
+            this.Render();
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+        
+        % YDIR menu callback
+        function callbackYDir(this,menuitem)
+            % Toggle the menu state
+            this.MenuToggle(menuitem);
+            % render the data
+            this.Render();                        
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+        
+        % DOCK menu callback
+        function callbackDock(this,menuitem,tabgrp)
+            %disp('callbackDock');
+            switch menuitem.Label
+                case 'Undock'
+                    newfig = bdPanelBase.Undock(this.tab,this.menu);
+                    newfig.DeleteFcn = @(src,~) this.delete();
+                    menuitem.Label='Dock';
+                    menuitem.Tooltip='Dock the display panel';
+                case 'Dock'
+                    bdPanelBase.Dock(this.tab,this.menu,tabgrp);
+                    menuitem.Label='Undock';
+                    menuitem.Tooltip='Undock the display panel';
+            end
+        end
+        
+        % CLOSE menu callback
+        function callbackClose(this,guifig)
+            % find the parents of the panel tab 
+            tabgrp = ancestor(this.tab,'uitabgroup');
+            fig = ancestor(this.tab,'figure');
+            
+            % delete the panel
+            delete(this);
+            
+            % reveal the menu of the newly selected panel 
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % if the parent figure is not the same as the gui figure then ...
+            if fig ~= guifig
+                % The panel is undocked from the gui. Its figure should be closed too. 
+                delete(fig);
+            end
+        end
+        
 
     end
     
     methods (Static)
         
-        function syspanel = syscheck(sys)
-            % Assign default values to missing fields in sys.panels.bdSpace2D
-
-            % Default panel settings
-            syspanel.title = bdSpace2D.title;
-            syspanel.modulo = false;
+        function optout = optcheck(opt)
+            % check the format of incoming options and apply defaults to missing values
+            optout.title    = bdPanelBase.GetOption(opt, 'title', 'Space 2D');
+            optout.modulo   = bdPanelBase.GetOption(opt, 'modulo', 'off');
+            optout.yreverse = bdPanelBase.GetOption(opt, 'yreverse', 'on');
+            optout.colormap = bdPanelBase.GetOption(opt, 'colormap', 'parula');
+            optout.selector = bdPanelBase.GetOption(opt, 'selector', {1,1,1});
             
-            % Nothing more to do if sys.panels.bdSpace2D is undefined
-            if ~isfield(sys,'panels') || ~isfield(sys.panels,'bdSpace2D')
-                return;
+            % warn of unrecognised field in the incoming options
+            infields  = fieldnames(opt);                % the field names we were given
+            outfields = fieldnames(optout);             % the field names we expected
+            newfields = setdiff(infields,outfields);    % unrecognised field names
+            for idx=1:numel(newfields)
+                warning('Ignoring unknown panel option ''bdSpace2D.%s''',newfields{idx});
             end
-            
-            % sys.panels.bdSpace2D.title
-            if isfield(sys.panels.bdSpace2D,'title')
-                syspanel.title = sys.panels.bdSpace2D.title;
-            end
-                        
-            % sys.panels.bdSpaceTime.modulo
-            if isfield(sys.panels.bdSpace2D,'modulo')
-                syspanel.modulo = sys.panels.bdSpace2D.modulo;
-            end           
         end
         
     end
-    
 end
+

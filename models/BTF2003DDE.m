@@ -17,9 +17,9 @@
 %
 % Authors
 %   Michael Breakspear (2017b)
-%   Stewart Heitmann (2017b,2017c,2018a,2018b,2019a)
+%   Stewart Heitmann (2017b,2017c,2018a,2018b,2019a,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -126,42 +126,42 @@ function sys = BTF2003DDE(Kij)
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{BTF2003DDE}';
+        '$\textbf{BTF2003DDE}$';
         'Breakspear, Terry \& Friston (2003) Network: Comput Neural Syst (14).';
         'Time-delayed variant of a network of neural masses comprising densely connected local ensembles of';
         'excitatory and inhibitory neurons with long-range excitatory coupling between ensembles.';
         'Transmission delays apply only to the long-range connections and all delays are identical.';
-        '\qquad $\dot{V}^{(j)}(t) = -\big(g_{Ca} + (1{-}C)\,r\,a_{ee}\, Q_V^{(j)}(t) + C\,r\,a_{ee}\,\langle Q_V(t-d) \rangle^{(j)} \big)\,m_{Ca}^{(j)}(t)\,\big(V^{(j)}(t) {-} V_{Ca}\big)$';
-        '\qquad \qquad \qquad $ - \, \big(g_{Na}\,m_{Na}^{(j)}(t) + (1{-}C)\,a_{ee}\,Q_V^{(j)}(t) + C\,a_{ee}\,\langle Q_V(t-d) \rangle^{(j)} \big)\,\big(V^{(j)}(t) {-} V_{Na}\big) $';
-        '\qquad \qquad \qquad $ - \, g_K\,W^{(j)}(t)\,\big(V^{(j)}(t) {-} V_K\big)$';
-        '\qquad \qquad \qquad $ - \, g_L\,\big(V^{(j)}(t) {-} V_L\big)$';
-        '\qquad \qquad \qquad $ - \, a_{ie}\,Z^{(j)}(t)\,Q_Z^{(j)}(t)$';
-        '\qquad \qquad \qquad $ + \, a_{ne}\,I,$';
+        '{ }{ }{ }$\dot{V}^{(j)}(t) = -\big(g_{Ca} + (1{-}C)\,r\,a_{ee}\, Q_V^{(j)}(t) + C\,r\,a_{ee}\,\langle Q_V(t-d) \rangle^{(j)} \big)\,m_{Ca}^{(j)}(t)\,\big(V^{(j)}(t) {-} V_{Ca}\big)$';
+        '{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ } $ - \, \big(g_{Na}\,m_{Na}^{(j)}(t) + (1{-}C)\,a_{ee}\,Q_V^{(j)}(t) + C\,a_{ee}\,\langle Q_V(t-d) \rangle^{(j)} \big)\,\big(V^{(j)}(t) {-} V_{Na}\big) $';
+        '{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ } $ - \, g_K\,W^{(j)}(t)\,\big(V^{(j)}(t) {-} V_K\big)$';
+        '{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ } $ - \, g_L\,\big(V^{(j)}(t) {-} V_L\big)$';
+        '{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ } $ - \, a_{ie}\,Z^{(j)}(t)\,Q_Z^{(j)}(t)$';
+        '{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ }{ } $ + \, a_{ne}\,I,$';
         '';
-        '\qquad $\dot{W}^{(j)}(t) = \frac{\phi}{\tau}\,\big(m_K^{(j)}(t) {-} W^{(j)}(t)\big)$';
+        '{ }{ }{ }$\dot{W}^{(j)}(t) = \frac{\phi}{\tau}\,\big(m_K^{(j)}(t) {-} W^{(j)}(t)\big)$';
         '';
-        '\qquad $\dot{Z}^{(j)}(t) = b\,\big(a_{ni}\,I + a_{ei}\,V^{(j)}(t)\,Q_V^{(j)}(t)\big)$';
+        '{ }{ }{ }$\dot{Z}^{(j)}(t) = b\,\big(a_{ni}\,I + a_{ei}\,V^{(j)}(t)\,Q_V^{(j)}(t)\big)$';
         'where';
-        '\qquad $V^{(j)}$ is the average membrane potential of \textit{excitatory} cells in the $j^{th}$ neural ensemble,';
-        '\qquad $W^{(j)}$ is the proportion of open Potassium channels in the $j^{th}$ neural ensemble,';
-        '\qquad $Z^{(j)}$ is the average membrane potential of \textit{inhibitory} cells in the $j^{th}$ neural ensemble,';
-        '\qquad $m_{ion}^{(j)} = \frac{1}{2} \big(1 + \tanh((V^{(j)}{-}V_{ion})/\delta_{ion})\big)$ is the proportion of open ion channels for a given $V$,';
-        '\qquad $Q_{V}^{(j)} = \frac{1}{2} \big(1 + \tanh((V^{(j)}{-}V_{T})/\delta_{V})\big)$ is the mean firing rate of \textit{excitatory} cells in the $j^{th}$ ensemble,';
-        '\qquad $Q_{Z}^{(j)} = \frac{1}{2} \big(1 + \tanh((Z^{(j)}{-}Z_{T})/\delta_{Z})\big)$ is the mean firing rate of \textit{inhibitory} cells in the $j^{th}$ ensemble,';
-        '\qquad $\langle Q \rangle^{(j)} = \sum_i Q_V^{(i)} K_{ij} / k^{(j)}$, is the connectivity-weighted input to the $j^{th}$ ensemble,';
-        '\qquad $K_{ij}$ is the network connection weight from ensemble $i$ to ensemble $j$ (diagonals should be zero),';
-        '\qquad $k^{(j)} = \sum_i K_{ij}$ is the sum of incoming connection weights to ensemble $j$,';
-        '\qquad $a_{ee},a_{ei},a_{ie},a_{ne},a_{ni}$ are the connection weights ($a_{ei}$ denotes excitatory-to-inhibitory),';
-        '\qquad $b$ is the time constant of inhibition,';
-        '\qquad $C$ is the relative contribution of excitatory connections within-ensembles versus between-ensembles,'; 
-        '\qquad $d$ is the transmission delay between ensembles,';
-        '\qquad $r$ is the number of NMDA receptors relative to the number of AMPA receptors,';
-        '\qquad phi $=\frac{\phi}{\tau}$ is the temperature scaling factor,';
-        '\qquad $g_{Ca},g_{K},g_{Na},g_L$ are the ionic conducances,';
-        '\qquad $V_{Ca},V_{K},V_{Na},V_L$ are the Nernst potentials,';
-        '\qquad $V_T,Z_T,T_{Ca},T_K,T_{Na}$ are the gain thresholds,';
-        '\qquad $\delta_V,\delta_Z,\delta_{Ca},\delta_K,\delta_{Na}$ are the gain slopes,';
-        '\qquad $I$ is the strength of the subcortical input.';
+        '{ }{ }{ }$V^{(j)}~$ is the average membrane potential of excitatory cells in the $j^{th}\;$ neural ensemble,';
+        '{ }{ }{ }$W^{(j)}~$ is the proportion of open Potassium channels in the $j^{th}\;$ neural ensemble,';
+        '{ }{ }{ }$Z^{(j)}~$ is the average membrane potential of inhibitory cells in the $j^{th}\;$ neural ensemble,';
+        '{ }{ }{ }$m_{ion}^{(j)} = \frac{1}{2} \big(1 + \tanh((V^{(j)}{-}V_{ion})/\delta_{ion})\big)\;$ is the proportion of open ion channels for a given $V$,';
+        '{ }{ }{ }$Q_{V}^{(j)} = \frac{1}{2} \big(1 + \tanh((V^{(j)}{-}V_{T})/\delta_{V})\big)\;$ is the mean firing rate of excitatory cells in the $j^{th}\;$ ensemble,';
+        '{ }{ }{ }$Q_{Z}^{(j)} = \frac{1}{2} \big(1 + \tanh((Z^{(j)}{-}Z_{T})/\delta_{Z})\big)\;$ is the mean firing rate of inhibitory cells in the $j^{th}\;$ ensemble,';
+        '{ }{ }{ }$\langle Q \rangle^{(j)} = \sum_i Q_V^{(i)} K_{ij} / k^{(j)}\;$, is the connectivity-weighted input to the $j^{th}\;$ ensemble,';
+        '{ }{ }{ }$K_{ij}~$ is the network connection weight from ensemble $i\;$ to ensemble $j\;$ (diagonals should be zero),';
+        '{ }{ }{ }$k^{(j)} = \sum_i K_{ij}$ is the sum of incoming connection weights to ensemble $j$,';
+        '{ }{ }{ }$a_{ee},a_{ei},a_{ie},a_{ne},a_{ni}\;$ are the connection weights ($a_{ei}\;$ denotes excitatory-to-inhibitory),';
+        '{ }{ }{ }$b~$ is the time constant of inhibition,';
+        '{ }{ }{ }$C~$ is the relative contribution of excitatory connections within-ensembles versus between-ensembles,'; 
+        '{ }{ }{ }$d~$ is the transmission delay between ensembles,';
+        '{ }{ }{ }$r~$ is the number of NMDA receptors relative to the number of AMPA receptors,';
+        '{ }{ }{ }phi $=\frac{\phi}{\tau}~$ is the temperature scaling factor,';
+        '{ }{ }{ }$g_{Ca},g_{K},g_{Na},g_L~$ are the ionic conducances,';
+        '{ }{ }{ }$V_{Ca},V_{K},V_{Na},V_L~$ are the Nernst potentials,';
+        '{ }{ }{ }$V_T,Z_T,T_{Ca},T_K,T_{Na}~$ are the gain thresholds,';
+        '{ }{ }{ }$\delta_V,\delta_Z,\delta_{Ca},\delta_K,\delta_{Na}~$ are the gain slopes,';
+        '{ }{ }{ }$I~$ is the strength of the subcortical input.';
         };
     
     % Include the Time Portrait panel in the GUI

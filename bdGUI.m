@@ -1,11 +1,11 @@
-classdef bdGUI < handle
+classdef bdGUI < matlab.apps.AppBase
     %bdGUI - The Brain Dynamics Toolbox Graphical User Interface (GUI).
     %
     %The bdGUI application is the graphical user interface for the Brain
     %Dynamics Toolbox. It loads and runs the model defined by the given
     %system structure (sys). That structure contains a handle to the
     %model's ODE function (sys.odefun). It also defines the names and
-    %initial values of the system parameters/variables.
+    %initial values of the system parameters and state variables.
     %
     %   gui = bdGUI(sys);
     %
@@ -21,63 +21,70 @@ classdef bdGUI < handle
     %
     %   gui = bdGUI(sys,'sol',sol);
     %
-    %The call to bdGUI returns a handle (gui) to the bdGUI class. That
+    %The GUI can be run in headless mode by specifying Visible='off'
+    %
+    %   gui = bdGUI(sys,'Visible','off');
+    %
+    %In all cases, bdGUI returns a handle (gui) to the bdGUI class. That
     %handle can be used to control the graphical user interface from the
     %matlab workspace.
     %
     %EXAMPLE
-    %   >> cd bdtoolkit
+    %   >> cd bdtoolbox
     %   >> addpath models
     %   >> sys = LinearODE();
     %   >> gui = bdGUI(sys);
     %
-    %   gui = bdGUI with properties:
-    %       version: '2019a'
-    %           fig: [1x1 Figure]
-    %           par: [1x1 struct]
-    %          var0: [1x1 struct]
-    %          var1: [1x1 struct]
-    %         tspan: [0 20]
-    %          tval: 0
-    %             t: [1x116 double]
-    %         tindx: [1x116 logical]
-    %           lag: [1x1 struct]
-    %           sys: [1x1 struct]
-    %           sol: [1x1 struct]
-    %        panels: [1x1 struct]
-    %          halt: 0
-    %        evolve: 0
-    %       perturb: 0
-    %
+    % gui = 
+    %   bdGUI with properties:
+    %     version: '2020a'
+    %         par: [1×1 struct]
+    %         lag: [1×1 struct]
+    %        var0: [1×1 struct]
+    %        vars: [1×1 struct]
+    %       tspan: [0 20]
+    %       tstep: 1
+    %        tval: 0
+    %           t: [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20]
+    %         sys: [1×1 struct]
+    %         sol: [1×1 struct]
+    %      panels: [1×1 struct]
+    %        halt: 0
+    %      evolve: 0
+    %     perturb: 0
+    %      sysobj: [1×1 bdSystem]
+    %         fig: [1×1 Figure]
+    %     
     % Where
     %   gui.version is the version string of the toolbox (read-only)
-    %   gui.fig is a handle to the application figure (read/write)
     %   gui.par is a struct containing the model parameters (read/write)
+    %   gui.lag is a struct containing the DDE lag parameters (read/write)
     %   gui.var0 is a struct containing the initial conditions (read/write)
-    %   gui.var1 is a struct containing the computed time-series (read-only)
+    %   gui.vars is a struct containing the computed time-series (read-only)
     %   gui.tspan is the time span of the simulation (read/write)
+    %   gui.tstep is the time step (dt) of the interpolated solution (read/write)
     %   gui.tval is the current value of the time slider (read/write)
     %   gui.t contains the time steps for the computed solution (read-only)
-    %   gui.tindx contains the indices of the non-transient time steps (read-only)
-    %   gui.lag is a struct containing the DDE lag parameters (read/write)
     %   gui.sys is a copy of the model's system structure (read-only)
     %   gui.sol is the output of the solver (read-only)
     %   gui.panels contains the outputs of the display panels (read-only)
     %   gui.halt is the state of the HALT button (read/write)
     %   gui.evolve is the state of the EVOLVE button (read/write)
     %   gui.perturb is the state of the PERTURB button (read/write)
+    %   gui.sysobj is a handle to the internal bdSystem object (read/write)
+    %   gui.fig is a handle to the application figure (read/write)
     %
     %SOFTWARE MANUAL
-    %   Handbook for the Brain Dynamics Toolbox: Version 2019a.
+    %   Handbook for the Brain Dynamics Toolbox: Version 2020a.
     %
     %ONLINE COURSES (bdtoolbox.org)
     %   Toolbox Basics - Getting started with the Brain Dynamics Toolbox
     %   Modeller's Workshop - Building custom models with the Brain Dynamics Toolbox
     %
     %AUTHORS
-    %   Stewart Heitmann (2016a-2019a)
+    %   Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2018b,2019a,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Reserach Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -104,584 +111,734 @@ classdef bdGUI < handle
     % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
-
-    properties (Constant=true)
-        version = '2019a';      % version number of the toolbox
+    
+    properties (Dependent)
+        version         % toolbox version string (read only)
+        par             % system parameters (read/write)
+        lag             % time lag parameters (read/write)
+        var0            % initial conditions (read/write)
+        vars            % solution variables (read only)
+        tspan           % time span (read/write)
+        tstep           % time step (read/write)
+        tval            % time slider value (read/write) 
+        t               % solution time domain (read only)
+        sys             % system definition structure (read only)
+        sol             % current solver output (read only)
+        panels          % display panel handles (read/write)
+        halt            % state of the HALT button (read/write)
+        evolve          % state of the EVOLVE button (read/write)
+        perturb         % state of the PERTURB button (read/write)
     end
     
     properties
-        fig             % graphics handle for the application figure
+        sysobj              bdSystem
+        fig                 matlab.ui.Figure
     end
-        
-    properties (Dependent)
-        par             % system parameters (read/write)
-        var0            % initial conditions (read/write)
-        var1            % solution varables (read only)
-        tspan           % time domain (read/write)
-        tval            % time slider value (read/write) 
-        t               % solution time steps (read only)
-        tindx           % logical index of the non-transient time steps (read only)
-        lag             % DDE time lags (read/write)
-        sys             % system definition structure (read only)
-        sol             % current output of the solver (read only)
-        panels          % current panel object handles (read only)
-        halt            % halt button state (read/write)
-        evolve          % evolve button state (read/write)
-        perturb         % perturb button state (read/write)
-    end
-    
+       
     properties (Access=private)
-        control         % handle to the bdControl object
-        display         % handle to the bdDisplay object
+        SystemMenu          matlab.ui.container.Menu
+        AboutMenu           matlab.ui.container.Menu
+        LoadMenu            matlab.ui.container.Menu
+        SaveMenu            matlab.ui.container.Menu
+        ExportMenu          matlab.ui.container.Menu
+        CloneMenu           matlab.ui.container.Menu
+        QuitMenu            matlab.ui.container.Menu
+        EditMenu            matlab.ui.container.Menu
+        UndoMenu            matlab.ui.container.Menu
+        RedoMenu            matlab.ui.container.Menu
+        NewPanelMenu        matlab.ui.container.Menu
+        GridLayout          matlab.ui.container.GridLayout
+        TabGroup            matlab.ui.container.TabGroup
+        ControlPanel        matlab.ui.container.Panel
+        SolverPanel         matlab.ui.container.Panel
+        ControlSolver       bdControlSolver
+        TimePanel           matlab.ui.container.Panel
+        PanelMgr            bdPanelMgr
+        UndoStack           bdUndoStack
+        rlistener           event.listener
+        plistener           event.listener
     end
     
     methods
-        function this = bdGUI(varargin)
+        function app = bdGUI(varargin)
             % Constructor
             %
             % gui = bdGUI();
             % gui = bdGUI(sys);
             % gui = bdGUI(sys,'sol',sol);
+            % gui = bdGUI(sys,'Visible','off');
+
+            % bdGUI require matlab R2019b or newer
+            if verLessThan('matlab','9.7.0')
+                throw(MException('bdGUI:Version','bdGUI requires MATLAB R2019b or newer'));
+            end
             
             % add the bdtoolkit/solvers directory to the path
             addpath(fullfile(fileparts(mfilename('fullpath')),'solvers'));
 
             % add the bdtoolkit/panels directory to the path
             addpath(fullfile(fileparts(mfilename('fullpath')),'panels'));
-          
-            % variable input parameters
-            switch nargin
-                case 0      % case of bdGUI()
-                    try
-                        % load the sys (and sol) struct from mat file 
-                        [sys,sol] = loadsys();
-                        if isempty(sys)
-                            % user cancelled the load operation
-                            this = bdGUI.empty();
-                            return
-                        end
-                    catch ME
-                        ME.throwAsCaller;
-                    end
-                        
-                otherwise   % case of bdGUI(sys,'sol',sol)
-                    try
-                        % define a syntax for the input parser
-                        syntax = inputParser;
-                        syntax.CaseSensitive = false;
-                        syntax.FunctionName = 'bdGUI(sys,''sol'',sol)';
-                        syntax.KeepUnmatched = false;
-                        syntax.PartialMatching = false;
-                        syntax.StructExpand = false;
-                        addRequired(syntax,'sys',@(sys) ~isempty(bd.syscheck(sys)));
-                        addParameter(syntax,'sol',[], @(sol) solcheck(sol));
 
-                        % call the input parser
-                        parse(syntax,varargin{:});
-                        sys = syntax.Results.sys;
-                        sol = syntax.Results.sol;
-                        
-                        % check that the sol and sys are compatabile
-                        solsyscheck(sol,sys);
-                        
-                        % ensure that sys.tspan matches the computed solution
-                        if ~isempty(sol) && isfield(sol,'x')
-                            sys.tspan = sol.x([1 end]);
-                        end
-                        
-                    catch ME
-                        ME.throwAsCaller;
-                    end
-                    
-            end     
-                                    
-            % construct figure
-            figw = 800;
-            figh = 500;
-            this.fig = figure('Units','pixels', ...
-                'Position',[randi(100,1,1) randi(100,1,1) figw figh], ...
-                'name', 'Brain Dynamics Toolbox', ...
-                'NumberTitle','off', ...
-                'MenuBar','none', ...
-                'DockControls','off', ...
-                'Toolbar','figure');
+            % define a syntax for the input parser
+            syntax = inputParser;
+            syntax.CaseSensitive = false;
+            syntax.FunctionName = 'bdGUI(sys,''sol'',sol,''Visible'',''off'')';
+            syntax.KeepUnmatched = false;
+            syntax.PartialMatching = false;
+            syntax.StructExpand = false;
+            addOptional(syntax,'sys',[], @(sys) ~isempty(bdGUI.syscheck(sys)));
+            addParameter(syntax,'sol',[]);
+            addParameter(syntax,'Visible','on');
 
-            % construct the control panel and attach it to the figure
-            this.control = bdControl(this.fig,sys);
-
-            % construct the display panel and attach it to the figure
-            this.display = bdDisplay(this.fig,sys);
-
-            % Construct the System menu
-            this.SystemMenu(sys);
-
-            % Customize the Toolbar
-            this.CustomizeToolbar();
-
-            try
-                % construct the display panels menu
-                this.display.PanelsMenu(this.fig,this.control);
-            catch ME
-                close(this.fig);
-                ME.throwAsCaller;
-            end
-
-            % resize the uipanels (putting them in their exact position)
-            this.SizeChanged();
-
-            % load all of the display panels specified in sys.panels
-            this.display.LoadPanels(this.control);
-
-            % register a callback for resizing the figure
-            set(this.fig,'SizeChangedFcn', @(~,~) this.SizeChanged());
-
-            if isempty(sol)
-                % recompute and wait until complete
-                this.control.RecomputeWait();    
+            % call the input parser
+            parse(syntax,varargin{:});
+            if isempty(syntax.Results.sys)
+                % Calling syntax: bdGUI()
+                % Load the sys (and sol) struct from mat file 
+                [sys,sol] = bdGUI.loadsys();
+                if isempty(sys)
+                    % user cancelled the load operation
+                    app = bdGUI.empty();
+                    return
+                end
             else
-                % load the given sol and issue a redraw event
-                this.control.LoadSol(sol);
+                % Calling syntax: bdGUI(sys) or bdGUI(sys,'sol,sol)
+                % Take the sys struct from the input parameter
+                sys = syntax.Results.sys;                
+                if isempty(syntax.Results.sol)
+                    % Calling syntax: bdGUI(sys)
+                    sol = [];
+                else
+                    sol = syntax.Results.sol;
+                end
             end
-                      
+            
+            if isempty(sol)
+                % Construct sysobj from sys
+                app.sysobj = bdSystem(sys);
+
+                % Run the solver for the first time (FIX ME)
+                app.sysobj.recompute = true;
+            else
+                % Construct sysobj from sys and import the given sol.
+                app.sysobj = bdSystem(sys,'sol',sol);
+                app.sysobj.recompute = false;
+            end
+            
+            % initiate the undo stack
+            app.UndoStack = bdUndoStack();
+            app.UndoStack.Push(sys);
+                        
+            % Construct a new figure
+            app.fig = uifigure('Position',[randi(200),randi(200),900,500], 'Visible','off');
+            app.fig.Name = 'Brain Dynamics Toolbox';
+            app.fig.CloseRequestFcn = @(src,evnt) app.QuitMenuCallback();
+
+            % Add a unique Tag to the figure. Child figure/dialogs get assigned
+            % this same tag to help track them. See the CloseFigure function.
+            app.fig.Tag = sprintf('bdGUI-%d',randi(1e10));
+                        
+            % Create Grid Layout
+            app.GridLayout = uigridlayout(app.fig);
+            app.GridLayout.ColumnWidth = {'2x','1x'};
+            app.GridLayout.RowHeight = {'1x',25,55};
+            app.GridLayout.ColumnSpacing = 10;
+            app.GridLayout.RowSpacing = 0;
+            app.GridLayout.Padding = [10 10 5 10];                       
+
+            % Create System Menu
+            app.SystemMenu = uimenu(app.fig);
+            app.SystemMenu.Text = 'System ';
+            
+            % Create AboutMenu
+            app.AboutMenu = uimenu(app.SystemMenu);
+            app.AboutMenu.Text = 'About';
+            app.AboutMenu.Tooltip = ['Brain Dynamics Toolbox, Version ' app.sysobj.version];
+            app.AboutMenu.MenuSelectedFcn = @(~,~) AboutMenuCallback(app);
+
+            % Create LoadMenu
+            app.LoadMenu = uimenu(app.SystemMenu);
+            app.LoadMenu.Text = 'Load';
+            app.LoadMenu.Tooltip = 'Load a new system from a mat file';
+            app.LoadMenu.MenuSelectedFcn = @(~,~) LoadMenuCallback(app);
+            
+            % Create SaveMenu
+            app.SaveMenu = uimenu(app.SystemMenu);
+            app.SaveMenu.Text = 'Save';
+            app.SaveMenu.Tooltip = 'Save the system to a mat file';
+            app.SaveMenu.MenuSelectedFcn = @(~,~) SaveMenuCallback(app);
+            
+            % Create ExportMenu
+            app.ExportMenu = uimenu(app.SystemMenu);
+            app.ExportMenu.Text = 'Export';
+            app.ExportMenu.Tooltip = 'Export data to the workspace';
+            app.ExportMenu.MenuSelectedFcn = @(~,~) SystemExportCallback(app);
+            
+            % Create CloneMenu
+            app.CloneMenu = uimenu(app.SystemMenu);
+            app.CloneMenu.Text = 'Clone';
+            app.CloneMenu.Tooltip = 'Clone the GUI';
+            app.CloneMenu.MenuSelectedFcn = @(~,~) CloneMenuCallback(app);
+
+            % Create QuitMenu
+            app.QuitMenu = uimenu(app.SystemMenu);
+            app.QuitMenu.Text = 'Quit';
+            app.QuitMenu.Tooltip = 'Quit the GUI';
+            app.QuitMenu.MenuSelectedFcn = @(~,~) QuitMenuCallback(app);
+
+            % Create EditMenu
+            app.EditMenu = uimenu(app.fig);
+            app.EditMenu.Text = 'Edit ';
+            
+            % Create UndoMenu
+            app.UndoMenu = uimenu(app.EditMenu);
+            app.UndoMenu.Text = 'Undo';
+            app.UndoMenu.Tooltip = 'Undo the last change';
+            app.UndoMenu.Enable = app.UndoStack.UndoStatus();
+            app.UndoMenu.MenuSelectedFcn = @(~,~) UndoMenuCallback(app);
+
+            % Create RedoMenu
+            app.RedoMenu = uimenu(app.EditMenu);
+            app.RedoMenu.Text = 'Redo';
+            app.RedoMenu.Tooltip = 'Reverse the last Undo';
+            app.RedoMenu.Enable = app.UndoStack.RedoStatus();
+            app.RedoMenu.MenuSelectedFcn = @(~,~) RedoMenuCallback(app);
+
+            % Create TabGroup
+            app.TabGroup = uitabgroup(app.GridLayout);
+            app.TabGroup.Layout.Row = [1 2];
+            app.TabGroup.Layout.Column = 1;
+            app.TabGroup.SelectionChangedFcn = @(tabgrp,~) bdPanelBase.FocusMenu(tabgrp);
+                        
+            % Control Panel container
+            app.ControlPanel = uipanel(app.GridLayout);
+            app.ControlPanel.Title = [];
+            app.ControlPanel.Layout.Row = 1;
+            app.ControlPanel.Layout.Column = 2;
+            app.ControlPanel.BorderType = 'none';
+            bdControlPanel(app.sysobj,app.ControlPanel);
+            
+            % Solver Panel container
+            app.SolverPanel = uipanel(app.GridLayout);
+            app.SolverPanel.Title = [];
+            app.SolverPanel.Layout.Row = 3;
+            app.SolverPanel.Layout.Column = 1;
+            app.SolverPanel.BorderType = 'none';
+            app.ControlSolver = bdControlSolver(app.sysobj,app.SolverPanel);
+            
+            % Time Panel container
+            app.TimePanel = uipanel(app.GridLayout);
+            app.TimePanel.Title = [];
+            app.TimePanel.Layout.Row = [2 3];
+            app.TimePanel.Layout.Column = 2;
+            app.TimePanel.BorderType = 'none';
+            bdControlTime(app.sysobj,app.TimePanel);
+                        
+            % Create the panel manager         
+            app.PanelMgr = bdPanelMgr(app.TabGroup,app.sysobj);
+
+            % Create New-Panel Menu
+            app.NewPanelMenu = uimenu(app.fig);
+            app.NewPanelMenu.Text = 'New Panel ';  
+                        
+            % clean the incoming panels structure
+            sys.panels = bdPanelMgr.panelscheck(sys.panels);
+
+            % Populate the New-Panel menu items
+            app.PanelMgr.PanelMenus(app.NewPanelMenu,sys.panels);
+
+            % Load the display panels and ensure the first Tab is selected
+            app.PanelMgr.ImportPanels(sys.panels);
+            if numel(app.TabGroup.Children) > 1
+                app.TabGroup.SelectedTab = app.TabGroup.Children(1);
+                bdPanelBase.FocusMenu(app.TabGroup);
+            end
+            
+            % make the figure visible
+            app.fig.Visible = syntax.Results.Visible;
+            drawnow;
+                   
+            % call the timer function manually to force the first compute
+            app.sysobj.TimerFcn();
+
+            % listen to sysobj for PUSH events
+            app.plistener = listener(app.sysobj,'push',@(~,~) app.Pusher());
+
+            % listen to sysobj for REDRAW events
+            app.rlistener = listener(app.sysobj,'redraw',@(~,evnt) app.Redraw(evnt));
+
+            % start the timer proper
+            app.sysobj.TimerStart();            
         end
-       
+        
+        % Get version property
+        function version = get.version(app)
+            version = app.sysobj.version;
+        end
+        
         % Get par property
-        function par = get.par(this)
-            % return a struct with paramater values stored by name
-            par = this.control.par;
+        function par = get.par(app)
+            par = struct();
+            for parindx = 1:numel(app.sysobj.pardef)
+                name = app.sysobj.pardef(parindx).name;
+                par.(name) = app.sysobj.pardef(parindx).value;
+            end
         end 
         
         % Set par property
-        function set.par(this,value)
+        function set.par(app,value)
             % Assert the incoming value is a struct
             if ~isstruct(value)
                 warning('bdGUI: Illegal par value. Input must be a struct');
                 return
             end
             
-            % Make a working copy of the control.sys.pardef array 
-            syspardef = this.control.sys.pardef;
-            
-            % For each field name in the incoming value struct ... 
+            % Get the names of the incoming fields
             vfields = fieldnames(value);
+
+            % Verify all of the incoming fields are valid before we do anything else.
+            % For each field name in the incoming value struct ... 
             for vindx = 1:numel(vfields)
-                % Get the name, value and size of the field
+                % Get the name, value and size of the field in the incoming struct
                 vfield = vfields{vindx};
                 vvalue = value.(vfield);
                 vsize = size(vvalue);
                 
-                % Find the syspardef entry with the same name                
-                [val,idx] = bdGetValue(syspardef,vfield);
-                if isempty(val)
+                % Get the index and size of the matching entry in sysobj.pardef
+                [parindx,parsize] = app.sysobj.GetParIndex(vfield);
+                if isempty(parindx)
                     warning(['bdGUI: Unknown parameter [',vfield,'].']);
                     return
                 end
                 
                 % Assert the incoming value is the correct shape and size.
-                if ~isequal(size(val),vsize)
-                    warning(['bdGUI: Parameter size mismatch [',vfield,'].']);
+                if ~isequal(parsize,vsize)
+                    warning(['bdGUI: Size mismatch [',vfield,'].']);
                     return
                 end
-                
-                % Update the  working copy
-                syspardef(idx).value = vvalue;
             end
-            
-            % Everything must have gone well, so update the sys.pardef 
-            % in teh control panel with the working copy.
-            this.control.sys.pardef = syspardef;
-            
-            % Notify the control panel to refresh its pardef widgets
-            notify(this.control,'pardef');
-            
-            % recompute and wait until complete
-            this.control.RecomputeWait();    
-        end
-
-        % Get var0 (initial conditions) property
-        function var0 = get.var0(this)
-            % return a struct with initial values stored by name
-            var0 = [];
-            for indx = 1:numel(this.control.sys.vardef)
-                name = this.control.sys.vardef(indx).name;
-                value = this.control.sys.vardef(indx).value;
-                var0.(name) = value;
-            end
-        end 
-        
-        % Set var0 (initial conditions) property
-        function set.var0(this,value)
-            % Assert the incoming value is a struct
-            if ~isstruct(value)
-                warning('bdGUI: Illegal var value. Input must be a struct');
-                return
-            end
-            
-            % Make a working copy of the control.sys.vardef array 
-            sysvardef = this.control.sys.vardef;
             
             % For each field name in the incoming value struct ... 
-            vfields = fieldnames(value);
             for vindx = 1:numel(vfields)
-                % Get the name, value and size of the field
+                % Get the name and value of the field
                 vfield = vfields{vindx};
                 vvalue = value.(vfield);
-                vsize = size(vvalue);
-                
-                % Find the sysvardef entry with the same name                
-                [val,idx] = bdGetValue(sysvardef,vfield);
-                if isempty(val)
-                    warning(['bdGUI: Unknown variable [',vfield,'].']);
-                    return
-                end
-                
-                % Assert the incoming value is the correct shape and size.
-                if ~isequal(size(val),vsize)
-                    warning(['bdGUI: Variable size mismatch [',vfield,'].']);
-                    return
-                end
-                
-                % Update the  working copy
-                sysvardef(idx).value = vvalue;
-            end
-            
-            % Everything must have gone well, so update the sys.vardef 
-            % in the control panel with the working copy.
-            this.control.sys.vardef = sysvardef;
-            
-            % Notify the control panel to refresh its vardef widgets
-            notify(this.control,'vardef');
-            
-            % recompute and wait until complete
-            this.control.RecomputeWait();         
-        end
-        
-        % Get var1 (solution variables) property
-        function var1 = get.var1(this)
-            % return a struct with the solution variables stored by name
-            var1 = [];
-            solindx = 0;
-            for indx = 1:numel(this.control.sys.vardef)
-                % get name and length of variable
-                name = this.control.sys.vardef(indx).name;
-                len = numel(this.control.sys.vardef(indx).value);
-                % compute the index of the variable in sol.y
-                solindx = solindx(end) + (1:len);
-                % return the solution variables
-                var1.(name) = this.control.sol.y(solindx,:);
-            end
-        end
 
-        % Get tspan (time domain) property
-        function tspan = get.tspan(this)
-            tspan = this.control.sys.tspan;
-        end 
-        
-        % Set tspan (time domain) property
-        function set.tspan(this,tspan)
-            % error handling
-            if ~isnumeric(tspan) || numel(tspan)~=2
-                throwAsCaller(MException('bdGUI:tspan','gui.tspan must contain exactly two numeric values'));
-            end
-            if tspan(1) >= tspan(2)
-                throwAsCaller(MException('bdGUI:tspan','gui.tspan=[t0 t1] must have t0<t1'));
+                % copy the value to sysobj.pardef
+                parindx = app.sysobj.GetParIndex(vfield);
+                app.sysobj.pardef(parindx).value = vvalue;
             end
             
-            % update the system structure
-            this.control.sys.tspan = tspan;
-            this.control.sys.tval = max(tspan(1),this.control.sys.tval);
-            this.control.sys.tval = min(tspan(2),this.control.sys.tval);
-            
-            % Notify the control panel to refresh its widgets
-            notify(this.control,'refresh');
-            
-            % recompute and wait until complete
-            this.control.RecomputeWait();         
-        end
-        
-        % Get tval (time slider value) property
-        function tval = get.tval(this)
-            tval = this.control.sys.tval;
-        end
-        
-        % Set tval (time slider value) property
-        function set.tval(this,tval)
-            % error handling
-            if ~isnumeric(tval) || numel(tval)~=1
-                throwAsCaller(MException('bdGUI:tval','gui.tval must be numeric'));
-            end
-            
-            % update the system structure
-            this.control.sys.tval = tval;
+            % notify everything to redraw
+            app.sysobj.NotifyRedraw([]);
 
-            % adjust tspan if necessary
-            Tspan = this.control.sys.tspan;
-            if tval<Tspan(1) || tval>Tspan(2)
-                Tspan(1) = min(Tspan(1),tval);
-                Tspan(2) = max(Tspan(2),tval);
-                this.control.sys.tspan = Tspan;
-            
-                % Notify the control panel to refresh its widgets
-                notify(this.control,'refresh');
-            
-                % recompute and wait until complete
-                this.control.RecomputeWait();
-            else
-                % Notify the control panel to refresh its widgets
-                notify(this.control,'refresh');
-
-                % update the indicies of the non-tranient time steps in sol.x
-                this.control.tindx = (this.control.sol.x >= this.control.sys.tval);
-
-                % Notify all panels to redraw
-                notify(this.control,'redraw');                
-                drawnow;
-            end
-        end
-        
-        % Get t (solution time steps) property
-        function t = get.t(this)
-            t = this.control.sol.x;
-        end
-        
-        % Get tindx (index of the non-transient time steps) property
-        function tindx = get.tindx(this)
-            tindx = this.control.tindx;
+            % Execute the sysobj TimerFcn manually (and wait for it to complete)
+            app.sysobj.TimerFcn();
         end
 
         % Get lag property
-        function lag = get.lag(this)
-            % return a struct with initial values stored by name
-            lag = this.control.lag;
+        function lag = get.lag(app)
+            lag = struct();
+            
+            % only DDEs have time lags
+            switch app.sysobj.solvertype
+                case 'ddesolver'
+                    for lagindx = 1:numel(app.sysobj.lagdef)
+                        name = app.sysobj.lagdef(lagindx).name;
+                        lag.(name) = app.sysobj.lagdef(lagindx).value;
+                    end
+            end
         end 
         
         % Set lag property
-        function set.lag(this,value)
+        function set.lag(app,value)
             % Assert the incoming value is a struct
             if ~isstruct(value)
-                warning('bdGUI: Illegal lag value. Input must be a struct');
+                warning('bdGUI: Illegal lag value. Input must be a struct.');
                 return
             end
             
-            % Assert the current system has lag parameters
-            if ~isfield(this.control.sys,'lagdef')
-                warning('bdGUI: No lag parameters exist in this model');
-                return
+            % only DDEs have time lags
+            switch app.sysobj.solvertype
+                case 'ddesolver'
+                    % OK to proceed
+                otherwise
+                    warning('bdGUI: Illegal assignment. Time lags only apply to DDEs.');
+                    return               
             end
             
-            % Make a working copy of the control.sys.lagdef array
-            syslagdef = this.control.sys.lagdef;
-            
-            % For each field name in the incoming value struct ... 
+            % Get the names of the incoming fields
             vfields = fieldnames(value);
+
+            % Verify all of the incoming fields are valid before we do anything else.
+            % For each field name in the incoming value struct ... 
             for vindx = 1:numel(vfields)
-                % Get the name, value and size of the field
+                % Get the name, value and size of the field in the incoming struct
                 vfield = vfields{vindx};
                 vvalue = value.(vfield);
                 vsize = size(vvalue);
                 
-                % Find the syslagdef entry with the same name                
-                [val,idx] = bdGetValue(syslagdef,vfield);
-                if isempty(val)
+                % Get the index and size of the matching entry in sysobj.lagdef
+                [lagindx,lagsize] = app.sysobj.GetLagIndex(vfield);
+                if isempty(lagindx)
                     warning(['bdGUI: Unknown lag parameter [',vfield,'].']);
                     return
                 end
                 
                 % Assert the incoming value is the correct shape and size.
-                if ~isequal(size(val),vsize)
-                    warning(['bdGUI: Lag parameter size mismatch [',vfield,'].']);
+                if ~isequal(lagsize,vsize)
+                    warning(['bdGUI: Size mismatch [',vfield,'].']);
                     return
                 end
-                
-                % Update the  working copy
-                syslagdef(idx).value = vvalue;
             end
             
-            % Everything must have gone well, so update the sys.lagdef 
-            % in the control panel with the working copy.
-            this.control.sys.lagdef = syslagdef;
-            
-            % Notify the control panel to refresh its lagdef widgets
-            notify(this.control,'lagdef');
-            
-            % recompute and wait until complete
-            this.control.RecomputeWait();    
-        end       
-        
-        % Get sys property
-        function sys = get.sys(this)
-            sys = this.control.sys;
-        end
-        
-        % Get sol property
-        function sol = get.sol(this)
-            sol = this.control.sol;
-        end
-        
-        % Get panels property
-        function panels = get.panels(this)
-           panels = this.display.ExportPanels(); 
-        end
- 
-        % Get halt property
-        function halt = get.halt(this)
-           halt = logical(this.control.sys.halt); 
-        end
- 
-        % Set halt property
-        function set.halt(this,value)
-            % error handling
-            if ~isnumeric(value) || numel(value)~=1
-                throwAsCaller(MException('bdGUI:halt','gui.halt must be 0 or 1'));
-            end
-            % update the halt property of the control panel
-            this.control.sys.halt = logical(value);
-            % notify all control panel widgets to refresh themselves
-            notify(this.control,'refresh');
-            % if the halt state is now OFF then ...
-            if ~this.control.sys.halt
-                % recompute and wait until complete
-                this.control.RecomputeWait();    
-            end
-        end
-        
-        % Get evolve property
-        function evolve = get.evolve(this)
-           evolve = logical(this.control.sys.evolve); 
-        end
- 
-        % Set evolve property
-        function set.evolve(this,value)
-            % error handling
-            if ~isnumeric(value) || numel(value)~=1
-                throwAsCaller(MException('bdGUI:evolve','gui.evolve must be 0 or 1'));
-            end
-            % update the evolve property of the control panel
-            this.control.sys.evolve = logical(value);
-            % notify the panel widgets to refresh themselves
-            notify(this.control,'refresh');
-            % if the evolve state is now ON then ...
-            if this.control.sys.evolve
-                % recompute and wait until complete
-                this.control.RecomputeWait();    
-            end
-        end
-        
-        % Get perturb property
-        function perturb = get.perturb(this)
-           perturb = logical(this.control.sys.perturb); 
-        end
- 
-        % Set perturb property
-        function set.perturb(this,value)
-            % error handling
-            if ~isnumeric(value) || numel(value)~=1
-                throwAsCaller(MException('bdGUI:perturb','gui.perturb must be 0 or 1'));
-            end
-            % update the perturb property of the control panel
-            this.control.sys.perturb = logical(value);
-            % notify the widgets to refresh themselves
-            notify(this.control,'refresh');
-            % if the perturb state is now ON then ...
-            if this.control.sys.perturb
-                % recompute and wait until complete
-                this.control.RecomputeWait();    
-            end
-        end
-        
-    end
-       
-    
-    methods (Access=private)
-        
-        % Construct the System menu
-        function menuobj = SystemMenu(this,sys)
-            % construct System menu
-            menuobj = uimenu('Parent',this.fig, 'Label','System');
+            % For each field name in the incoming value struct ... 
+            for vindx = 1:numel(vfields)
+                % Get the name and value of the field
+                vfield = vfields{vindx};
+                vvalue = value.(vfield);
 
-            % construct menu items
-            uimenu('Parent',menuobj, ...
-                   'Label','About', ...
-                   'Callback',@(~,~) SystemAbout() );
-            uimenu('Parent',menuobj, ...
-                   'Label','Load', ...
-                   'Callback', @(~,~) bdGUI() );
-            uimenu('Parent',menuobj, ...
-                   'Label','Save', ...
-                   'Callback', @(~,~) this.SystemSaveDialog() );
-            uimenu('Parent',menuobj, ...
-                   'Label','Export', ...
-                   'Callback', @(~,~) this.SystemExportDialog() );
-            uimenu('Parent',menuobj, ...
-                   'Label','Duplicate', ...
-                   'Callback', @(~,~) bdGUI(this.control.sys) );
-            uimenu('Parent',menuobj, ...
-                   'Label','Quit', ...
-                   'Separator','on', ...
-                   'Callback', @(~,~) delete(this.fig));
-
-            % Callback for System-About menu
-            function SystemAbout()
-                dlg = dialog('Position',[300 300 500 300],'Name',['Brain Dynamics Toolbox: Version ' this.version]);
-                ax = axes('Parent',dlg, 'Position',[0 0 1 1]);
-                img = imread('About.png');
-                imshow(img,'Parent',ax);
-                uicontrol('Parent',dlg, 'Position',[430 20 50 25], ...
-                    'String','Close', ...
-                    'Callback',@(src,evnt) delete(dlg));
+                % copy the value to sysobj.lagdef
+                lagindx = app.sysobj.GetLagIndex(vfield);
+                app.sysobj.lagdef(lagindx).value = vvalue;
             end
             
+            % notify everything to redraw
+            app.sysobj.NotifyRedraw([]);
+
+            % Execute the sysobj TimerFcn manually (and wait for it to complete)
+            app.sysobj.TimerFcn();
         end
         
-        % Customize the Figure Toolbar
-        function CustomizeToolbar(this)
-            % get handle to the toolbar
-            hToolBar = findall(this.fig,'tag','FigureToolBar');
-            if isempty(hToolBar)
+        % Get var0 (initial conditions) property
+        function var0 = get.var0(app)
+            var0 = struct();
+            for varindx = 1:numel(app.sysobj.vardef)
+                name = app.sysobj.vardef(varindx).name;
+                var0.(name) = app.sysobj.vardef(varindx).value;
+            end
+        end 
+
+         % Set var0 (initial conditions) property
+        function set.var0(app,value)
+            % Assert the incoming value is a struct
+            if ~isstruct(value)
+                warning('bdGUI: Illegal var0 value. Input must be a struct');
                 return
             end
             
-            % customize the NewFigure tool
-            hnd = findall(hToolBar,'tag','Standard.NewFigure');
-            if ~isempty(hnd)
-                hnd.ClickedCallback =  @(~,~) bdGUI(this.control.sys); 
-                hnd.TooltipString = 'New Instance';
+            % Get the names of the incoming fields
+            vfields = fieldnames(value);
+            
+            % Verify all of the incoming fields are valid before we do anything else.
+            % For each field name in the incoming value struct ... 
+            for vindx = 1:numel(vfields)
+                % Get the name, value and size of the field in the incoming struct
+                vfield = vfields{vindx};
+                vvalue = value.(vfield);
+                vsize = size(vvalue);
+                
+                % Get the index and size of the matching entry in sysobj.vardef
+                [varindx,varsize] = app.sysobj.GetVarIndex(vfield);
+                if isempty(varindx)
+                    warning(['bdGUI: Unknown variable [',vfield,'].']);
+                    return
+                end
+                
+                % Assert the incoming value is the correct shape and size.
+                if ~isequal(varsize,vsize)
+                    warning(['bdGUI: Variable size mismatch [',vfield,'].']);
+                    return
+                end
             end
             
-            % customize the FileOpen tool
-            hnd = findall(hToolBar,'tag','Standard.FileOpen');
-            if ~isempty(hnd)
-                hnd.ClickedCallback =  @(~,~) bdGUI(); 
-                hnd.TooltipString = 'Load System';
-            end
-            
-            % customize the SaveFigure tool
-            hnd = findall(hToolBar,'tag','Standard.SaveFigure');
-            if ~isempty(hnd)
-                hnd.ClickedCallback =  @(~,~) this.SystemSaveDialog(); 
-                hnd.TooltipString = 'Save System';
-            end
-            
-            % delete the PrintFigure tool
-            delete( findall(hToolBar,'tag','Standard.PrintFigure') );
-            
-            % delete the EditPlot tool
-            delete( findall(hToolBar,'tag','Standard.EditPlot') );
+            % For each field name in the incoming value struct ... 
+            for vindx = 1:numel(vfields)
+                % Get the name and value of the field
+                vfield = vfields{vindx};
+                vvalue = value.(vfield);
 
-            % delete the Data Linking tool
-            delete( findall(hToolBar,'tag','DataManager.Linking') );
+                % copy the value to sysobj.vardef
+                varindx = app.sysobj.GetVarIndex(vfield);
+                app.sysobj.vardef(varindx).value = vvalue;
+            end
             
-            % delete the Annotation tools
-            delete( findall(hToolBar,'tag','Annotation.InsertLegend') );
-            delete( findall(hToolBar,'tag','Annotation.InsertColorbar') );
-            
-            % delete the PlotTools
-            delete( findall(hToolBar,'tag','Plottools.PlottoolsOn') );
-            delete( findall(hToolBar,'tag','Plottools.PlottoolsOff') );
+            % notify everything to redraw
+            app.sysobj.NotifyRedraw([]);
+                        
+            % Execute the sysobj TimerFcn manually (and wait for it to complete)
+            app.sysobj.TimerFcn();
+        end
+               
+        % Get vars (solution variables) property
+        function vars = get.vars(app)
+            vars = app.sysobj.vars;
         end
         
-        % Construct the System-Save Dialog
-        function SystemSaveDialog(this)
+        % Get tspan property
+        function tspan = get.tspan(app)
+            tspan = app.sysobj.tspan;
+        end
+
+        % Get tstep property
+        function tstep = get.tstep(app)
+            tstep = app.sysobj.tstep;
+        end
+        
+        % Get tval (time slider value) property
+        function tval = get.tval(app)
+            tval = app.sysobj.tval;
+        end
+        
+%         % Set tval (time slider value) property FIX ME
+%         function set.tval(gui,tval)
+%             % error handling
+%             if ~isnumeric(tval) || numel(tval)~=1
+%                 throwAsCaller(MException('bdGUI:tval','gui.tval must be numeric'));
+%             end
+%             
+%             % update the system structure
+%             gui.sysobj.tval = tval;
+%                   
+%             % notify everything to redraw
+%             gui.sysobj.NotifyRedraw([]);
+%             return
+%   
+%             
+%             % adjust tspan if necessary
+%             Tspan = gui.control.sys.tspan;
+%             if tval<Tspan(1) || tval>Tspan(2)
+%                 Tspan(1) = min(Tspan(1),tval);
+%                 Tspan(2) = max(Tspan(2),tval);
+%                 gui.control.sys.tspan = Tspan;
+%             
+%                 % Notify the control panel to refresh its widgets
+%                 notify(gui.control,'refresh');
+%             
+%                 % recompute and wait until complete
+%                 gui.control.RecomputeWait();
+%             else
+%                 % Notify the control panel to refresh its widgets
+%                 notify(gui.control,'refresh');
+% 
+%                 % update the indicies of the non-tranient time steps in sol.x
+%                 gui.control.tindx = (gui.control.sol.x >= gui.control.sys.tval);
+% 
+%                 % Notify all panels to redraw
+%                 notify(gui.control,'redraw');                
+%                 drawnow;
+%             end
+%         end
+
+        % Get t (solution time domain) property
+        function t = get.t(app)
+            t = app.sysobj.tdomain;
+        end
+        
+        % Get sys property
+        function sys = get.sys(app)
+            sys = app.sysobj.ExportSystem();
+            sys.panels = app.PanelMgr.ExportPanels();
+        end
+        
+        % Get sol property
+        function sol = get.sol(app)
+            sol = app.sysobj.sol;
+                        
+            % remove unwanted function handles from sol.exdata.options
+            if isfield(sol,'extdata')
+                if isfield(sol.extdata,'options')
+                    % remove the sol.extdata.options.OutputFcn handle
+                    if isfield(sol.extdata.options,'OutputFcn')
+                        sol.extdata.options = rmfield(sol.extdata.options,'OutputFcn');
+                    end
+                end
+            end
+
+        end
+        
+        % Get panels property
+        function out = get.panels(app)
+            app.PanelMgr.CleanPanelHands();
+            out = app.PanelMgr.panelhands;
+        end
+        
+        % Get halt property
+        function halt = get.halt(app)
+            halt = app.sysobj.halt;
+        end
+        
+        % Set halt property
+        function set.halt(app,value)
+            if value
+                app.sysobj.halt = true;
+            else
+                app.sysobj.halt = false;
+                app.sysobj.recompute = true;
+            end
+            % notify everything to redraw
+            app.sysobj.NotifyRedraw([]);
+        end
+        
+        % Get evolve property
+        function evolve = get.evolve(app)
+            evolve = app.sysobj.evolve;
+        end
+        
+        % Set evolve property
+        function set.evolve(app,value)
+            if value
+                app.sysobj.evolve = true;
+                app.sysobj.recompute = true;
+            else
+                app.sysobj.evolve = false;
+            end
+            % notify everything to redraw
+            app.sysobj.NotifyRedraw([]);
+        end
+        
+        % Get perturb property
+        function perturb = get.perturb(app)
+            perturb = app.sysobj.perturb;
+        end
+        
+        % Set perturb property
+        function set.perturb(app,value)
+            if value
+                app.sysobj.perturb = true;
+                app.sysobj.recompute = true;
+            else
+                app.sysobj.perturb = false;
+            end
+            % notify everything to redraw
+            app.sysobj.NotifyRedraw([]);
+        end
+        
+        % Destructor
+        function delete(app)
+            %disp('bdGUI.delete');   
+            app.sysobj.TimerStop();
+            delete(app.plistener);
+            delete(app.rlistener);
+            delete(app.fig);
+            delete(app);
+        end
+       
+    end
+    
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Listener for REDRAW events
+        function Redraw(app,sysevent)
+            %disp('bdGUI.Redraw');
+            % if sysobj.halt has changed then start/stop the solver timer
+            if sysevent.halt
+                if app.sysobj.halt
+                    % stop the solver timer
+                    app.sysobj.TimerStop();
+                else
+                    % start the solver timer
+                    app.sysobj.TimerStart();
+                end
+            end
+                                    
+            % If any of the following events occured then push a new entry onto the undostack
+            if any([sysevent.pardef.value]) || ...
+               any([sysevent.pardef.lim]) || ...
+               any([sysevent.lagdef.value]) || ...
+               any([sysevent.lagdef.lim]) || ...
+               any([sysevent.vardef.value]) || ...
+               any([sysevent.vardef.lim]) || ...
+               sysevent.tspan || ...
+               sysevent.tstep || ...
+               sysevent.tval || ...
+               sysevent.noisehold || ...
+               sysevent.evolve || ...
+               sysevent.perturb || ...
+               sysevent.backward || ...
+               sysevent.solveritem || ...
+               sysevent.odeoption || ...
+               sysevent.ddeoption || ...
+               sysevent.sdeoption 
+                % Push the changes onto the undo stack
+                notify(app.sysobj,'push');
+            end
+        end
+        
+        % Callback for System-About menu
+        function AboutMenuCallback(app)          
+            % Create the 'About' figure with the same Tag as the GUI figure
+            dlg = uifigure('Position',[300 300 600 320], 'Name','About', 'Resize','off','Color','w','Tag',app.fig.Tag);
+            
+            % Create GridLayout
+            gridlayout = uigridlayout(dlg);
+            gridlayout.ColumnWidth = {'1x','1x'};
+            gridlayout.RowHeight = {70,100,'1x',50};
+            gridlayout.RowSpacing = 0;
+
+            % Brain Dynamics Toolbox: Version XXX
+            label = uilabel(gridlayout);
+            label.Text = {'Brain Dynamics Toolbox',['Version ' app.sysobj.version]};
+            label.FontName = 'Times';
+            label.FontSize = 24;
+            label.FontWeight = 'bold';
+            label.HorizontalAlignment = 'center';
+            label.Layout.Row = 1;
+            label.Layout.Column = [1 2];
+            
+            % Stewart Heitmann
+            label = uilabel(gridlayout);
+            label.Text = {'Stewart Heitmann','Victor Chang Cardiac Research Institute','Darlinghurst NSW 2131, Australia','heitmann@bdtoolbox.org'};
+            label.FontName = 'Times';
+            label.FontSize = 16;
+            label.HorizontalAlignment = 'center';
+            label.Layout.Row = 2;
+            label.Layout.Column = 1;
+            
+            % Michael Breakspear
+            label = uilabel(gridlayout);
+            label.Text = {'Michael Breakspear','The University of Newcastle','Callaghan NSW 2308, Australia','michael.breakspear@newcastle.edu.au'};
+            label.FontName = 'Times';
+            label.FontSize = 16;
+            label.HorizontalAlignment = 'center';
+            label.Layout.Row = 2;
+            label.Layout.Column = 2;
+            
+            % Blurb
+            label = uilabel(gridlayout);
+            label.Text = {'The Brain Dynamics Toolbox is open software for simulating dynamical systems in',' neuroscience and related fields. It solves initial-value problems in custom systems', 'of Ordinary Differential Equations (ODEs), Delay Differential Equations (DDEs),', 'Stochastic Differential Equations (SDEs) and Partial Differential Equations (PDEs).'};
+            label.FontName = 'Times';
+            label.FontSize = 16;
+            label.HorizontalAlignment = 'center';
+            label.Layout.Row = 3;
+            label.Layout.Column = [1 2];
+            
+            % website
+            label = uilabel(gridlayout);
+            label.Text = {'Visit bdtoolbox.org for links to the official handbook and online training courses.'};
+            label.FontName = 'Times';
+            label.FontSize = 16;
+            label.HorizontalAlignment = 'center';
+            label.Layout.Row = 4;
+            label.Layout.Column = [1 2];
+        end
+        
+         
+        % Callback for System-Load menu
+        function LoadMenuCallback(app)
+            %disp('bdGUI.LoadMenuCallback'); 
+            % Load the sys (and sol) struct from mat file 
+            [sys,sol] = bdGUI.loadsys();
+            if isempty(sys)
+                % user cancelled the load operation
+                return
+            end
+            bdGUI(sys,'sol',sol);
+        end
+        
+        % Callback for System-Save menu
+        function SaveMenuCallback(app)
             % widget geometry
             panelw = 180;
             panelh = 390;
@@ -768,10 +925,10 @@ classdef bdGUI < handle
             yoffset = yoffset + rowh;
 
             % If our system has lag parameters then enable that checkbox
-            if isfield(this.control.sys,'lagdef')
-                lagEnable = 'on';
-            else
+            if isempty(app.sysobj.lagdef)
                 lagEnable = 'off';
+            else
+                lagEnable = 'on';
             end
 
             % lag check box
@@ -818,9 +975,9 @@ classdef bdGUI < handle
             
             % var1 check box
             uicontrol('Style','checkbox', ...
-                'String','var1', ...
-                'Tag', 'bdSaveVar1', ...
-                'TooltipString', 'var1 contains the computed trajectories', ...
+                'String','vars', ...
+                'Tag', 'bdSaveVars', ...
+                'TooltipString', 'vars contains the computed trajectories', ...
                 'HorizontalAlignment','left', ...
                 'FontUnits','pixels', ...
                 'FontSize',12, ...
@@ -845,9 +1002,9 @@ classdef bdGUI < handle
 
             % time check box
             uicontrol('Style','checkbox', ...
-                'String','t', ...
+                'String','tdomain', ...
                 'Tag', 'bdSaveTime', ...
-                'TooltipString', num2str(numel(this.sol.x),'t is 1x%d'), ...
+                'TooltipString', num2str(numel(app.sysobj.tdomain),'t is 1x%d'), ...
                 'HorizontalAlignment','left', ...
                 'FontUnits','pixels', ...
                 'FontSize',12, ...
@@ -922,46 +1079,34 @@ classdef bdGUI < handle
                 'FontUnits','pixels', ...
                 'FontSize',12, ...
                 'Parent', dlg, ...
-                'Callback', @(~,~) this.SystemSaveMenu(dlg), ... 
+                'Callback', @(~,~) app.SaveButtonCallback(dlg), ... 
                 'Position',[panelw-70 15 60 20]);
         end
-        
-        % System-Save menu callback
-        function SystemSaveMenu(this,dlg)
+
+        % Callback for Save dialog button
+        function SaveButtonCallback(app,dlg)
             % initialise the outgoing data
             data = [];
             
             % The matlab save function wont save an empty struct
             % so we ensure that our struct always has something in it.
-            data.bdtoolbox = this.version;      % toolkit version string
-            data.date = date();                 % today's date
+            data.bdtoolbox = app.sysobj.version;    % toolkit version string
+            data.date = date();                     % today's date
                 
             % find the sys checkbox widget in the dialog box
             objs = findobj(dlg,'Tag','bdSaveSys');
             if objs.Value>0
                 % include the sys struct in the outgoing data
-                data.sys = this.control.sys;
-                % remove any OutputFcn options from the sys struct 
-                if isfield(data.sys,'odeoption') && isfield(data.sys.odeoption,'OutputFcn')
-                    data.sys.odeoption = rmfield(data.sys.odeoption,'OutputFcn');
-                end
-                if isfield(data.sys,'ddeoption') && isfield(data.sys.ddeoption,'OutputFcn')
-                    data.sys.ddeoption = rmfield(data.sys.ddeoption,'OutputFcn');
-                end
-                if isfield(data.sys,'sdeoption') && isfield(data.sys.sdeoption,'OutputFcn')
-                    data.sys.sdeoption = rmfield(data.sys.sdeoption,'OutputFcn');
-                end
-                % remove empty sdeoption.randn field 
-                if isfield(data.sys,'sdeoption') && isfield(data.sys.sdeoption,'randn') && isempty(data.sys.sdeoption.randn)
-                    data.sys.sdeoption = rmfield(data.sys.sdeoption,'randn');
-                end
+                data.sys = app.sysobj.ExportSystem();
+                % include sys.panels in the outgoing data too
+                data.sys.panels = app.PanelMgr.ExportPanels();
             end
 
             % find the sol checkbox widget in the dialog box
             objs = findobj(dlg,'Tag','bdSaveSol');
             if objs.Value>0
                 % include the sol struct in the outgoing data
-                data.sol = this.control.sol;
+                data.sol = app.sysobj.sol;
                 % remove the OutputFcn option from the sol.extdata.options struct 
                 if isfield(data.sol,'extdata') && isfield(data.sol.extdata,'options') && isfield(data.sol.extdata.options,'OutputFcn')
                     data.sol.extdata.options = rmfield(data.sol.extdata.options,'OutputFcn');
@@ -972,35 +1117,35 @@ classdef bdGUI < handle
             objs = findobj(dlg,'Tag','bdSavePar');
             if objs.Value>0
                 % include the par struct in the outgoing data
-                data.par = this.par;
+                data.par = app.par;
             end
             
             % find the lag checkbox widget in the dialog box
             objs = findobj(dlg,'Tag','bdSaveLag');
             if objs.Value>0
                 % include the lag parameter values in the outgoing data
-                data.lag = this.lag;
+                data.lag = app.lag;
             end
             
             % find the var0 checkbox widget in the dialog box
             objs = findobj(dlg,'Tag','bdSaveVar0');
             if objs.Value>0
                 % include the initial values in the outgoing data
-                data.var0 = this.var0;
+                data.var0 = app.var0;
             end
 
             % find the var1 checkbox widget in the dialog box
-            objs = findobj(dlg,'Tag','bdSaveVar1');
+            objs = findobj(dlg,'Tag','bdSaveVars');
             if objs.Value>0
                 % include the initial values in the outgoing data
-                data.var1 = this.var1;
+                data.vars = app.vars;
             end
             
             % find the time checkbox widget in the dialog box
             objs = findobj(dlg,'Tag','bdSaveTime');
             if objs.Value>0
                 % include the time steps in the outgoing data
-                data.t = this.t;
+                data.tdomain = app.sysobj.tdomain;
             end
             
             % find the File Format radio buttons in the dialog box
@@ -1029,148 +1174,227 @@ classdef bdGUI < handle
             
         end
         
-        % Construct the System-Export Dialog
-        function SystemExportDialog(this)
-            labs = {'gui','fig','par','var0','var1','t','lag','sys','sol'};
-            vars = {'gui','fig','par','var0','var1','t','lag','sys','sol'};
-            vals = {this, this.fig, this.par,this.var0,this.var1,this.t,this.lag,this.sys,this.sol};
+        % Callback for the System-Export menu
+        function SystemExportCallback(app)
+            labs = {'gui','fig','par','var0','vars','t','lag','sys','sol'};
+            vars = {'gui','fig','par','var0','vars','t','lag','sys','sol'};
+            vals = {app, app.fig, app.par,app.var0,app.vars,app.t,app.lag,app.sys,app.sol};
             export2wsdlg(labs,vars,vals,'Export to Workspace',false(numel(labs),1));
         end
-        
-        % Callback for window resize events
-        function SizeChanged(this)
-            % resize the control panel
-            this.control.SizeChanged(this.fig);
-            % resize the display panel
-            this.display.SizeChanged(this.fig);
-        end
-        
-    end
-    
  
-end
-
-
-% Performs a basic check of the format of the sol structure.
-% Throws an exception if any problem is detected.
-function solcheck(sol)
-    if ~isstruct(sol)
-        throw(MException('bdGUI:badsol','The sol variable must be a struct'));
-    end
-    if ~isfield(sol,'solver')
-        throw(MException('bdGUI:badsol','The sol.solver field is missing'));
-    end
-    if ~isfield(sol,'x')
-        throw(MException('bdGUI:badsol','The sol.x field is missing'));
-    end
-    if ~isfield(sol,'y')
-        throw(MException('bdGUI:badsol','The sol.y field is missing'));
-    end
-    if ~isfield(sol,'stats')
-        throw(MException('bdGUI:badsol','The sol.stats field is missing'));
-    end
-    if ~isstruct(sol.stats)
-        throw(MException('bdGUI:badsol','The sol.stats field must be a struct'));
-    end
-    if ~isfield(sol.stats,'nsteps')
-        throw(MException('bdGUI:badsol','The sol.stats.nsteps field is missing'));
-    end
-    if ~isfield(sol.stats,'nfailed')
-        throw(MException('bdGUI:badsol','The sol.stats.nfailed field is missing'));
-    end
-    if ~isfield(sol.stats,'nfevals')
-        throw(MException('bdGUI:badsol','The sol.stats.nfevals field is missing'));
-    end    
-end
-
-% Cross-checks the format of the sol struct against the sys struct.
-function  solsyscheck(sol,sys)
-    if isempty(sol)
-        return
-    end
-    if numel(bdGetValues(sys.vardef)) ~= size(sol.y,1)
-        throw(MException('bdGUI:badsol','The sol and sys structs are incompatible'));
-    end
-    
-end
-
-% Prompt the user to load a sys struct (and optionally a sol struct) from a matlab file. 
-function [sys,sol] = loadsys()
-    % init the return values
-    sys = [];
-    sol = [];
-
-    % prompt the user to select a mat file
-    [fname, pname] = uigetfile({'*.mat','MATLAB data file'},'Load system file');
-    if fname==0
-        return      % user cancelled the operation
-    end
-
-    % load the mat file that the user selected
-    warning('off','MATLAB:load:variableNotFound');
-    fdata = load(fullfile(pname,fname),'sys','sol');
-    warning('on','MATLAB:load:variableNotFound');
-    
-    % extract the sys structure 
-    if isfield(fdata,'sys')
-        sys = fdata.sys;
-    else
-        msg = {'The load operation has failed because the selected mat file does not contain a ''sys'' structure.'
-               ''
-               'Explanation: Every model is defined by a special data structure that is named ''sys'' by convention. The System-Load menu has failed to find a data structure of that name in the selected mat file.'
-               ''
-               'To succeed, select a mat file that you know contains a ''sys'' structure. Example models are provided in the ''bdtoolkit'' installation directory. See Chapter 1 of the Handbook for the Brain Dynamics Toolbox for a list.'
-               ''
-               };
-        uiwait( warndlg(msg,'Load failed') );
-        throw(MException('bdGUI:badsys','Missing sys structure'));
-    end
-
-    % check the sys struct and display a dialog box if errors are found
-    try
-        % check the validity of the sys structure
-        sys = bd.syscheck(sys);                        
-    catch ME
-        switch ME.identifier
-            case {'bdtoolkit:syscheck:odefun'
-                  'bdtoolkit:syscheck:ddefun'
-                  'bdtoolkit:syscheck:sdeF'
-                  'bdtoolkit:syscheck:sdeG'}
-                msg = {ME.message
-                       ''
-                       'Explanation: The model could not be loaded because its ''sys'' structure contains a handle to a function that is not in the matlab search path.'
-                       ''
-                       'To succeed, ensure that all functions belonging to the model are accessible to matlab via the search path. See ''Getting Started'' in the Handbook for the Brain Dynamics Toolbox.'
-                       ''
-                       };
-                uiwait( warndlg(msg,'Missing Function') );
+        % Callback for System-Clone menu
+        function CloneMenuCallback(app)
+            %disp('bdGUI.CloneMenuCallback');
             
-            otherwise
-                msg = {ME.message
+            % Get the sys structure for this model
+            sys = app.sysobj.ExportSystem();
+            
+            % Inlude the panels in the sys structure
+            sys.panels = app.PanelMgr.ExportPanels();
+            
+            % Get the sol structure for this model 
+            sol = app.sysobj.sol;
+
+            % remove the OutputFcn option from the sol.extdata.options struct 
+            if isfield(sol,'extdata') && isfield(sol.extdata,'options') && isfield(sol.extdata.options,'OutputFcn')
+                sol.extdata.options = rmfield(sol.extdata.options,'OutputFcn');
+            end
+    
+            % Construct a new GUI
+            bdGUI(sys,'sol',sol);
+        end
+        
+        % Callback for System-Quit menu
+        function QuitMenuCallback(app)
+            %disp('bdGUI.QuitMenuCallback'); 
+            
+            % stop the timer loop
+            app.sysobj.TimerStop();
+            
+            % delete all figures with the same tag as the main GUI figure.
+            tag = app.fig.Tag;
+            figs = findall(0,'Type','figure','Tag',tag);
+            delete(figs);
+            
+            % delete the bdGUI object
+            delete(app);
+        end
+   
+        % Listener for PUSH events
+        function Pusher(app)
+            %disp('gui.Pusher');
+            
+            % Obtain a copy of the current sys structure
+            % including the current panel settings.
+            sys = app.sysobj.ExportSystem();
+            sys.panels = app.PanelMgr.ExportPanels();
+
+            % Push the sys structure onto the Undo stack
+            app.UndoStack.Push(sys);
+
+            % Enable/Disable the Undo menu as appropriate
+            if isvalid(app.UndoMenu)
+                app.UndoMenu.Enable = app.UndoStack.UndoStatus();
+            end
+
+            % Enable/Disable the Re-do menu as appropriate
+            if isvalid(app.RedoMenu)
+                app.RedoMenu.Enable = app.UndoStack.RedoStatus();
+            end 
+        end
+               
+        % Callback for Edit-Undo menu
+        function UndoMenuCallback(app)
+            %disp('bdGUI.UndoMenuCallback');
+            sys = app.UndoStack.Pop();          % Retrieve the previous system settings
+            if ~isempty(sys)
+                halt = app.sysobj.halt;         % Remember the HALT button state
+                app.sysobj.ImportSystem(sys);   % Restore the previous system settings
+                app.sysobj.halt = halt;         % UNDO does not alter the HALT button
+
+                % Restore the previous panels (without invoking Pusher)
+                app.plistener.Enabled = 0;              % Disable the PUSH listener
+                app.PanelMgr.ImportPanels(sys.panels);  % Restore the previous panel settings
+                app.sysobj.NotifyRedraw(app.rlistener); % Notify everything (except self) to REDRAW                
+                app.plistener.Enabled = 1;              % Enable the PUSH listener
+            end
+            
+            % Enable/Disable the Undo menu as appropriate
+            if isvalid(app.UndoMenu)
+                app.UndoMenu.Enable = app.UndoStack.UndoStatus();
+            end
+            
+            % Enable/Disable the Redo menu as appropriate
+            if isvalid(app.RedoMenu)
+                app.RedoMenu.Enable = app.UndoStack.RedoStatus();
+            end
+            %disp('bdGUI.UndoMenuCallback END');
+        end
+        
+        % Callback for Edit-Redo menu
+        function RedoMenuCallback(app)
+            %disp('bdGUI.RedoMenuCallback');
+            sys = app.UndoStack.UnPop();        % Retrieve the earlier system settings
+            if ~isempty(sys)
+                halt = app.sysobj.halt;         % Remember the HALT button state
+                app.sysobj.ImportSystem(sys);   % Apply the retrieved system settings
+                app.sysobj.halt = halt;         % REDO does not alter the HALT button
+                
+                % Restore the previous panels (without invoking Pusher)
+                app.plistener.Enabled = 0;              % Disable the PUSH listener
+                app.PanelMgr.ImportPanels(sys.panels);  % Restore the previous panel settings
+                app.sysobj.NotifyRedraw(app.rlistener); % Notify everything (except self) to REDRAW                
+                app.plistener.Enabled = 1;              % Enable the PUSH listener
+            end
+            
+            % Enable/Disable the Undo menu as appropriate
+            if isvalid(app.UndoMenu)
+                app.UndoMenu.Enable = app.UndoStack.UndoStatus();
+            end
+            
+            % Enable/Disable the Redo menu as appropriate
+            if isvalid(app.RedoMenu)
+                app.RedoMenu.Enable = app.UndoStack.RedoStatus();
+            end
+            %disp('bdGUI.RedoMenuCallback END');
+        end
+        
+    end
+    
+    methods (Static)
+
+        % Prompt the user to load a sys struct (and optionally a sol struct) from a matlab file. 
+        function [sys,sol] = loadsys()
+            % init the return values
+            sys = [];
+            sol = [];
+
+            % prompt the user to select a mat file
+            [fname, pname] = uigetfile({'*.mat','MATLAB data file'},'Load system file');
+            if fname==0
+                return      % user cancelled the operation
+            end
+
+            % load the mat file that the user selected
+            warning('off','MATLAB:load:variableNotFound');
+            fdata = load(fullfile(pname,fname),'sys','sol');
+            warning('on','MATLAB:load:variableNotFound');
+
+            % extract the sys structure 
+            if isfield(fdata,'sys')
+                sys = fdata.sys;
+            else
+                msg = {'The load operation has failed because the selected mat file does not contain a ''sys'' structure.'
                        ''
-                       'Explanation: The model could not be loaded because its ''sys'' structure is invalid. Use the ''bdSysCheck'' command-line tool to diagnose the exact problem. Refer to the Handbook for the Brain Dynamics Toolbox for a comprehensive description of the format of the ''sys'' structure.'
+                       'Explanation: Every model is defined by a special data structure that is named ''sys'' by convention. The System-Load menu has failed to find a data structure of that name in the selected mat file.'
+                       ''
+                       'To succeed, select a mat file that you know contains a ''sys'' structure. Example models are provided in the ''bdtoolkit'' installation directory. See Chapter 1 of the Handbook for the Brain Dynamics Toolbox for a list.'
                        ''
                        };
-                uiwait( warndlg(msg,'Invalid sys structure') );
+                uiwait( warndlg(msg,'Load failed') );
+                throw(MException('bdGUI:badsys','Missing sys structure'));
+            end
+
+            % check the sys struct and display a dialog box if errors are found
+            try
+                % check the validity of the sys structure
+                sys = bdGUI.syscheck(sys);
+            catch ME
+                throw(MException('bdGUI:badsys','Invalid sys structure'));
+            end
+
+            % extract the sol structure (if it exists) 
+            if isfield(fdata,'sol')
+                sol = fdata.sol;
+%                 try
+%                     % check that the sol struct matches the sys struct.
+%                     solsyscheck(sol,sys);
+%                 catch ME
+%                     msg = {ME.message
+%                            ''
+%                            'Explanation: The solution (sol) found in the mat file is not compatible with this model (sys). The solution data is ignored.'
+%                            ''
+%                            };
+%                     uiwait( warndlg(msg,'Solution not loaded') );
+%                     sol = [];
+%                 end
+            end
+        end    
+    
+        % Check the sys struct and display a dialog box if errors are detected 
+        function sys = syscheck(sys)
+            try
+                % check the validity of the sys structure
+                sys = bdSystem.syscheck(sys);
+            catch ME
+                switch ME.identifier
+                    case {'bdtoolkit:syscheck:odefun'
+                          'bdtoolkit:syscheck:ddefun'
+                          'bdtoolkit:syscheck:sdeF'
+                          'bdtoolkit:syscheck:sdeG'}
+                        msg = {ME.message
+                               ''
+                               'Explanation: The model could not be loaded because its ''sys'' structure contains a handle to a function that is not in the matlab search path.'
+                               ''
+                               'To succeed, ensure that all functions belonging to the model are accessible to matlab via the search path. See ''Getting Started'' in the Handbook for the Brain Dynamics Toolbox.'
+                               ''
+                               };
+                        uiwait( warndlg(msg,'Missing Function') );
+
+                    otherwise
+                        msg = {ME.message
+                               ''
+                               'Explanation: The model could not be loaded because its ''sys'' structure is invalid. Use the ''bdSysCheck'' command-line tool to diagnose the exact problem. Refer to the Handbook for the Brain Dynamics Toolbox for a comprehensive description of the format of the ''sys'' structure.'
+                               ''
+                               };
+                        uiwait( warndlg(msg,'Invalid sys structure') );
+                end
+                throw(MException('bdGUI:badsys','Invalid sys structure'));
+            end
         end
-        throw(MException('bdGUI:badsys','Invalid sys structure'));
-    end
-        
-    % extract the sol structure (if it exists) 
-    if isfield(fdata,'sol')
-        sol = fdata.sol;
-        try
-            % check that the sol struct matches the sys struct.
-            solsyscheck(sol,sys);
-        catch ME
-            msg = {ME.message
-                   ''
-                   'Explanation: The solution (sol) found in the mat file is not compatible with this model (sys). The solution data is ignored.'
-                   ''
-                   };
-            uiwait( warndlg(msg,'Solution not loaded') );
-            sol = [];
-        end
+
     end
 end
+
+
 

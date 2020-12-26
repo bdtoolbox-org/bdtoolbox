@@ -15,16 +15,18 @@
 %
 % Authors
 %   Matthew Aburn (2017a)
-%   Stewart Heitmann (2017a,2018a)
+%   Stewart Heitmann (2017a,2018a,2020a)
 %
 % See Also:
 % FitzHugh (1955) Mathematical models of threshold phenomena in the nerve
-%   membrane. Bull. Math. Biophysics, 17:257--278
+%   membrane. Bull. Math. Biophysics, 17:257--278.
+% Nagumo et al (1962) An active pulse transmission line simulating nerve axon
+%   Proceedings of the IRE 50 (10): 2061?70.
+% Izhikevich and FitzHugh (2006) FitzHugh-Nagumo model. Scholarpedia 1(9):1349.
 % Sanz-Leon et al. (2015) Mathematical framework for large-scale brain network
 %   modeling in The Virtual Brain. NeuroImage 111: 385--430.
 
-
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -81,32 +83,36 @@ function sys = FitzhughNagumo(Kij)
     
     % Default time span
     sys.tspan = [0 1000];
+    sys.tstep = 0.1;
               
     % Specify ODE solvers and default options
     %sys.odesolver = {@ode45,@ode23,@ode113,@odeEuler};  % ODE solvers
-    sys.odeoption = odeset('RelTol',1e-6);              % ODE solver options
+    sys.odeoption = odeset('RelTol',1e-6,'InitialStep',0.1);  % ODE solver options
 
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
-    sys.panels.bdLatexPanel.latex = {'\textbf{FitzhughNagumo}';
-        '';
-        'Network of generalized FitzHugh-Nagumo oscillators.';
-        '\qquad $\dot V_i = \tau d (-f V_i^3 + e V_i^2 + g V_i + \alpha W_i + \gamma (I_{app} + I_{net}))$';
-        '\qquad $\dot W_i = \frac{d}{\tau}(c V_i^2 + b V_i - \beta W_i + a)$';
-        'where';
-        '\qquad $K_{ij}$ is the connectivity matrix ($n$ x $n$),';
-        '\qquad $a, b, c, d, e, f, g, \alpha, \beta, \gamma, \tau, I_{app}, \sigma$ and $\theta$ are constants,';
-        '\qquad $I_{app}$ is the applied current,';
-        '\qquad $I_{net} = \sum_j K_{ij} S(V_j-\theta)$,';
-        '\qquad $S(V) = 1/(1+\exp(-V/\sigma))$,';
-        '\qquad $i{=}1 \dots n$.';
-        '';
-        'Notes';
-        ['\qquad 1. This simulation has $n{=}',num2str(n),'$.'];
-        '';
-        'References:';
-        '\quad FitzHugh (1955) Mathematical models of threshold phenomena in the nerve membrane, \textit{Bull. Math. Biophysics}, \textbf{17}:257--278';
-        '\quad Sanz-Leon et al. (2015) Mathematical framework for large-scale brain network modeling in The Virtual Brain, \textit{NeuroImage} \textbf{111}:385--430.'};
+    sys.panels.bdLatexPanel.latex = {
+        '$\textbf{FitzhughNagumo}$'
+        ''
+        'Network of generalized FitzHugh-Nagumo oscillators.'
+        '{ }{ }{ } $\dot V_i = \tau d (-f V_i^3 + e V_i^2 + g V_i + \alpha W_i + \gamma (I_{app} + I_{net}))$'
+        '{ }{ }{ } $\dot W_i = \frac{d}{\tau}(c V_i^2 + b V_i - \beta W_i + a)$'
+        'where'
+        '{ }{ }{ } $K_{ij}~$ is the connectivity matrix ($n\;$ x $n$),'
+        '{ }{ }{ } $a, b, c, d, e, f, g, \alpha, \beta, \gamma, \tau, I_{app}, \sigma\;$ and $\theta\;$ are constants,'
+        '{ }{ }{ } $I_{app}~$ is the applied current,'
+        '{ }{ }{ } $I_{net} = \sum_j K_{ij} S(V_j-\theta)$,'
+        '{ }{ }{ } $S(V) = 1/(1+\exp(-V/\sigma))$,'
+        '{ }{ }{ } $i{=}1 \dots n$.'
+        ''
+        'Notes'
+        ['{ }{ }{ } 1. This simulation has $n{=}',num2str(n),'$.']
+        ''
+        'References:'
+        '{ }{ }{ } FitzHugh (1955) Mathematical models of threshold phenomena in the nerve membrane, Bull. Math. Biophysics, 17:257--278'
+        '{ }{ }{ } Nagumo et al (1962) An active pulse transmission line simulating nerve axon. Proceedings of the IRE 50, (10): 2061--70.'
+        '{ }{ }{ } Izhikevich and FitzHugh (2006) FitzHugh-Nagumo model. Scholarpedia, 1(9):1349.'
+        };
     
     % Include the Time Portrait panel in the GUI
     sys.panels.bdTimePortrait = [];

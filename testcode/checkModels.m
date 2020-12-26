@@ -1,11 +1,11 @@
 % This script runs bdSysCheck on selected models
 
 if ~exist('bdSysCheck.m', 'file')
-    error('bdtoolkit is not in the matlab path');
+    error('bdtoolbox is not in the matlab path');
 end
 
 if ~exist('LinearODE.m', 'file')
-    error('bdtoolkit/models is not in the matlab path');
+    error('bdtoolbox/models is not in the matlab path');
 end
 
 %if ~exist('sdeEM.m', 'file')
@@ -15,13 +15,13 @@ end
 %%
 disp 'TESTING BOLDHRF';
 sys = BOLDHRF();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING BrownianMotion';
 sys = BrownianMotion();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -30,7 +30,7 @@ n = randi(10);
 disp(num2str(n,'n=%d'));
 Kij = rand(n);
 sys = BTF2003(Kij);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -39,7 +39,7 @@ n = randi(10);
 disp(num2str(n,'n=%d'));
 Kij = rand(n);
 sys = BTF2003DDE(Kij);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -48,49 +48,67 @@ n = randi(10);
 disp(num2str(n,'n=%d'));
 Kij = rand(n);
 sys = BTF2003SDE(Kij);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING DFCL2009';
 sys = DFCL2009();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING EI0D';
 sys = EI0D();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING EIE0D';
 sys = EIE0D();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING EI1D';
 sys = EI1D(200);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING EIE1D';
 sys = EIE1D(200);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING Epileptor2014ODE';
 sys = Epileptor2014ODE();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING Epileptor2014SDE';
 sys = Epileptor2014SDE();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING FisherKolmogorov1D (periodic)';
+sys = FisherKolmogorov1D(200,'periodic');
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING FisherKolmogorov1D (reflecting)';
+sys = FisherKolmogorov1D(200,'reflecting');
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING FisherKolmogorov1D (free)';
+sys = FisherKolmogorov1D(200,'free');
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -98,7 +116,7 @@ disp 'TESTING FitzhughNagumo';
 n = randi(10);
 disp(num2str(n,'n=%d'));
 sys = FitzhughNagumo(rand(n));
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -106,7 +124,7 @@ disp 'TESTING FRRB2012';
 n = randi(10);
 disp(num2str(n,'n=%d'));
 sys = FRRB2012(n);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -115,7 +133,7 @@ n = randi(10);
 disp(num2str(n,'n=%d'));
 Kij = rand(n);
 sys = FRRB2012b(Kij);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -123,13 +141,13 @@ disp 'TESTING HindmarshRose';
 n = randi(10);
 disp(num2str(n,'n=%d'));
 sys = HindmarshRose(rand(n));
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING HodgkinHuxley';
 sys = HodgkinHuxley();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -137,13 +155,19 @@ disp 'TESTING HopfieldNet';
 n = randi(10);
 disp(num2str(n,'n=%d'));
 sys = HopfieldNet(n);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING HopfXY';
+sys = HopfXY();
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING KloedenPlaten446';
 sys = KloedenPlaten446();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -152,7 +176,7 @@ n = randi(10);
 disp(num2str(n,'n=%d'));
 Kij = rand(n);
 sys = KuramotoNet(Kij);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -160,31 +184,37 @@ disp 'TESTING KuramotoSakaguchi';
 n = randi(10);
 disp(num2str(n,'n=%d'));
 Kij = rand(n);
-Aij = rand(n)
+Aij = rand(n);
 sys = KuramotoSakaguchi(Kij,Aij);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING LinearODE';
 sys = LinearODE();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING Lorenz';
 sys = Lorenz();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING MorrisLecar';
 sys = MorrisLecar('Hopf');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 sys = MorrisLecar('SNLC');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 sys = MorrisLecar('Homoclinic');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING MorrisLecar1D';
+sys = MorrisLecar1D(100);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -192,43 +222,43 @@ disp 'TESTING OrnsteinUhlenbeck';
 n = randi(10);
 disp(num2str(n,'n=%d'));
 sys = OrnsteinUhlenbeck(n);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING Othmer1997';
 sys = Othmer1997();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING Pendulum';
 sys = Pendulum();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING Pospischil2008('RS')';
 sys = Pospischil2008('RS');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING Pospischil2008('FS')';
 sys = Pospischil2008('FS');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING Pospischil2008('IB')';
 sys = Pospischil2008('IB');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING RFB2017';
 sys = RFB2017();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -238,13 +268,13 @@ disp(num2str(n,'n=%d'));
 dx = 0.25;
 disp(num2str(dx,'dx=%f'));
 sys = SwiftHohenberg1D(n,dx);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING Tsodyks1997';
 sys = Tsodyks1997();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -252,45 +282,45 @@ disp 'TESTING VanDerPolOscillators';
 n = randi(10);
 disp(num2str(n,'n=%d'));
 sys = VanDerPolOscillators(rand(n));
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING WaveEquation1D';
 n = 100;
 sys = WaveEquation1D(n,'periodic');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 sys = WaveEquation1D(n,'reflecting');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 sys = WaveEquation1D(n,'free');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 sys = WaveEquation1D(n,'absorbing');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING WaveEquation2D';
 n = 100;
 sys = WaveEquation2D(n,'periodic');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 sys = WaveEquation2D(n,'reflecting');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 sys = WaveEquation2D(n,'free');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 sys = WaveEquation2D(n,'absorbing');
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING WilleBakerEx3';
 sys = WilleBakerEx3();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
 disp 'TESTING WilsonCowan';
 sys = WilsonCowan();
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -301,7 +331,7 @@ Kij = rand(n,n);
 Je = rand(n,1);
 Ji = rand(n,1);
 sys = WilsonCowanNet(Kij,Je,Ji);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
@@ -323,5 +353,5 @@ Ji = 0;
  
 % Construct the model and check the system structure
 sys = WilsonCowanRing(n,Ke,Ki,Je,Ji);
-bdSysCheck(sys);
+bdSysCheck(sys,'run','on');
 disp '===';

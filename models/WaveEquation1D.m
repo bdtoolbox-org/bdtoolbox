@@ -22,9 +22,9 @@ function sys = WaveEquation1D(n,bflag)
     %   gui = bdGUI(sys);               % run the GUI application
     %
     % Authors
-    %   Stewart Heitmann (2016a,2017a,2018a,2019a)
+    %   Stewart Heitmann (2016a,2017a,2018a,2019a,2020a)
     
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -119,19 +119,19 @@ function sys = WaveEquation1D(n,bflag)
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{WaveEquation1D}';
-        '';
-        'The second-order Wave Equation in one spatial dimension';
-        '\qquad $\partial^2 U/ \partial t^2 = c^2 \; \partial^2 U / \partial x^2$';
-        'where $c$ is the wave propagation speed.';
-        'The system is transformed into a system of first-order ODEs';
-        '\qquad $\dot U = V$';
-        '\qquad $\dot V = c^2 \; \partial_{xx} U$';
-        num2str(n,'with space discretised into $n{=}%d$ nodes using the method lines.');
-        '';
+        '$\textbf{WaveEquation1D}$'
+        ''
+        'The second-order Wave Equation in one spatial dimension'
+        '{ }{ }{ } $\partial^2 U/ \partial t^2 = c^2 \; \partial^2 U / \partial x^2$'
+        'where $c\;$ is the wave propagation speed.'
+        'The system is transformed into a system of first-order ODEs'
+        '{ }{ }{ } $\dot U = V$'
+        '{ }{ }{ } $\dot V = c^2 \; \partial_{xx} U$'
+        num2str(n,'with space discretised into $n{=}%d\\;$ nodes using the method lines.')
+        ''
         'The Laplacian is approximated by the second-order central-difference'
-        '\qquad $\partial_{xx} U \approx \big( U_{i-1} - 2U_{i} + U_{i+1} \big) / dx^2$';
-        ['with ' bflag ' boundary conditions.'];
+        '{ }{ }{ } $\partial_{xx} U \approx \big( U_{i-1} - 2U_{i} + U_{i+1} \big) / dx^2$'
+        ['with ' bflag ' boundary conditions.']
         };
               
     % Include the Space-Time panel in the GUI

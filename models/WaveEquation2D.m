@@ -22,9 +22,9 @@ function sys = WaveEquation2D(n,bflag)
     %   gui = bdGUI(sys);                 % run the GUI application
     %
     % Authors
-    %   Stewart Heitmann (2019a)
+    %   Stewart Heitmann (2019a,2020a)
     
-    % Copyright (C) 2019 Stewart Heitmann
+    % Copyright (C) 2019-2020 Stewart Heitmann
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -70,9 +70,9 @@ function sys = WaveEquation2D(n,bflag)
     dx = 1;
     dy = 1;
     sys.pardef = [
-        struct('name','c',  'value',10)
-        struct('name','dx', 'value',dx)
-        struct('name','dy', 'value',dy)
+        struct('name','c',  'value',10,  'lim',[0 20])
+        struct('name','dx', 'value',dx,  'lim',[0.1 5])
+        struct('name','dy', 'value',dy,  'lim',[0.1 5])
         ];
     
     % Gaussian as initial conditions
@@ -93,19 +93,19 @@ function sys = WaveEquation2D(n,bflag)
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{WaveEquation2D}';
-        '';
-        'The second-order Wave Equation in two spatial dimensions';
-        '\qquad $\partial^2 U / \partial t^2 = c^2 \; (\partial^2 U / \partial x^2 + \partial^2 U / \partial y^2)$';
-        'where $c$ is the wave propagation speed.';
-        'The system is transformed into a system of first-order ODEs';
-        '\qquad $\dot U = V$';
-        '\qquad $\dot V = c^2 \; (\partial_{xx} U + \partial_{yy} U)$';
-         num2str([n n],'with space discretised into %d x %d nodes using the method lines.');
+        '$\textbf{WaveEquation2D}$'
+        ''
+        'The second-order Wave Equation in two spatial dimensions'
+        '{ }{ }{ }  $\partial^2 U / \partial t^2 = c^2 \; (\partial^2 U / \partial x^2 + \partial^2 U / \partial y^2)$'
+        'where $c\;$ is the wave propagation speed.'
+        'The system is transformed into a system of first-order ODEs'
+        '{ }{ }{ } $\dot U = V$'
+        '{ }{ }{ } $\dot V = c^2 \; (\partial_{xx} U + \partial_{yy} U)$'
+         num2str([n n],'with space discretised into %d x %d nodes using the method lines.')
         'The Laplacian is approximated by the second-order central-difference'
-        '\qquad $\partial_{xx} U \approx \big( U_{i,j-1} - 2U_{i,j} + U_{i,j+1} \big) / dx^2$';
-        '\qquad $\partial_{yy} U \approx \big( U_{i-1,j} - 2U_{i,j} + U_{i+1,j} \big) / dy^2$';
-        ['with ' bflag ' boundary conditions.'];        
+        '{ }{ }{ } $\partial_{xx} U \approx \big( U_{i,j-1} - 2U_{i,j} + U_{i,j+1} \big) / dx^2$'
+        '{ }{ }{ } $\partial_{yy} U \approx \big( U_{i-1,j} - 2U_{i,j} + U_{i+1,j} \big) / dy^2$'
+        ['with ' bflag ' boundary conditions.']
         };
               
     % Other display panels

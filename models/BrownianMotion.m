@@ -18,9 +18,9 @@
 %   gui = bdGUI(sys);             % open the Brain Dynamics GUI
 %
 % Authors
-%   Stewart Heitmann (2016a,2017a,2018a)
+%   Stewart Heitmann (2016a,2017a,2018a,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -61,6 +61,7 @@ function sys = BrownianMotion()
     
     % Default time span
     sys.tspan = [0 10];
+    sys.tstep = 0.01;
               
    % Specify SDE solvers and default options
     sys.sdesolver = {@sdeEM};           % Relevant SDE solvers
@@ -69,13 +70,15 @@ function sys = BrownianMotion()
 
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
-    sys.panels.bdLatexPanel.latex = {'\textbf{Brownian Motion}';
-        '';
-        'An Ito Stochastic Differential Equation of geometric Brownian motion';
-        '\qquad $dY = \mu\,Y\,dt + \sigma\,Y\,dW_t$';
-        'where';
-        '\qquad $Y(t)$ is the dynamic variable,';
-        '\qquad $\mu$ and $\sigma$ are scalar constants.'};
+    sys.panels.bdLatexPanel.latex = {
+        '$\textbf{Brownian Motion}$'
+        ''
+        'An Ito Stochastic Differential Equation of geometric Brownian motion'
+        '{ }{ }{ } $dY = \mu\,Y\,dt + \sigma\,Y\,dW_t$'
+        'where'
+        '{ }{ }{ } $Y(t)\;$ is the dynamic variable,'
+        '{ }{ }{ } $\mu\;$ and $\sigma\;$ are scalar constants.'
+        };
     
     % Include the Time Portrait panel in the GUI
     sys.panels.bdTimePortrait = [];

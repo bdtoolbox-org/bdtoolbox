@@ -1,12 +1,10 @@
-classdef bdBifurcation < bdPanel
-    %bdBifurcation Display panel for plotting a bifurcation diagram in bdGUI.
-    %  The Bifurcation diagram plots the orbits of two or three dynamic
-    %  variables versus a parameter of the user's choosing.
-    %
+classdef bdBifurcation < bdPanelBase
+    %bdBifurcation Display panel for plotting bifurcations
+    %   
     %AUTHORS
-    %Stewart Heitmann (2018a)   
+    %Stewart Heitmann (2018a,2020a)   
     
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -34,640 +32,540 @@ classdef bdBifurcation < bdPanel
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
 
-    properties (Constant)
-        title = 'Bifurcation';
-    end    
-
+    properties (Dependent)
+        options
+    end
+    
+    properties (Access=public)
+        axes                matlab.ui.control.UIAxes
+    end
+    
     properties (Access=private)
-        ax              % Handle to the plot axes
-        nvar            % the number of system variables (elements in vardef)
-        viewmenu        % handle to 3D VIEW menu item
-        tranmenu        % handle to TRANSIENTS menu item
-        markmenu        % handle to MARKERS menu item
-        pointmenu       % handle to POINTS menu item
-        gridmenu        % handle to GRID menu item
-        holdmenu        % handle to HOLD menu item
-        xselector       % handle to the selected menu item for the x-axis
-        yselector       % handle to the selected menu item for the y-axis
-        zselector       % handle to the selected menu item for the z-axis
-        listener        % handle to our listener object
-        lastplot        % handle to the current trajectory (non-transient part)
-        lastfp          % handle to the current trajectory fixed point
-        ylo = +Inf      % historical minimum of the y-trajectory
-        yhi = -Inf      % historical minimum of the y-trajectory
-        zlo = +Inf      % historical minimum of the z-trajectory
-        zhi = -Inf      % historical minimum of the z-trajectory
+        sysobj              bdSystem
+        selectorX           bdSelector
+        selectorY           bdSelector
+        tab                 matlab.ui.container.Tab           
+        menu                matlab.ui.container.Menu
+        menuTransients      matlab.ui.container.Menu
+        menuMarkers         matlab.ui.container.Menu
+        menuPoints          matlab.ui.container.Menu        
+        menuModulo          matlab.ui.container.Menu
+        menuAutoStep        matlab.ui.container.Menu
+        menuDock            matlab.ui.container.Menu
+        
+        lineA               matlab.graphics.primitive.Line
+        lineB               matlab.graphics.primitive.Line
+        
+        markerA             matlab.graphics.primitive.Line
+        markerB             matlab.graphics.primitive.Line
+        markerC             matlab.graphics.primitive.Line
+        
+        listener1           event.listener
+        listener2           event.listener
+        listener3           event.listener
     end
     
     methods
+        function this = bdBifurcation(tabgrp,sysobj,opt)
+            %disp('bdBifurcation');
+            
+            % remember the parents
+            this.sysobj = sysobj;
+                        
+            % get the parent figure of the TabGroup
+            fig = ancestor(tabgrp,'figure');
+            
+            % Create the panel menu and assign it a unique Tag to identify it.
+            this.menu = uimenu('Parent',fig, ...
+                'Label','Space Time', ...
+                'Tag', bdPanelBase.FocusMenuID(), ...     % unique Tag used by the FocusMenu function
+                'Visible','off');
+                                    
+            % construct the TRANSIENTS menu item
+            this.menuTransients = uimenu(this.menu, ...
+                'Label', 'Transients', ...
+                'Checked', 'on', ...
+                'Tag', 'transients', ...
+                'Tooltip', 'Show the transient part of the trajectory', ...
+                'Callback', @(src,~) this.callbackMenu(src) );
+            
+            % construct the MARKERS menu item
+            this.menuMarkers = uimenu(this.menu, ...
+                'Label', 'Markers', ...
+                'Checked', 'on', ...
+                'Tag', 'markers', ...
+                'Tooltip', 'Show the trajectory markers', ...
+                'Callback', @(src,~) this.callbackMenu(src) );
+
+            % construct the POINTS menu item
+            this.menuPoints = uimenu(this.menu, ...
+                'Label', 'Time Points', ...
+                'Checked', 'off', ...
+                'Tag', 'points', ...
+                'Tooltip', 'Show individual time points', ...            
+                'Callback', @(~,~) this.callbackPoints() );
+            
+            % construct the MODULO menu item
+            this.menuModulo = uimenu(this.menu, ...
+                'Label', 'Modulo', ...
+                'Checked', 'off', ...
+                'Tag', 'modulo', ...
+                'Tooltip', 'Wrap trajectories at the boundaries', ...            
+                'Callback', @(src,~) this.callbackMenu(src) );
+                                                           
+            % construct the AUTOSTEP menu item
+            this.menuAutoStep = uimenu(this.menu, ...
+                'Label', 'Auto Steps', ...
+                'Checked', 'on', ...
+                'Tag', 'autostep', ...
+                'Tooltip', 'Use the time steps chosen by the solver', ...
+                'Callback', @(src,~) this.callbackMenu(src) );                                
+
+            % construct the CLEAR menu item
+            uimenu(this.menu, ...
+                'Label', 'Clear', ...
+                'Tooltip', 'Clear the graphics', ...            
+                'Callback', @(src,~) this.callbackClear() );
+
+            % construct the DOCK menu item
+            this.menuDock = uimenu(this.menu, ...
+                'Label', 'Undock', ...
+                'Tooltip', 'Undock the display panel', ...            
+                'Callback', @(src,~) this.callbackDock(src,tabgrp) );
+
+            % construct the CLOSE menu item
+            uimenu(this.menu, ...
+                'Separator','on', ...
+                'Label','Close', ...
+                'Tooltip', 'Close the display panel', ...            
+                'Callback', @(~,~) this.callbackClose(fig) );
+
+            % Create Tab and give it the focus. The tab should have the same
+            % Tag as the panel menu so that each can be found by the other.
+            this.tab = uitab(tabgrp, 'Title','Bifurcation', 'Tag',this.menu.Tag);
+            tabgrp.SelectedTab = this.tab;
+            
+            % Create GridLayout within the Tab
+            GridLayout = uigridlayout(this.tab);
+            GridLayout.ColumnWidth = {'1x','1x','1x'};
+            GridLayout.RowHeight = {21,'1x'};
+            GridLayout.ColumnSpacing = 50;
+            GridLayout.RowSpacing = 10;
+            GridLayout.Visible = 'off';
+
+            % Create the selector objects
+            this.selectorX = bdSelector(sysobj,'pardef','lagdef');
+            this.selectorY = bdSelector(sysobj,'vardef');
+            
+            % Create DropDown for selectorX
+            combo = this.selectorX.DropDownCombo(GridLayout);
+            combo.Layout.Row = 1;
+            combo.Layout.Column = 3;
+            
+            % Create DropDown for selectorY
+            combo = this.selectorY.DropDownCombo(GridLayout);
+            combo.Layout.Row = 1;
+            combo.Layout.Column = 1;
+                        
+            % Create axes
+            this.axes = uiaxes(GridLayout);
+            this.axes.Layout.Row = 2;
+            this.axes.Layout.Column = [1 3];
+            this.axes.NextPlot = 'add';
+            this.axes.XGrid = 'off';
+            this.axes.YGrid = 'off';
+            this.axes.Box = 'on';
+            this.axes.XLabel.String = 'X';
+            this.axes.YLabel.String = 'Y';
+            this.axes.FontSize = 11;
+            axtoolbar(this.axes,{'export','datacursor'});
+                        
+            % Construct the line plots (containing NaN)
+            this.lineA = line(this.axes,NaN,NaN,'LineStyle','-','color',[0.8 0.8 0.8],'Linewidth',1,'MarkerSize',10);
+            this.lineB = line(this.axes,NaN,NaN,'LineStyle','-','color','k','Linewidth',1.5,'MarkerSize',10);
+
+            % Construct the markers
+            this.markerA = line(this.axes,NaN,NaN,'Marker','h','color','k','Linewidth',1.00,'MarkerFaceColor','y','MarkerSize',10);
+            this.markerB = line(this.axes,NaN,NaN,'Marker','o','color','k','Linewidth',1.25,'MarkerFaceColor','w');
+            this.markerC = line(this.axes,NaN,NaN,'Marker','o','color','k','Linewidth',1.25,'MarkerFaceColor',[0.6 0.6 0.6]);            
+
+            % apply the custom options (and render the image)
+            this.options = opt;
+
+            % make our panel menu visible and hide the others
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % make the grid visible
+            GridLayout.Visible = 'on';
+            
+            % listen for SelectionChanged events
+            this.listener1 = listener([this.selectorX, this.selectorY],'SelectionChanged',@(src,evnt) this.SelectorChanged());
+            
+            % listen for Redraw events
+            this.listener2 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(evnt));
+        end
         
-        function this = bdBifurcation(tabgroup,control)
-            % Construct a new Bifurcation diagram in the given tabgroup
-
-            % initialise the base class (specifically this.menu and this.tab)
-            this@bdPanel(tabgroup);
+        function opt = get.options(this)
+            opt.title      = this.tab.Title;
+            opt.transients = this.menuTransients.Checked;
+            opt.markers     = this.menuMarkers.Checked;
+            opt.points      = this.menuPoints.Checked;            
+            opt.modulo     = this.menuModulo.Checked;
+            opt.autostep   = this.menuAutoStep.Checked;
+            opt.selectorX  = this.selectorX.cellspec();
+            opt.selectorY  = this.selectorY.cellspec();
+        end
+        
+        function set.options(this,opt)   
+            % check the incoming options and apply defaults to missing values
+             opt = this.optcheck(opt);
+             
+            % update the selectors
+            this.selectorX.SelectByCell(opt.selectorX);
+            this.selectorY.SelectByCell(opt.selectorY);
+             
+            % update the tab title
+            this.tab.Title = opt.title;
             
-            % assign default values to missing options in sys.panels.bdBifurcation
-            control.sys.panels.bdBifurcation = bdBifurcation.syscheck(control.sys);
+            % update the menu title
+            this.menu.Text = opt.title;
+                        
+            % update the TRANSIENTS menu
+            this.menuTransients.Checked = opt.transients;
 
-            % remember the number of variables in sys.vardef
-            this.nvar = numel(control.sys.vardef);
-            
-            % configure the pull-down menu
-            this.menu.Label = control.sys.panels.bdBifurcation.title;
-            this.InitCalibrateMenu(control);
-            this.InitClearMenu(control);
-            this.InitViewMenu(control);
-            this.InitTransientsMenu(control);
-            this.InitMarkerMenu(control);
-            this.InitPointsMenu(control);
-            this.InitGridMenu(control);
-            this.InitExportMenu(control);
-            this.InitCloseMenu(control);
+            % update the MARKERS menu
+            this.menuMarkers.Checked = opt.markers;
 
-            % configure the panel graphics
-            this.tab.Title = control.sys.panels.bdBifurcation.title;
-            this.InitSubpanel(control);
+            % update the POINTS menu
+            this.menuPoints.Checked = opt.points;
+
+            % update the MODULO menu
+            this.menuModulo.Checked = opt.modulo;
             
-            % listen to the control panel for redraw events
-            this.listener = addlistener(control,'redraw',@(~,~) this.redraw(control));    
+            % update the AUTOSTEP menu
+            this.menuAutoStep.Checked = opt.autostep;
+            
+            % Redraw everything
+            this.RenderBackground();
+            this.RenderForeground();
+            drawnow;
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
         end
         
         function delete(this)
-            % Destructor
-            delete(this.listener)
+           %disp('bdBifurcation.delete()');
+           delete(this.listener1);
+           delete(this.listener2);
+           delete(this.listener3);
+           delete(this.menu);
+           delete(this.tab);
         end
-         
     end
     
     methods (Access=private)
-        
-        % Initialise the CALIBRATE menu item
-        function InitCalibrateMenu(this,control)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Calibrate Axes', ...
-                'Callback', @CalibrateMenuCallback );
-            
-            % Menu callback function
-            function CalibrateMenuCallback(~,~)
-                % adjust the limits to fit the lows and highs of the data
-                %indx1 = this.xselector.UserData.xxxindx;       % index of selected parameter in sys.pardef
-                indx2 = this.yselector.UserData.xxxindx;       % index of selected parameter in sys.pardef
-                indx3 = this.zselector.UserData.xxxindx;       % index of selected parameter in sys.pardef
-                %control.sys.pardef(indx1).lim = bdPanel.RoundLim(this.xlo,this.xhi);
-                control.sys.vardef(indx2).lim = bdPanel.RoundLim(this.ylo,this.yhi);
-                control.sys.vardef(indx3).lim = bdPanel.RoundLim(this.zlo,this.zhi);
-                
-                % refresh the vardef control widgets
-                notify(control,'vardef');
-                
-                % redraw all panels (because the new limits apply to all panels)
-                notify(control,'redraw');
-            end
 
+        % Listener for REDRAW events
+        function Redraw(this,evnt)
+            %disp('bdBifurcation.Redraw()');
+            %disp(evnt)
+            
+            % Get the current selector settings
+            [xxxdef,xxxindx] = this.selectorX.Item();
+            [yyydef,yyyindx] = this.selectorY.Item();
+            
+            if evnt.(yyydef)(yyyindx).lim || evnt.(xxxdef)(xxxindx).lim
+                this.RenderBackground();
+            end
+            
+            if evnt.sol || evnt.tval || evnt.tstep || evnt.(yyydef)(yyyindx).lim || evnt.(xxxdef)(xxxindx).lim
+                this.RenderForeground();
+            end              
         end
         
-        % Initialise the CLEAR menu item
-        function InitClearMenu(this,control)
-            % construct the menu item
-            uimenu(this.menu, ...
-                'Label','Clear Axes', ...
-                'Callback', @ClearMenuCallback );
-
-            % Menu callback function
-            function ClearMenuCallback(~,~)
-                % clear the axis
-                cla(this.ax);
-                
-                %reset the lows and highs
-                this.ylo = +Inf;
-                this.yhi = -Inf;
-                this.zlo = +Inf;
-                this.zhi = -Inf;
-
-                % redraw this panel
-                this.redraw(control);
-            end
-        end
         
-        % Initialise the 3D VIEW menu item
-        function InitViewMenu(this,control)
-            % construct the menu item
-            this.viewmenu = uimenu(this.menu, ...
-                'Label','3D View', ...
-                'Checked','off', ...
-                'Callback', @ViewMenuCallback);
-
-            % Menu callback function
-            function ViewMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        % 3D menu state goes from 'on' to 'off'
-                        menuitem.Checked='off';
-                        this.ax.View = [0 90];
-
-                    case 'off'
-                        % 3D menu state goes from 'off' to 'on'
-                        menuitem.Checked='on';
-                        this.ax.View = [-45 45];
-                end
-                
-                % clear the axes
-                cla(this.ax);
-                
-                %reset the lows and highs
-                this.ylo = +Inf;
-                this.yhi = -Inf;
-                this.zlo = +Inf;
-                this.zhi = -Inf;
-
-                % redraw this panel
-                this.redraw(control);
-            end
-        end
-
-        % Initiliase the TRANISENTS menu item
-        function InitTransientsMenu(this,control)
-            % get the default transient menu setting from sys.panels
-            if control.sys.panels.bdBifurcation.transients
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
-
-            % construct the menu item
-            this.tranmenu = uimenu(this.menu, ...
-                'Label','Transients', ...
-                'Checked',checkflag, ...
-                'Callback', @TranMenuCallback);
-
-            % Menu callback function
-            function TranMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                        % delete all existing plot lines for transients
-                        delete( findobj(this.ax,'Tag','transient') );                         
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end
-        
-        % Initiliase the MARKERS menu item
-        function InitMarkerMenu(this,control)
-            % get the marker menu setting from sys.panels
-            if control.sys.panels.bdBifurcation.markers
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
-
-            % construct the menu item
-            this.markmenu = uimenu(this.menu, ...
-                'Label','Markers', ...
-                'Checked',checkflag, ...
-                'Callback', @MarkMenuCallback);
-
-            % Menu callback function
-            function MarkMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end
-        
-        % Initiliase the DISCRETE POINTS menu item
-        function InitPointsMenu(this,control)
-            % get the points menu setting from sys.panels
-            if control.sys.panels.bdBifurcation.points
-                checkflag = 'on';
-            else
-                checkflag = 'off';
-            end
-
-            % construct the menu item
-            this.pointmenu = uimenu(this.menu, ...
-                'Label','Discrete Points', ...
-                'Checked',checkflag, ...
-                'Callback', @PointsMenuCallback);
-
-            % Menu callback function
-            function PointsMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel only
-                this.redraw(control);
-            end
-        end
-        
-        % Initiliase the GRID menu item
-        function InitGridMenu(this,control)
-            % get the default grid menu setting from sys.panels
-            if control.sys.panels.bdBifurcation.grid
-                gridcheck = 'on';
-            else
-                gridcheck = 'off';
-            end
-
-            % construct the menu item
-            this.gridmenu = uimenu(this.menu, ...
-                'Label','Grid', ...
-                'Checked',gridcheck, ...
-                'Callback', @GridMenuCallback);
-
-            % Menu callback function
-            function GridMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                        grid(this.ax,'off');
-                    case 'off'
-                        menuitem.Checked='on';
-                        grid(this.ax,'on');
-                end
-                grid(this.ax, menuitem.Checked);
-            end
-        end
-        
-        % Initialise the EXPORT menu item
-        function InitExportMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Export Figure', ...
-               'Callback',@callback);
-           
-            function callback(~,~)
-                % Construct a new figure
-                fig = figure();    
-                
-                % Change mouse cursor to hourglass
-                set(fig,'Pointer','watch');
-                drawnow;
-                
-                % Copy the plot data to the new figure
-                axnew = copyobj(this.ax,fig);
-                axnew.OuterPosition = [0 0 1 1];
-
-                % Allow the user to hit everything in the new axis
-                objs = findobj(axnew,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                                
-                % Change mouse cursor to arrow
-                set(fig,'Pointer','arrow');
-                drawnow;
-            end
-        end
-
-        % Initialise the CLOSE menu item
-        function InitCloseMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-                   'Label','Close', ...
-                   'Callback',@(~,~) this.close());
-        end
-        
-        % Initialise the subpanel
-        function InitSubpanel(this,control)
-            % construct the subpanel
-            [this.ax,cmenu] = bdPanel.Subpanel(this.tab,[0 0 1 1],[0 0 1 1]);
-            xlabel(this.ax,'parameter');
-            ylabel(this.ax,'variable');
-            
-            % construct a selector menu comprising items from sys.pardef
-            this.xselector = bdPanel.SelectorMenuFull(...
-                uimenu(cmenu,'Label','x-axis'), ...
-                control.sys.pardef, ...
-                @xselectorcallback, ...
-                'off', 'xselector',1,1);
-
-            % construct a selector menu comprising items from sys.vardef
-            this.yselector = bdPanel.SelectorMenuFull( ...
-                uimenu(cmenu,'Label','y-axis'), ...
-                control.sys.vardef, ...
-                @yselectorcallback, ...
-                'off', 'yselector',min(this.nvar,2),1);
-
-            % construct a selector menu comprising items from sys.vardef
-            this.zselector = bdPanel.SelectorMenuFull( ...
-                uimenu(cmenu,'Label','z-axis'), ...
-                control.sys.vardef, ...
-                @zselectorcallback, ...
-                'off', 'zselector',1,1);
-
-            % Callback function for the x-selector menu
-            function xselectorcallback(menuitem,~)
-                % check 'on' the selected menu item and check 'off' all others
-                bdPanel.SelectorCheckItem(menuitem);
-                % update our handle to the selected menu item
-                this.xselector = menuitem;
-                % clear the axes
-                cla(this.ax);
-                % redraw the panel
-                this.redraw(control);
-            end
-
-            % Callback function for the y-selector menu
-            function yselectorcallback(menuitem,~)
-                % check 'on' the selected menu item and check 'off' all others
-                bdPanel.SelectorCheckItem(menuitem);
-                % update our handle to the selected menu item
-                this.yselector = menuitem;
-                % clear the axes
-                cla(this.ax);
-                % redraw the panel
-                this.redraw(control);
-            end
-            
-            % Callback function for the z-selector menu
-            function zselectorcallback(menuitem,~)
-                % check 'on' the selected menu item and check 'off' all others
-                bdPanel.SelectorCheckItem(menuitem);
-                % update our handle to the selected menu item
-                this.zselector = menuitem;
-                % clear the axes
-                cla(this.ax);
-                % redraw the panel
-                this.redraw(control);
-            end            
-        end
-   
-        % Redraw the data plots
-        function redraw(this,control)
-            %disp('bdBirfurcation.redraw()')
-
-            % get the details of the currently selected parameter (x-axis)
-            name1    = this.xselector.UserData.xxxname;       % generic name of parameter
-            label1   = this.xselector.UserData.label;         % plot label for selected parameter
-            varindx1 = this.xselector.UserData.xxxindx;       % index of selected parameter in sys.pardef
-            valindx1 = this.xselector.UserData.valindx;       % index of selected parameter in sys.pardef.value
-            lim1     = control.sys.pardef(varindx1).lim;      % axis limits of the selected parameter
-
-            % get the details of the currently selected variable (y-axis)
-            name2    = this.yselector.UserData.xxxname;       % generic name of y-axis variable
-            label2   = this.yselector.UserData.label;         % plot label for selected variable
-            varindx2 = this.yselector.UserData.xxxindx;       % index of selected variable in sys.vardef
-            valindx2 = this.yselector.UserData.valindx;       % indices of selected entries in sys.vardef.value
-            solindx2 = control.sys.vardef(varindx2).solindx;  % indices of selected entries in sol
-            lim2     = control.sys.vardef(varindx2).lim;      % axis limits of the selected variable
-            
-            % get the details of the currently selected variable (z-axis)
-            name3    = this.zselector.UserData.xxxname;       % generic name of z-axis variable
-            label3   = this.zselector.UserData.label;         % plot label for selected variable
-            varindx3 = this.zselector.UserData.xxxindx;       % index of selected variable in sys.vardef
-            valindx3 = this.zselector.UserData.valindx;       % indices of selected entries in sys.vardef.value
-            solindx3 = control.sys.vardef(varindx3).solindx;  % indices of selected entries in sol
-            lim3     = control.sys.vardef(varindx3).lim;      % axis limits of the selected variable
-
-            % get the indices of the non-transient time steps in the solution
-            tindx = control.tindx;      % logical indices of the non-transient time steps
-            indxt = find(tindx>0,1);    % numerical index of the first non-transient step (may be empty)
-
-            % get the solution data (including the transient part)
-            y = control.sol.y(solindx2(valindx2),:);
-            z = control.sol.y(solindx3(valindx3),:);
-            
-            % get the value of the bifurcation parameter (that was used to compute sol)            
-            pp = control.par.(name1)(valindx1);
-            p = pp*ones(size(y));
-
-            % remember the lows and highs of the (non-transient) trajectories in x and y.
-            this.ylo = min(this.ylo, min(y(tindx)));
-            this.yhi = max(this.yhi, max(y(tindx)));
-            this.zlo = min(this.zlo, min(z(tindx)));
-            this.zhi = max(this.zhi, max(z(tindx)));
-            
-            % test for fixed point at tend of solution.
-            tend = control.sol.x(end);
-            [~,dYval] = bdEval(control.sol,tend);
-            fixedpoint = (norm(dYval) < 1e-3);
-            
-            % set the axes limits
-            this.ax.XLim = lim1 + [-1e-6 +1e-6];
-            this.ax.YLim = lim2 + [-1e-6 +1e-6];
-            this.ax.ZLim = lim3 + [-1e-6 +1e-6];
-            
-            % if the DISCRETE POINTS menu is checked then ...
-            switch this.pointmenu.Checked
-                case 'on'
-                    % set our plot style to discrete points
-                    markerstyle = '.';
-                    linestyle = 'none';
-                    % no need to highlight fixed points in discrete mode
-                    fixedpoint = false;
-                case 'off'
-                    % set our plot style to continuous lines
-                    markerstyle = 'none';
-                    linestyle = '-';
-            end
-            
-            % if the TRANSIENT menu is enabled then  ...
-            switch this.tranmenu.Checked
-                case 'on'
-                    % set the visibility of our transient plots
-                    transflag = true;
-                    
-                    % if the MARKER menu is enabled then  ...
-                    switch this.markmenu.Checked
-                        case 'on'
-                            mark1flag = true;
-                            mark2flag = true;
-                        case 'off'
-                            mark1flag = false;
-                            mark2flag = false;
-                    end
-                    
-                case 'off'
-                    % set the visibility of our transient plots
-                    transflag = false;
-                    
-                    % if the MARKER menu is enabled then  ...
-                    switch this.markmenu.Checked
-                        case 'on'
-                            mark1flag = false;
-                            mark2flag = true;
-                        case 'off'
-                            mark1flag = false;
-                            mark2flag = false;
-                    end
-            end
-            
-            % remove all existing markers from the axes
-            delete( findobj(this.ax,'Tag','marker') );
-            
-            % change the last plot line to a thin line
-            if ~isempty(this.lastplot) && isvalid(this.lastplot)
-                %set(this.lastplot, 'LineWidth',1, 'Color',[0.75 0.75 0.75]);
-                set(this.lastplot, 'LineWidth',1, 'Color',[0.5 0.5 0.5]);
-            end
-            
-            % change the last fixed point to a gray dot
-            if ~isempty(this.lastfp) && isvalid(this.lastfp)
-                %set(this.lastfp, 'MarkerSize',2, 'Color',[0.75 0.75 0.75], 'MarkerFaceColor',[0.75 0.75 0.75]);
-                set(this.lastfp, 'MarkerSize',2, 'Color',[0 0 0], 'MarkerFaceColor',[0.75 0.75 0.75]);
-            end
-            
-            % if the 3D VIEW menu is checked then plot 3D view else plot 2D view
-            switch this.viewmenu.Checked
-                % 3D plot
-                case 'on'                       
-                    % get the solution data for thr z-axis (including the transient part)
-                    z = control.sol.y(solindx3(valindx3),:);
-
-                    % plot the entire trajectory as a thin grey line (if transients are required)
-                    if transflag
-                        plot3(this.ax, p, y, z, ...
-                       ...     'color',[0.75 0.75 0.75], ...
-                            'color',[0.5 0.5 0.5], ...
-                            'Tag','transient', ...
-                            'HitTest','off');
-                    end
-
-                    % plot the non-transient part as a heavy black line
-                    this.lastplot = plot3(this.ax, p(tindx), y(tindx), z(tindx), ...
-                        'color','k', ...
-                        'Marker',markerstyle, ...
-                        'LineStyle',linestyle, ...
-                        'Linewidth',3);
-                    
-                    % Fixed points need highlighting 
-                    if fixedpoint
-                        this.lastfp = plot3(this.ax, p(end), y(end), z(end), 'color','k', 'Marker','o', 'MarkerFaceColor','k','MarkerSize',4);
-                    end
-
-                    % mark the initial conditions with a pentagram (if required)
-                    if mark1flag
-                        plot3(this.ax, p(1), y(1), z(1), ...
-                            'Marker','p', ...
-                            'Color','k', ...
-                            'Tag','marker', ...
-                            'MarkerFaceColor','y', ...
-                            'MarkerSize',10);
-                    end
-
-                    % mark the start of the non-transient trajectory with an open circle (if reuired)
-                    if mark2flag && ~isempty(indxt)
-                        plot3(this.ax, p(indxt), y(indxt), z(indxt), ...
-                            'Marker','o', ...
-                            'Color','k', ...
-                            'Tag','marker', ...
-                            'MarkerFaceColor','y', ...
-                            'MarkerSize',6);
-                    end
-                    
-                    % update the titles
-                    title(this.ax,['(' name2 ',' name3 ') versus ' name1]);
-
-                % 2D plot
-                case 'off'
-                    % plot the entire trajectory as a thin grey line (if transients are required)
-                    if transflag
-                        plot(this.ax, p, y, ...
-                            'color',[0.75 0.75 0.75], ...
-                            'Tag','transient', ...
-                            'HitTest','off');
-                    end
-                            
-                    % plot the non-transient part as a black line
-                    this.lastplot = plot(this.ax, p(tindx), y(tindx), ...
-                        'color','k', ...
-                        'Marker',markerstyle, ...
-                        'LineStyle',linestyle, ...
-                        'Linewidth',3);
-
-                    % Fixed points need highlighting 
-                    if fixedpoint
-                        this.lastfp = plot(this.ax, p(end), y(end), 'color','k', 'Marker','o', 'MarkerFaceColor','k', 'MarkerSize',4);
-                    end
-
-                    % mark the initial conditions with a pentagram (if required)
-                    if mark1flag
-                        plot(this.ax, p(1), y(1), ...
-                            'Marker','p', ...
-                            'Color','k', ...
-                            'Tag','marker', ...
-                            'MarkerFaceColor','y', ...
-                            'MarkerSize',10);
-                    end
-                    
-                    % mark the start of the non-transient trajectory with an open circle (if reuired)
-                    if mark2flag && ~isempty(indxt)
-                        plot(this.ax, p(indxt), y(indxt), ...
-                            'Marker','o', ...
-                            'Color','k', ...
-                            'Tag','marker', ...
-                            'MarkerFaceColor','y', ...
-                            'MarkerSize',6);
-                    end
-                    
-                    % update the titles
-                    title(this.ax,[name2 ' versus ' name1]);
-            end
+        function RenderBackground(this)
+            %disp('bdBifurcation.RenderBackground()');
                         
-            % update the labels
-            xlabel(this.ax, label1);
-            ylabel(this.ax, label2);
-            zlabel(this.ax, label3);
+            % update the plot limits for the selected variables
+            this.axes.XLim = this.selectorX.lim();
+            this.axes.YLim = this.selectorY.lim();
+            
+            % update the axes labels for the selected variables
+            [~,~,nameX] = this.selectorX.name();
+            [~,~,nameY] = this.selectorY.name();
+            this.axes.XLabel.String = nameX;
+            this.axes.YLabel.String = nameY;
         end
+
+        function RenderForeground(this)
+            %disp('bdBifurcation.RenderForeground()');
+            
+            % Duplicate the non-transient line plot
+            newline = copyobj(this.lineB,this.axes);
+            this.lineB.Tag = 'remnant';
+            this.lineB.Color = [0 0.5 0];
+            this.lineB = newline;
+            
+            % limits of the selected variables
+            [plimX,limX] = this.selectorX.lim();
+            [plimY,limY] = this.selectorY.lim();
+
+            % evaluate the selected variables
+            [~,X,~,tindx0,tindx1,ttindx] = this.selectorX.Trajectory('autostep',this.menuAutoStep.Checked);
+            [~,Y] = this.selectorY.Trajectory('autostep',this.menuAutoStep.Checked);
+
+            % extract the transient and non-transient parts of the trajectory
+            X0 = X(tindx0);  Y0 = Y(tindx0);
+            X1 = X(tindx1);  Y1 = Y(tindx1);
+            Xt = X(ttindx);  Yt = Y(ttindx);
+            
+            % modulo the trajectories (if appropriate)
+            switch this.menuModulo.Checked
+                case 'on'
+                    % modulo the Y0 values at limY
+                    [X0,Y0] = this.modulus(X0,Y0,limY);
+                    % modulo the X0 values at limX
+                    [Y0,X0] = this.modulus(Y0,X0,limX);
+
+                    % modulo the Y1 values at limY
+                    [X1,Y1] = this.modulus(X1,Y1,limY);
+                    % modulo the X1 values at limX
+                    [Y1,X1] = this.modulus(Y1,X1,limX);
+
+                    % modulo the Yt values at limY
+                    [Xt,Yt] = this.modulus(Xt,Yt,limY);
+                    % modulo the Xt values at limX
+                    [Yt,Xt] = this.modulus(Yt,Xt,limX);
+            end
+            
+            % update the transient part of the trajectory
+            this.lineA.XData = X0;
+            this.lineA.YData = Y0;
+
+            % update the non-transient part of the trajectory
+            this.lineB.XData = X1;
+            this.lineB.YData = Y1;
+
+            % test for fixed point
+            X1dev = max(abs(X1(:) - X1(1)));
+            Y1dev = max(abs(Y1(:) - Y1(1)));
+            fixedpoint = (X1dev < 0.01*(plimX(2)-plimX(1))) && ...
+                         (Y1dev < 0.01*(plimY(2)-plimY(1))) ;
+                
+            % show/hide the individual time points
+            switch this.menuPoints.Checked
+                case 'on'
+                    this.lineA.Marker = '.';
+                    this.lineB.Marker = '.';
+                case 'off'
+                    this.lineA.Marker = 'none';
+                    this.lineB.Marker = 'none';
+            end
+            
+            % fixed points need to be highlighted (regardless of menuPoints)
+            if fixedpoint
+                this.lineB.Marker = '.';
+                this.lineB.LineStyle = 'none';
+            else
+                this.lineB.Marker = 'none';
+                this.lineB.LineStyle = '-';
+            end                     
+            
+            % update the marker plot data
+            set(this.markerA, 'XData',X0(1),'YData',Y0(1));
+            set(this.markerB, 'XData',Xt,'YData',Yt);
+            set(this.markerC, 'XData',X1(end),'YData',Y1(end));
+            
+            % visibilty of transients 
+            this.lineA.Visible   = this.menuTransients.Checked;
+            this.markerA.Visible = this.menuTransients.Checked;
+            
+            % visibility of markers
+            switch this.menuMarkers.Checked
+                case 'on'
+                    this.markerA.Visible = this.menuTransients.Checked;
+                    this.markerB.Visible = 'on';
+                    this.markerC.Visible = 'on';
+                case 'off'
+                    this.markerA.Visible = 'off';
+                    this.markerB.Visible = 'off';
+                    this.markerC.Visible = 'off';
+            end            
+        end        
+                        
+        % Selector Changed callback
+        function SelectorChanged(this)
+            %disp('bdBifurcation.selectorChanged');
+            this.RenderBackground();        % Render the background items
+            this.RenderForeground();        % Render the foreground items
+                        
+            % delete remnant plot lines
+            objs = findobj(this.axes,'Type','line','Tag','remnant');
+            delete(objs);
+
+            notify(this.sysobj,'push');     % Push the UNDO stack
+        end
+                              
+        % Generic callback for checked menus. Used by TRANSIENTS, MARKERS, etc
+        function callbackMenu(this,menuitem)
+            this.MenuToggle(menuitem);      % Toggle the menu state
+            this.RenderBackground();        % Render the background items
+            this.RenderForeground();        % Render the foreground items
+            notify(this.sysobj,'push');     % Push the UNDO stack
+        end
+              
+        % POINTS menu callback
+        function callbackPoints(this)
+            % Toggle the menu state
+            this.MenuToggle(this.menuPoints);
+                        
+            % Update markers on the remnant plot lines
+            objs = findobj(this.axes,'Type','line','Tag','remnant');
+            switch this.menuPoints.Checked
+                case 'on'
+                    for idx=1:numel(objs)
+                        switch objs(idx).LineStyle
+                            case 'none'
+                                % This line object is a fixed point. Leave its marker alone.
+                            otherwise
+                                % This line object is a trajectory. Change its marker to dot.
+                                objs(idx).Marker = '.';
+                        end
+                    end
+                case 'off'
+                    for idx=1:numel(objs)
+                        switch objs(idx).LineStyle
+                            case 'none'
+                                % This line object is a fixed point. Leave its marker alone.
+                            otherwise
+                                % This line object is a trajectory. Remove its marker.
+                                objs(idx).Marker = 'none';
+                        end
+                    end
+            end
+
+            % Update markers on the current plot line
+            switch this.menuPoints.Checked
+                case 'on'
+                    this.lineB.Marker = '.';
+                case 'off'
+                    this.lineB.Marker = 'none';
+            end
+            
+            % Push the UNDO stack
+            notify(this.sysobj,'push');
+        end
+        
+        % CLEAR menu callback
+        function callbackClear(this)
+            %disp('callbackClear');
+            
+            % delete all data tips
+            objs = findobj(this.axes,'Type','datatip');
+            delete(objs);
+
+            % delete remnant plot lines
+            objs = findobj(this.axes,'Type','line','Tag','remnant');
+            delete(objs);
+        end
+                
+        % DOCK menu callback
+        function callbackDock(this,menuitem,tabgrp)
+            %disp('callbackDock');
+            switch menuitem.Label
+                case 'Undock'
+                    newfig = bdPanelBase.Undock(this.tab,this.menu);
+                    newfig.DeleteFcn = @(src,~) this.delete();
+                    menuitem.Label='Dock';
+                    menuitem.Tooltip='Dock the display panel';
+                case 'Dock'
+                    bdPanelBase.Dock(this.tab,this.menu,tabgrp);
+                    menuitem.Label='Undock';
+                    menuitem.Tooltip='Undock the display panel';
+            end
+        end
+        
+        % CLOSE menu callback
+        function callbackClose(this,guifig)
+            % find the parents of the panel tab 
+            tabgrp = ancestor(this.tab,'uitabgroup');
+            fig = ancestor(this.tab,'figure');
+                       
+            % remember sysobj
+            sysobj = this.sysobj;
+
+            % delete the panel
+            delete(this);
+            
+            % reveal the menu of the newly selected panel 
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % if the parent figure is not the same as the gui figure then ...
+            if fig ~= guifig
+                % The panel is undocked from the gui. Its figure should be closed too. 
+                delete(fig);
+            end
+            
+            % Push the new settings onto the UNDO stack
+            notify(sysobj,'push');            
+        end
+        
 
     end
     
     methods (Static)
         
-        function syspanel = syscheck(sys)
-            % Assign default values to missing fields in sys.panels.bdBifurcation
-
-            % Default panel settings
-            syspanel.title = bdBifurcation.title;
-            syspanel.transients = true;
-            syspanel.markers = true;
-            syspanel.points = false;
-            syspanel.grid = false;
+        function optout = optcheck(opt)
+            % check the format of incoming options and apply defaults to missing values
+            optout.title      = bdPanelBase.GetOption(opt, 'title', 'Bifurcation');
+            optout.transients = bdPanelBase.GetOption(opt, 'transients', 'on');   
+            optout.markers    = bdPanelBase.GetOption(opt, 'markers', 'on');            
+            optout.points     = bdPanelBase.GetOption(opt, 'points', 'off');                        
+            optout.modulo     = bdPanelBase.GetOption(opt, 'modulo', 'off');
+            optout.autostep   = bdPanelBase.GetOption(opt, 'autostep', 'on');
+            optout.selectorX  = bdPanelBase.GetOption(opt, 'selectorX', {1,1,1});
+            optout.selectorY  = bdPanelBase.GetOption(opt, 'selectorY', {1,1,1});
             
-            % Nothing more to do if sys.panels.bdBifurcation is undefined
-            if ~isfield(sys,'panels') || ~isfield(sys.panels,'bdBifurcation')
-                return;
+            % warn of unrecognised field in the incoming options
+            infields  = fieldnames(opt);                % the field names we were given
+            outfields = fieldnames(optout);             % the field names we expected
+            newfields = setdiff(infields,outfields);    % unrecognised field names
+            for idx=1:numel(newfields)
+                warning('Ignoring unknown panel option ''bdBifurcation.%s''',newfields{idx});
             end
-            
-            % sys.panels.bdBifurcation.title
-            if isfield(sys.panels.bdBifurcation,'title')
-                syspanel.title = sys.panels.bdBifurcation.title;
-            end
-            
-            % sys.panels.bdBifurcation.transients
-            if isfield(sys.panels.bdBifurcation,'transients')
-                syspanel.transients = sys.panels.bdBifurcation.transients;
-            end
-            
-            % sys.panels.bdBifurcation.markers
-            if isfield(sys.panels.bdBifurcation,'markers')
-                syspanel.markers = sys.panels.bdBifurcation.markers;
-            end
-            
-            % sys.panels.bdBifurcation.points
-            if isfield(sys.panels.bdBifurcation,'points')
-                syspanel.points = sys.panels.bdBifurcation.points;
-            end
-            
-            % sys.panels.bdBifurcation.grid
-            if isfield(sys.panels.bdBifurcation,'grid')
-                syspanel.grid = sys.panels.bdBifurcation.grid;
-            end
-            
         end
         
+        function [xout,yout] = modulus(x,y,ylim)
+            % modulo the values in y to force ylo<y<yhi
+            span = ylim(2) - ylim(1);
+            y = mod(y-ylim(1),span) + ylim(1);
+                
+            % find the discontinuities in y
+            d = 2*abs(diff(y)) > span;
+            dcount = sum(d);
+            
+            % convert the logical indexes into numerical indexes
+            di = find([d,1]);
+
+            % insert NaN at each discontnuity by copying each segment
+            % into the output with gaps between them.
+            n = numel(x);
+            xout = NaN(1,n+dcount);
+            yout = NaN(1,n+dcount);
+            i0 = 1;                 % beginning of segment in the output vector
+            i1 = 1;                 % beginnning of segment in the input vector
+            for i2 = di             % for the end of each segment in the input vector
+                indx1 = i1:i2;          % indexes of the segment in the input vector
+                indx0 = (i1:i2)-i1+i0;  % indexes of the segment in the output vector
+                xout(indx0) = x(indx1); % copy the segment contents
+                yout(indx0) = y(indx1); % copy the segment contents                
+                i1 = indx1(end)+1;      % beginning of the next segment in the input vector
+                i0 = indx0(end)+2;      % beginning of the next segment in the output vector
+            end
+        end
+                
     end
-    
 end
+

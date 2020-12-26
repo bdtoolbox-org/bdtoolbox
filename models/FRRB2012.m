@@ -14,9 +14,9 @@
 %   gui = bdGUI(sys);               % open the Brain Dynamics GUI
 %
 % Authors
-%   Stewart Heitmann (2017b,2017c,2018a)
+%   Stewart Heitmann (2017b,2017c,2018a,2020a)
  
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -55,10 +55,11 @@ function sys = FRRB2012(n)
                    struct('name','rho',    'value',0.5) ];
 
     % Our SDE variables           
-    sys.vardef = struct('name','r', 'value',rand(n,1));
+    sys.vardef = struct('name','r', 'value',rand(n,1), 'lim', [-4 4]);
     
     % Default time span
     sys.tspan = [0 100];
+    sys.tstep = 0.005;
     
     % Specify SDE solvers and default options
     sys.sdesolver = {@sdeEM};           % Pertinent SDE solvers
@@ -67,23 +68,25 @@ function sys = FRRB2012(n)
 
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
-    sys.panels.bdLatexPanel.latex = {'\textbf{FRRB2012}';
-        '';
-        'Freyer F, Roberts JA, Ritter P, Breakspear M (2012) A Canonical Model of Multistability and Scale-';
-        'Invariance in Biological Systems. \textit{PLoS Comput Biol} 8(8): e1002634. doi:10.1371/journal.pcbi.1002634.';
-        '';
-        'Equation (4)';
-        '\qquad $dr = \big( -r^5 + \lambda r^3 + \beta r \big)\,dt + \eta\, \big( (1-\rho)\,\xi_1(t) + \rho\,r\,\xi_2(t) \big) $';
-        'where';
-        '\qquad $r(t)$ is the instantaneous amplitude of a limit cycle,';
-        '\qquad $\lambda$ controls the shape of the nullcline,';
-        '\qquad $\beta$ is the bifucation parameter,';
-        '\qquad $\eta$ scales the overall influence of the noise,';
-        '\qquad $\rho$ controls the balance of multiplicative versus additive noise,';
-        '\qquad $\xi_1(t)$ and $\xi_2(t)$ are independent Weiner processes.';
-        '';
-        'Notes';
-         num2str(n,'\\qquad 1. This simulation represents n=%d instances of Equation (4).') };
+    sys.panels.bdLatexPanel.latex = {
+        '$\textbf{FRRB2012}$'
+        ''
+        'Freyer F, Roberts JA, Ritter P, Breakspear M (2012) A Canonical Model of Multistability and Scale-'
+        'Invariance in Biological Systems. PLoS Comput Biol 8(8): e1002634. doi:10.1371/journal.pcbi.1002634.'
+        ''
+        'Equation (4)'
+        '{ }{ }{ } $dr = \big( -r^5 + \lambda r^3 + \beta r \big)\,dt + \eta\, \big( (1-\rho)\,\xi_1(t) + \rho\,r\,\xi_2(t) \big) $'
+        'where'
+        '{ }{ }{ } $r(t)~$ is the instantaneous amplitude of a limit cycle,'
+        '{ }{ }{ } $\lambda~$ controls the shape of the nullcline,'
+        '{ }{ }{ } $\beta~$ is the bifucation parameter,'
+        '{ }{ }{ } $\eta~$ scales the overall influence of the noise,'
+        '{ }{ }{ } $\rho~$ controls the balance of multiplicative versus additive noise,'
+        '{ }{ }{ } $\xi_1(t)\;$ and $\xi_2(t)\;$ are independent Weiner processes.'
+        ''
+        'Notes'
+        num2str(n,'{ }{ }{ } 1. This simulation represents n=%d instances of Equation (4).')
+        };
     
     % Include the Time Portrait panel in the GUI
     sys.panels.bdTimePortrait = [];

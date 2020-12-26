@@ -9,25 +9,25 @@
 %   gui = bdGUI(sys);               % open the Brain Dynamics GUI
 % 
 % Example 2: Using the Brain Dynamics command-line solver
-%   n = 20;                                            % num of processes
-%   sys = OrnsteinUhlenbeck(n);                        % system struct
-%   sys.pardef = bdSetValue(sys.pardef,'mu',0.5);      % 'mu' parameter
-%   sys.pardef = bdSetValue(sys.pardef,'sigma',0.1);   % 'sigma' parameter
-%   sys.vardef = bdSetValue(sys.vardef,'Y',rand(n,1)); % 'Y' initial values
-%   sys.tspan = [0 10];                                % time domain
-%   sol = bdSolve(sys);                                % solve
-%   t = sol.x;                                         % time steps
-%   Y = sol.y;                                         % solution variables
-%   dW = sol.dW;                                       % Wiener increments
+%   n = 20;                                     % num of processes
+%   sys = OrnsteinUhlenbeck(n);                 % system struct
+%   sys = bdSetPar(sys,'mu',0.5);               % 'mu' parameter
+%   sys = bdSetPar(sys,'sigma',0.1);            % 'sigma' parameter
+%   sys = bdSetVar(sys,'Y',rand(n,1));          % 'Y' initial values
+%   sys.tspan = [0 10];                         % time domain
+%   sol = bdSolve(sys);                         % solve
+%   t = sol.x;                                  % time steps
+%   Y = sol.y;                                  % solution variables
+%   dW = sol.dW;                                % Wiener increments
 %   subplot(1,2,1); 
-%   plot(t,Y); xlabel('time'); ylabel('Y');            % plot time trace 
+%   plot(t,Y); xlabel('time'); ylabel('Y');     % plot time trace 
 %   subplot(1,2,2);
 %   histfit(dW(:)); xlabel('dW'); ylabel('count');     % noise histogram
 %
 % Authors
-%   Stewart Heitmann (2016a,2017a,2017c,2018a)
+%   Stewart Heitmann (2016a,2017a,2017c,2018a,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -60,12 +60,14 @@ function sys = OrnsteinUhlenbeck(n)
     sys.sdeG = @sdeG;       % stochastic part
  
     % SDE parameters
-    sys.pardef = [ struct('name','theta', 'value',1.0);
-                   struct('name','mu',    'value',0.5);
-                   struct('name','sigma', 'value',0.5) ];
+    sys.pardef = [
+        struct('name','theta', 'value',1.0, 'lim',[0 5])
+        struct('name','mu',    'value',0.5, 'lim',[0 5])
+        struct('name','sigma', 'value',0.5, 'lim',[0 5])
+        ];
                
     % SDE state variables
-    sys.vardef = struct('name','Y',  'value',5*ones(n,1));
+    sys.vardef = struct('name','Y',  'value',5*ones(n,1),  'lim',[-1 5]);
     
     % Nominate the applicable SDE solvers
     sys.sdesolver = {@sdeEM,@sdeSH};    % Euler-Marayuma, Stratonovich-Huen
@@ -76,30 +78,32 @@ function sys = OrnsteinUhlenbeck(n)
 
     % Latex (Equations) panel
     sys.panels.bdLatexPanel.title = 'Equations'; 
-    sys.panels.bdLatexPanel.latex = {'\textbf{Ornstein-Uhlenbeck}';
-        '';
-        'System of $n$ independent Ornstein-Uhlenbeck processes';
-        '\qquad $dY_i = \theta (\mu - Y_i)\,dt + \sigma dW_i$';
-        'where';
-        '\qquad $Y_i(t)$ are the $n$ state variables,';
-        '\qquad $\mu$ dictates the long-term mean of $Y_i(t)$,';
-        '\qquad $\theta>0$ is the rate of convergence to the mean,';
-        '\qquad $\sigma>0$ is the volatility of the noise.';
-        '';
-        'Notes';
-        ['\qquad 1. This simulation has $n{=}',num2str(n),'$.']};
+    sys.panels.bdLatexPanel.latex = {
+        '$\textbf{Ornstein-Uhlenbeck}$'
+        ''
+        ['System of $n=',num2str(n),'\;$ independent Ornstein-Uhlenbeck processes']
+        '{ }{ }{ } $dY_i = \theta (\mu - Y_i)\,dt + \sigma dW_i$'
+        'where'
+        '{ }{ }{ } $Y_i(t)~$ are the $n$ state variables,'
+        '{ }{ }{ } $\mu~$ dictates the long-term mean of $Y_i(t)$,'
+        '{ }{ }{ } $\theta>0~$ is the rate of convergence to the mean,'
+        '{ }{ }{ } $\sigma>0~$ is the volatility of the noise.'
+        };
               
     % Time Portrait panel
-    sys.panels.bdTimePortrait = [];
+    sys.panels.bdTimePortrait.selector1 = {1,1,1};
+    sys.panels.bdTimePortrait.selector2 = {1,2,1};
  
     % Phase Portrait panel
-    sys.panels.bdPhasePortrait = [];
+    sys.panels.bdPhasePortrait.selectorX = {1,1,1};
+    sys.panels.bdPhasePortrait.selectorY = {1,2,1};
 
     % Solver panel
     sys.panels.bdSolverPanel = [];      
     
     % Default time span (optional)
-    sys.tspan = [0 2000];  
+    sys.tspan = [0 100];  
+    sys.tstep = 0.1;
 end
 
 % The deterministic part of the equation.

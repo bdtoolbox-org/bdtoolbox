@@ -1,12 +1,11 @@
-classdef bdControlMatrix < handle
-    %bdControlMatrix  Control panel widget for matrix values in bdGUI.
-    %  This class is specialised for use with bdControlPanel.
-    %  It is not intended to be called directly by users.
+classdef bdControlMatrix < handle 
+    %bdControlMatrix  Control panel widget for bdGUI.
+    %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2017d,2018a,2019a)
-
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    %  Stewart Heitmann (2017d,2018a,2019a,2020a)
+    
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -33,443 +32,341 @@ classdef bdControlMatrix < handle
     % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
-
-    properties (Constant)
-        rowh = 54;
-        roww = 220;
-    end
-
-    properties (Access=private)
-        parent
-        panel
-        minbox
-        maxbox
-        plusbtn
-        minusbtn
-        randbtn
-        peyebtn
-        meyebtn
-        imgaxes
-        imgplot
-        labelbtn
-        listener1
-        listener2
-        dialog
+    
+    properties
+        SubLayout
+        EditField1   matlab.ui.control.NumericEditField
+        EditField2   matlab.ui.control.NumericEditField
+        RandButton   matlab.ui.control.Button
+        PerbButton   matlab.ui.control.Button
+       % ShufButton   matlab.ui.control.Button
+        AxesPanel    matlab.ui.container.Panel
+        Axes         matlab.ui.control.UIAxes
+        Image        matlab.graphics.primitive.Image
+        Button       matlab.ui.control.Button
+        listener1    event.listener
+        listener2    event.proplistener
+        dialogbox    bdDialogMatrix
     end
     
     methods
-        function this = bdControlMatrix(control,xxxdef,xxxindx,parent,ypos,modecheckbox)
-            %disp('bdControlMatrix()');
+        function this = bdControlMatrix(sysobj,cpanel,xxxdef,xxxindx,xxxmode,gridlayout,gridrow)
+            %UNTITLED2 Construct an instance of this class
+            %   Detailed explanation goes here
+
+            this.dialogbox = bdDialogMatrix(sysobj,xxxdef,xxxindx);
             
-            % init empty handle to dialog box
-            this.dialog = bdControlMatrixDialog.empty(0);
+            % Extract data from sysobj
+            name  = sysobj.(xxxdef)(xxxindx).name;
+            value = sysobj.(xxxdef)(xxxindx).value;
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+                      
+            % Create a nested gridlayout that spans the first two columns of the parent gridlayout
+            this.SubLayout = uigridlayout(gridlayout);
+            this.SubLayout.ColumnWidth = {'1x','1x'};
+            this.SubLayout.RowHeight = {'1x',21,'1x'};
+            this.SubLayout.ColumnSpacing = 5;
+            this.SubLayout.RowSpacing = 0;
+            this.SubLayout.Padding = [0 0 0 0];
+            this.SubLayout.Layout.Row = gridrow;
+            this.SubLayout.Layout.Column = [1 2];
+            
+            % Create EditField1
+            this.EditField1 = uieditfield(this.SubLayout, 'numeric');
+            this.EditField1.Layout.Row = 2;
+            this.EditField1.Layout.Column = 1;
+            this.EditField1.HorizontalAlignment = 'center';
+            this.EditField1.Value = limit(1);
+            this.EditField1.Visible = 'off';
+            this.EditField1.ValueChangedFcn = @(~,~) EditField1ValueChanged(this,sysobj,xxxdef,xxxindx);
+            this.EditField1.Tooltip = ['Lower limit of ''',name,''''];
+            
+            % Create EditField2
+            this.EditField2 = uieditfield(this.SubLayout, 'numeric');
+            this.EditField2.Layout.Row = 2;
+            this.EditField2.Layout.Column = 2;
+            this.EditField2.HorizontalAlignment = 'center';
+            this.EditField2.Value = limit(2);
+            this.EditField2.Visible = 'off';
+            this.EditField2.ValueChangedFcn = @(~,~) EditField2ValueChanged(this,sysobj,xxxdef,xxxindx);
+            this.EditField2.Tooltip = ['Upper limit of ''',name,''''];
+            
+            % Create RAND Button
+            this.RandButton = uibutton(this.SubLayout, 'push');
+            this.RandButton.Layout.Row = 2;
+            this.RandButton.Layout.Column = 1;
+            this.RandButton.Text = 'RAND';
+            this.RandButton.Visible = 'on';
+            this.RandButton.ButtonPushedFcn = @(~,~) RandButtonPushedFcn(this,sysobj,xxxdef,xxxindx);
+            this.RandButton.Tooltip = ['Random ''',name,''''];
+            this.RandButton.Interruptible = 'off';
+            this.RandButton.BusyAction = 'cancel';
 
-            % extract the relevant fields from control.sys.xxxdef
-            xxxname  = control.sys.(xxxdef)(xxxindx).name;
-            xxxvalue = control.sys.(xxxdef)(xxxindx).value;
-            xxxlim   = control.sys.(xxxdef)(xxxindx).lim;
+            % Create PERB Button
+            this.PerbButton = uibutton(this.SubLayout, 'push');
+            this.PerbButton.Layout.Row = 2;
+            this.PerbButton.Layout.Column = 2;
+            this.PerbButton.Text = 'PERB';
+            this.RandButton.Visible = 'on';
+            this.PerbButton.ButtonPushedFcn = @(~,~) PerbButtonPushedFcn(this,sysobj,xxxdef,xxxindx);
+            this.PerbButton.Tooltip = ['Perturb ''',name,''''];
+            this.PerbButton.Interruptible = 'off';
+            this.PerbButton.BusyAction = 'cancel';
 
-            % convert the data (which might be 3D) into a 2D image
-            if ndims(xxxvalue)>2
-                xxximage = xxxvalue(:,:,1);
+%             % Create SHUF Button
+%             this.ShufButton = uibutton(this.SubLayout, 'push');
+%             this.ShufButton.Layout.Row = 2;
+%             this.ShufButton.Layout.Column = 2;
+%             this.ShufButton.Text = 'SHUF';
+%             this.ShufButton.Visible = 'on';
+%             this.ShufButton.ButtonPushedFcn = @(~,~) ShufButtonPushedFcn(this,sysobj,xxxdef,xxxindx);
+%             this.ShufButton.Tooltip = ['Shuffle ''',name,''''];
+            
+             % Create Panel for the Axes
+            this.AxesPanel = uipanel(gridlayout);
+            this.AxesPanel.Layout.Row = gridrow;
+            this.AxesPanel.Layout.Column = 3;
+
+            % Create Axes for the data image
+            this.Axes = uiaxes(this.AxesPanel);
+            this.Axes.Toolbar.Visible = 'off';
+            this.Axes.Interactions = [];
+            this.Axes.BackgroundColor = 'w';
+            this.Axes.XTick = [];
+            this.Axes.YTick = [];
+            this.Axes.XAxis.TickLabels = {};
+            this.Axes.YAxis.TickLabels = {};
+            this.Axes.XAxis.LimitsMode = 'manual';
+            this.Axes.YAxis.LimitsMode = 'manual';
+            this.Axes.XAxis.Visible = 'off';
+            this.Axes.YAxis.Visible = 'off';
+            this.Axes.XLim = [0.5 size(value,1)+0.5];
+            this.Axes.YLim = [0.5 size(value,2)+0.5];
+            this.Axes.Box = 'off';
+            this.Axes.Position = [-4 -4 this.AxesPanel.InnerPosition(3)+10 this.AxesPanel.InnerPosition(4)+10];
+            axis(this.Axes,'off');
+
+            % Create Image
+            this.Image = imagesc(value(:,:,1),'Parent',this.Axes,limit);
+            this.Image.HitTest = 'off';
+                       
+            % Add callback to the AxesPanel to resize the Axes
+            this.AxesPanel.AutoResizeChildren='off';
+            this.AxesPanel.SizeChangedFcn = @(~,~) this.AxesPanelSizeChangedFcn();
+
+            % Create Button
+            this.Button = uibutton(gridlayout, 'push');
+            this.Button.Layout.Row = gridrow;
+            this.Button.Layout.Column = 4;
+            this.Button.Text = name;
+            this.Button.ButtonPushedFcn = @(~,~) ButtonPushedFcn(this,sysobj,xxxdef,xxxindx);
+            this.Button.Tooltip = ['More options for ''',name,''''];
+            this.Button.Interruptible = 'off';
+            this.Button.BusyAction = 'cancel';
+            [r,c,p] = size(value);
+            if p>1
+                this.Button.Tooltip = sprintf('%s [%dx%dx%d]',name,r,c,p);
             else
-                xxximage = xxxvalue;
+                this.Button.Tooltip = sprintf('%s [%dx%d]',name,r,c);
             end
-            
-            % remember our parent and the vertical offset
-            this.parent = parent;
-            
-            % define widget geometry
-            colw = 22.5;                  % column width
-            gap = 5;                    % column gap
-            boxh = 20;                  % box height
-            col1 = 2;
-            col2 = ceil(col1 + colw + gap);
-            col3 = floor(col2 + colw + gap);
-            col4 = ceil(col3 + colw + gap);
-            col5 = floor(col4 + colw + gap);
-            col6 = ceil(col5 + colw + gap);
-            col7 = floor(col6 + colw + gap);
-            col8 = ceil(col7 + colw + gap);
-            col9 = floor(col8 + colw + gap);
-            row1 = 4;
-            row1b = 17;
-            row2 = row1 + boxh + 4;
-            row3 = row2 + boxh + 4;
-            
-            % Construct the panel container
-            this.panel = uipanel('Parent',parent, ...
-                'Units','pixels', ...
-                'Position',[2 ypos this.roww this.rowh], ...
-                'BorderType','none', ...
-                'DeleteFcn', @(~,~) delete(this.dialog) );
-                
-            % Construct the min box
-            this.minbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col1 row1b col3-col1-gap boxh], ...
-                'String',num2str(xxxlim(1),'%0.4g'), ...
-                'Value',xxxlim(1), ...
-                'HorizontalAlignment','center', ...
-                'Visible','off', ...
-                'Callback', @(~,~) this.minboxCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['lower limit for ''' xxxname '''']);
+           
+            % listen to sysobj for REDRAW events
+            this.listener1 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(src,evnt,xxxdef,xxxindx));
 
-            % Construct the max box
-            this.maxbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col3 row1b col5-col3-gap boxh], ...
-                'String',num2str(xxxlim(2),'%0.4g'), ...
-                'Value',xxxlim(2), ...
-                'HorizontalAlignment','center', ...
-                'Visible','off', ...
-                'Callback', @(~,~) this.maxboxCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['upper limit for ''' xxxname '''']);
-            
-            % Construct the PLUS button
-            this.plusbtn = uicontrol('Parent',this.panel, ...
-                'Style','pushbutton', ...
-                'Units','pixels', ...
-                'Position',[col1 row2 col2-col1-gap boxh], ...
-                'String','+', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Callback', @(~,~) this.PlusCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['Increment the values of ''' xxxname '''']);            
-
-            % Construct the MINUS button
-            this.minusbtn = uicontrol('Parent',this.panel, ...
-                'Style','pushbutton', ...
-                'Units','pixels', ...
-                'Position',[col2 row2 col3-col2-gap boxh], ...
-                'String','-', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Callback', @(~,~) this.MinusCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['Decrement the values of ''' xxxname '''']);            
-            
-            % Construct the RAND button
-            this.randbtn = uicontrol('Parent',this.panel, ...
-                'Style','pushbutton', ...
-                'Units','pixels', ...
-                'Position',[col3 row2 col5-col3-gap boxh], ...
-                'String','RAND', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Callback', @(~,~) this.RandCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['Assign Uniform Random values to ''' xxxname '''']);            
-
-            % Construct the +EYE button
-            this.peyebtn = uicontrol('Parent',this.panel, ...
-                'Style','pushbutton', ...
-                'Units','pixels', ...
-                'Position',[col1 row1 col3-col1-gap boxh], ...
-                'String','+EYE', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Callback', @(~,~) this.PeyeCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['Increment the diagonal entries of ''' xxxname '''']);            
-
-            % Construct the -EYE button
-            this.meyebtn = uicontrol('Parent',this.panel, ...
-                'Style','pushbutton', ...
-                'Units','pixels', ...
-                'Position',[col3 row1 col5-col3-gap boxh], ...
-                'String','-EYE', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Callback', @(~,~) this.MeyeCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['Decrement the diagonal entries of ''' xxxname '''']);            
-
-            % construct image widget for the matrix
-            this.imgaxes = axes('Parent', this.panel, ...
-                'Units','pixels', ...
-                'Position',[col5+1 row1 col7-col5-gap-2 row3-row1-4]);
-            this.imgplot = imagesc(xxximage, ...
-                'Parent',this.imgaxes, ...
-                xxxlim);
-            axis off;
-
-            % Construct the label button
-            this.labelbtn = uicontrol('Parent',this.panel, ...
-                'Style', 'pushbutton', ...
-                'Units','pixels',...
-                'Position',[col7 row1b col9-col7-gap boxh], ...
-                'String',xxxname, ...
-            ...    'BackgroundColor','g', ...
-                'FontWeight','normal', ...
-                'Callback', @(~,~) this.labelbtnCallback(control,xxxdef,xxxindx,xxxname), ...
-                'ToolTipString',xxxname);
-            
-            % force refresh at startup
-            this.refresh(control,xxxdef,xxxindx,modecheckbox);
-
-            % listen for widget refresh events from the control panel 
-            this.listener1 = addlistener(control,'refresh', @(~,~) this.refresh(control,xxxdef,xxxindx,modecheckbox));
-            this.listener2 = addlistener(control,xxxdef, @(~,~) this.refresh(control,xxxdef,xxxindx,modecheckbox));
+            % listen to cpanel for changes to the xxxmode switch
+            this.listener2 = listener(cpanel,xxxmode,'PostSet', @(src,evnt) this.ModeListener(cpanel,xxxmode));
         end
         
-        % Destructor
         function delete(this)
-            delete(this.listener2);
+            %disp 'bdControlMatrix.delete'
             delete(this.listener1);
+            delete(this.listener2);
+            delete(this.dialogbox);
         end
-
+        
         function mode(this,flag)            
             %disp('bdControlMatrix.mode()');
             if flag
-                this.minbox.Visible = 'off';
-                this.maxbox.Visible = 'off';
-                this.plusbtn.Visible = 'on';
-                this.minusbtn.Visible = 'on';
-                this.randbtn.Visible = 'on';
-                this.peyebtn.Visible = 'on';
-                this.meyebtn.Visible = 'on';
+                this.EditField1.Visible = 'off';
+                this.EditField2.Visible = 'off';
+                this.RandButton.Visible = 'on';
+                this.PerbButton.Visible = 'on';
             else
-                this.minbox.Visible = 'on';
-                this.maxbox.Visible = 'on';
-                this.plusbtn.Visible = 'off';
-                this.minusbtn.Visible = 'off';
-                this.randbtn.Visible = 'off';
-                this.peyebtn.Visible = 'off';
-                this.meyebtn.Visible = 'off';
+                this.EditField1.Visible = 'on';
+                this.EditField2.Visible = 'on';
+                this.RandButton.Visible = 'off';
+                this.PerbButton.Visible = 'off';
             end                        
-        end
-
-    end
-   
-    methods (Access=private)
-        
-        % min box callback function
-        function minboxCallback(this,control,xxxdef,xxxindx)
-            %disp('bdControlMatrix.minboxCallback()');
-            % read the minbox string and convert to a number
-            str = this.minbox.String;
-            minval = str2double(str);
-            if isnan(minval)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the minbox string to its previous value
-                this.minbox.String = num2str(this.minbox.Value,'%0.4g');                 
-            else  
-                % adjust the max box if necessary
-                maxval = max(this.maxbox.Value, minval);
-                
-                % update control.sys
-                control.sys.(xxxdef)(xxxindx).lim = [minval maxval];
-                
-                % notify all widgets (which includes ourself) that sys.xxxdef has changed
-                %notify(this.control,'refresh');
-                notify(control,xxxdef);
-
-                % notify all display panels to redraw themselves
-                notify(control,'redraw');
-            end
-        end        
-
-        % max box callback function
-        function maxboxCallback(this,control,xxxdef,xxxindx)
-            %disp('bdControlMatrix.maxboxCallback()');
-            % read the maxbox string and convert to a number
-            str = this.maxbox.String; 
-            maxval = str2double(str);
-            if isnan(maxval)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the maxbox string to its previous value
-                this.maxbox.String = num2str(this.maxbox.Value,'%0.4g');                 
-            else           
-                % adjust the min box if necessary
-                minval = min(this.minbox.Value, maxval);
-                
-                % update control.sys
-                control.sys.(xxxdef)(xxxindx).lim = [minval maxval];
-                
-                % notify all widgets (which includes ourself) that sys.xxxdef has changed
-                %notify(control,'refresh');
-                notify(control,xxxdef);
-
-                % notify all display panels to redraw themselves
-                notify(control,'redraw');
-            end
-        end        
-        
-        % label button callback function
-        function labelbtnCallback(this,control,xxxdef,xxxindx,xxxname)
-            if isvalid(this.dialog)
-                % a dialog box already exists, make it visible
-                this.dialog.visible('on');
-            else
-                % contruct a new dialog box
-                this.dialog = bdControlMatrixDialog(control,xxxdef,xxxindx,['Edit Matrix ',xxxname]);
-            end      
-        end
-       
-        % PLUS button callback. Increments the current values by 5 percent
-        % of the limit specified in xxxdef.
-        function PlusCallback(this,control,xxxdef,xxxindx)
-            % determine the limits of the values
-            xxxlim = control.sys.(xxxdef)(xxxindx).lim;
-            lo = xxxlim(1);
-            hi = xxxlim(2);
-            
-            % update the control panel with an incremented version of the data
-            valsize = size(control.sys.(xxxdef)(xxxindx).value);
-            control.sys.(xxxdef)(xxxindx).value =  ...
-                control.sys.(xxxdef)(xxxindx).value + 0.05*(hi-lo);
-            
-            % notify all widgets (which includes ourself) that sys.xxxdef has changed
-            notify(control,xxxdef);
-            
-            % tell the solver to recompute the solution
-            notify(control,'recompute');
-        end
-
-        % MINUS button callback. Decrements the current values by 5 percent
-        % of the limit specified in xxxdef.
-        function MinusCallback(this,control,xxxdef,xxxindx)
-            % determine the limits of the values
-            xxxlim = control.sys.(xxxdef)(xxxindx).lim;
-            lo = xxxlim(1);
-            hi = xxxlim(2);
-            
-            % update the control panel with a decremented version of the data
-            valsize = size(control.sys.(xxxdef)(xxxindx).value);
-            control.sys.(xxxdef)(xxxindx).value =  ...
-                control.sys.(xxxdef)(xxxindx).value - 0.05*(hi-lo);
-            
-            % notify all widgets (which includes ourself) that sys.xxxdef has changed
-            notify(control,xxxdef);
-            
-            % tell the solver to recompute the solution
-            notify(control,'recompute');
-        end
-        
-        % RAND button callback. Replaces the current value with a uniform
-        % random number drawn from the limits specified in xxxdef.
-        function RandCallback(this,control,xxxdef,xxxindx)
-            % determine the limits of the random values
-            xxxlim = control.sys.(xxxdef)(xxxindx).lim;
-            lo = xxxlim(1);
-            hi = xxxlim(2);
-            
-            % update the control panel.
-            valsize = size(control.sys.(xxxdef)(xxxindx).value);
-            control.sys.(xxxdef)(xxxindx).value = (hi-lo)*rand(valsize) + lo;
-            
-            % notify all widgets (which includes ourself) that sys.xxxdef has changed
-            notify(control,xxxdef);
-
-            % tell the solver to recompute the solution
-            notify(control,'recompute');
-        end
-
-        % +EYE button callback. Increments the diagonal values by 5 percent
-        % of the limit specified in xxxdef.
-        function PeyeCallback(this,control,xxxdef,xxxindx)
-            % determine the limits of the values
-            xxxlim = control.sys.(xxxdef)(xxxindx).lim;
-            lo = xxxlim(1);
-            hi = xxxlim(2);
-
-            % determine the size of the matrix
-            valsize = size(control.sys.(xxxdef)(xxxindx).value);
-
-            % increment the diagonal
-            control.sys.(xxxdef)(xxxindx).value =  ...
-                control.sys.(xxxdef)(xxxindx).value + 0.05*(hi-lo)*eye(valsize);
-            
-            % notify all widgets (which includes ourself) that sys.xxxdef has changed
-            notify(control,xxxdef);
-            
-            % tell the solver to recompute the solution
-            notify(control,'recompute');
-        end
-        
-        % -EYE button callback. Decrements the diagonal values by 5 percent
-        % of the limit specified in xxxdef.
-        function MeyeCallback(this,control,xxxdef,xxxindx)
-            % determine the limits of the values
-            xxxlim = control.sys.(xxxdef)(xxxindx).lim;
-            lo = xxxlim(1);
-            hi = xxxlim(2);
-
-            % determine the size of the matrix
-            valsize = size(control.sys.(xxxdef)(xxxindx).value);
-
-            % increment the diagonal
-            control.sys.(xxxdef)(xxxindx).value =  ...
-                control.sys.(xxxdef)(xxxindx).value - 0.05*(hi-lo)*eye(valsize);
-            
-            % notify all widgets (which includes ourself) that sys.xxxdef has changed
-            notify(control,xxxdef);
-            
-            % tell the solver to recompute the solution
-            notify(control,'recompute');
-        end
-                
-        % Update the widgets according to the values in control.sys.xxxdef
-        function refresh(this,control,xxxdef,xxxindx,modecheckbox) 
-            %disp(['bdControlMatrix.refresh:' xxxdef]);
-            
-            % extract the relevant fields from control.sys.xxxdef
-            xxxvalue = control.sys.(xxxdef)(xxxindx).value;
-            xxxlim   = control.sys.(xxxdef)(xxxindx).lim;
-
-            % convert the data (which might be 3D) into a 2D image
-            if ndims(xxxvalue)>2
-                xxximage = xxxvalue(:,:,1);
-            else
-                xxximage = xxxvalue;
-            end
-
-            % update the min box widget
-            this.minbox.Value = xxxlim(1);
-            this.minbox.String = num2str(xxxlim(1),'%0.4g');
-            
-            % update the max box widget
-            this.maxbox.Value = xxxlim(2);
-            this.maxbox.String = num2str(xxxlim(2),'%0.4g');
-
-            % update the contents of the image widget
-            this.imgplot.CData = xxximage;
-            
-            % update the colour scale limits of the image
-            this.imgaxes.CLim = [this.minbox.Value, this.maxbox.Value] + [-1e-6, 1e-6];
-            
-            % show/hide the slider widget according to the state of the caller's modecheckbox
-            this.mode(modecheckbox.Value);
-            
-            % special case: if this is a vardef control and the evolve button
-            % is ON then disable the plus/minus/rand buttons.
-            switch xxxdef
-                case 'vardef'
-                    if control.sys.evolve
-                        % disable the buttons
-                        this.plusbtn.Enable = 'off';
-                        this.minusbtn.Enable = 'off';
-                        this.randbtn.Enable = 'off';
-                        this.peyebtn.Enable = 'off';
-                        this.meyebtn.Enable = 'off';
-                    else
-                        % enable the buttons
-                        this.plusbtn.Enable = 'on';
-                        this.minusbtn.Enable = 'on';
-                        this.randbtn.Enable = 'on';
-                        this.peyebtn.Enable = 'on';
-                        this.meyebtn.Enable = 'on';                        
-                    end
-            end
-        end
-        
+        end                
     end
     
-end
+    % Callbacks that handle component events
+    methods (Access = private)
+            
+        function Redraw(this,sysobj,sysevent,xxxdef,xxxindx)
+            %disp 'bdControlMatrix.Redraw()'
+            
+            % Extract data from sysobj
+            value = sysobj.(xxxdef)(xxxindx).value;
+            limit = sysobj.(xxxdef)(xxxindx).lim;
 
+            % Extract data status from sysevent
+            value_changed = sysevent.(xxxdef)(xxxindx).value;
+            limit_changed = sysevent.(xxxdef)(xxxindx).lim;
+
+            % if the limit in sysobj has changed then ...
+            if limit_changed
+                % update lower and upper edit field widgets
+                this.EditField1.Value = limit(1);
+                this.EditField2.Value = limit(2);
+                
+                % update the colour scale limits of the image
+                this.Axes.CLim = limit + [-1e-6 1e-6];
+            end
+            
+            % if the value in sysobj has changed then ...
+            if value_changed
+                % update the image data (use only the first plane of 3D data)
+                this.Image.CData = value(:,:,1);
+            end            
+        end
+        
+        % Listener for cpanel.xxxmode events
+        function ModeListener(this,cpanel,xxxmode)
+            %disp('bdControlMatrix.ModeListener');
+            
+            % extract the relevant mode flag from cpanel
+            flag = cpanel.(xxxmode);
+            
+            % apply the mode to this widget
+            this.mode(flag);
+        end
+        
+        % EditField1 Value Changed callback
+        function EditField1ValueChanged(this,sysobj,xxxdef,xxxindx)
+            % extract the relevant fields from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            
+            % extract value from widget
+            value = this.EditField1.Value;
+            
+            % apply it to the lower limit
+            limit(1) = value;
+            
+            % adjust the upper limit if necessary
+            if limit(2)<limit(1)
+                limit(2) = value;
+            end
+            
+            % write the new limits back to sysobj
+            sysobj.(xxxdef)(xxxindx).lim = limit;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % EditField2 Value Changed callback
+        function EditField2ValueChanged(this,sysobj,xxxdef,xxxindx)
+            % extract the relevant fields from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            
+            % extract value from widget
+            value = this.EditField2.Value;
+            
+            % apply it to the upper limit
+            limit(2) = value;
+            
+            % adjust the lower limit if necessary
+            if limit(1)>limit(2)
+                limit(1) = value;
+            end
+            
+            % write the new limits back to sysobj
+            sysobj.(xxxdef)(xxxindx).lim = limit;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % RAND Button callback
+        function RandButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+            % retrieve the relevant data from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            value = sysobj.(xxxdef)(xxxindx).value;
+
+            % generate uniform random data between the lower and upper limits
+            lo = limit(1);
+            hi = limit(2);
+            sz = size(value);
+            value = (hi-lo)*rand(sz) + lo;           
+
+            % write the data back to sysobj
+            sysobj.(xxxdef)(xxxindx).value = value;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % PERB Button callback
+        function PerbButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+            % retrieve the relevant data from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            value = sysobj.(xxxdef)(xxxindx).value;
+
+            % apply a uniform random perturbation to the data
+            lo = limit(1);
+            hi = limit(2);
+            sz = size(value);
+            value = value + 0.05*(hi-lo)*(rand(sz)-0.5);
+            
+            % write the data back to sysobj
+            sysobj.(xxxdef)(xxxindx).value = value;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+
+        % SHUF Button callback
+        function ShufButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+            % retrieve the relevant data from sysobj
+            value = sysobj.(xxxdef)(xxxindx).value;
+
+            % shuffle the order
+            len = numel(value);
+            idx = randperm(len);
+            value(1:end) = value(idx);
+            
+            % write the data back to sysobj
+            sysobj.(xxxdef)(xxxindx).value = value;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % ButtonPushedFcn callback
+        function ButtonPushedFcn(this,sysobj,xxxdef,xxxindx)
+            name = sysobj.(xxxdef)(xxxindx).name;
+            switch xxxdef
+                case 'pardef'
+                    title = ['Parameter ''',name,''''];
+                case 'lagdef'
+                    title = ['Lag Parameter ''',name,''''];
+                case 'vardef'
+                    title = ['Initial Condition ''',name,''''];
+            end
+            fig = ancestor(this.Button,'figure');
+            xpos = fig.Position(1) + fig.Position(3)+ randi(30);
+            ypos = fig.Position(2) + this.Button.Position(2);
+            this.dialogbox.OpenFigure(xpos,ypos,title);
+        end
+        
+        % AxesPanel Resize callback
+        function AxesPanelSizeChangedFcn(this)
+            %disp('bdControlMatrix.AxesPanelSizeChangedFcn()');
+            w = this.AxesPanel.InnerPosition(3);
+            h = this.AxesPanel.InnerPosition(4);
+            this.Axes.Position = [-4 -4 w+10 h+10];
+        end  
+        
+    end
+end

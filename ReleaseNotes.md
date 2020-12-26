@@ -1,6 +1,15 @@
 # Release Notes
 # Brain Dynamics Toolbox
 
+## Version 2020a
+Released 26 Dec 2020
+
+This release is a complete rewrite of the graphical interface for the new matlab (R2019b and above) uitools interface which allows for much richer instrumentation than before. Other new features include the ability to integrate backwards in time, an 'undo/redo' menu, and the ability to undock display panels from the main window. All of the display panels have been rewritten from scratch and some (Phase Portrait, Bifurcation panel) have been split into 2D and 3D variants. Other new panels include the Time Cylinder and the System Log. The Trap panel and the BOLD HRF panel have been deprecated.
+
+Sadly the matlab uitools interface does not export traditional matlab .fig files, so that feature is no longer available in bdGUI. Annoyingly, the uitools interface does not support data cursors on images either. Hence the Space2D and Correlation display panels in bdGUI have lost their data cursors. Hopefuly matlab will restore datacursors for images in future. The LaTeX interpreter also operates slightly differently under uitools. LaTeX formatting commands, such as \textbf, must now be enclosed in mathmode delimiters ($...$).
+
+Requires Matlab 2019b or newer.
+
 ## Version 2019a
 Released 6 Aug 2019
 
@@ -87,4 +96,3 @@ Released 24 Dec 2016.
 The first public release of the Brain Dynamics Toolbox.
 
 Requires Matlab 2014b or newer.
-

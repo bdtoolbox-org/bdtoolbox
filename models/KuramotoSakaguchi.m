@@ -15,7 +15,7 @@
 %   gui = bdGUI(sys);                   % open the Brain Dynamics GUI
 %
 % Authors
-%   Stewart Heitmann (2020) derived from KuramotoNet (2018b)
+%   Stewart Heitmann (2020a) derived from KuramotoNet (2018b)
 
 % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
@@ -66,6 +66,7 @@ function sys = KuramotoSakaguchi(Kij,Aij)
     
     % Time span
     sys.tspan = [0 100];
+    sys.tstep = 0.1;
 
     % Relevant ODE solvers
     sys.odesolver = {@ode45,@ode23,@ode113,@odeEul};
@@ -78,36 +79,36 @@ function sys = KuramotoSakaguchi(Kij,Aij)
     % Latex (Equations) panel
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{KuramotoSakaguchi}'
+        '$\textbf{KuramotoSakaguchi}$'
         ''
         'A generalized network of Kuramoto-Sakaguchi Oscillators'
-        '\qquad $\dot \theta_i = \omega_i + \frac{k}{n} \sum_j K_{ij} \sin(\theta_i - \theta_j + a\, A_{ij})$'
+        '{ }{ }{ } $\dot \theta_i = \omega_i + \frac{k}{n} \sum_j K_{ij} \sin(\theta_i - \theta_j + a\, A_{ij})$'
         'where'
-        '\qquad $\theta_i$ is the phase of the $i^{th}$ oscillator (radians),'
-        '\qquad $\omega_i$ is its natural oscillation frequency (cycles/sec),'
-        '\qquad $K$ is the network connectivity matrix ($n$ x $n$),'
-        '\qquad $A$ is the phase shift for each connection ($n$ x $n$),'
-        '\qquad $k$ and $a$ are a scaling constants,';
-        '\qquad $i,j=1 \dots n,$'
-        ['\qquad $n{=}',num2str(n),'.$']
+        '{ }{ }{ } $\theta_i$ is the phase of the $i^{th}$ oscillator (radians),'
+        '{ }{ }{ } $\omega_i$ is its natural oscillation frequency (cycles/sec),'
+        '{ }{ }{ } $K$ is the network connectivity matrix ($n$ x $n$),'
+        '{ }{ }{ } $A$ is the phase shift for each connection ($n$ x $n$),'
+        '{ }{ }{ } $k$ and $a$ are a scaling constants,';
+        '{ }{ }{ } $i,j=1 \dots n,$'
+        ['{ }{ }{ } $n{=}',num2str(n),'.$']
         ''
         'The Kuramoto order parameter ($R$) is a metric of phase synchronisation.'
-        '\qquad $R = \frac{1}{n} \| \sum_i \exp(\mathbf{i} \theta_i) \|$'
+        '{ }{ }{ } $R = \frac{1}{n} \| \sum_i \exp(\mathbf{i} \theta_i) \|$'
         'It corresponds to the radius of the centroid of the phases, as shown in'
         'the Auxiliary panel.'
         ''
         'References'
-        '\qquad Sakaguchi and Kuramoto (1986) Prog Theor Phys 76, 576.'
-        '\qquad Kuramoto (1984) Chemical oscillations, waves and turbulence.'
+        '{ }{ }{ } Sakaguchi and Kuramoto (1986) Prog Theor Phys 76, 576.'
+        '{ }{ }{ } Kuramoto (1984) Chemical oscillations, waves and turbulence.'
         };
     
     % Time Portrait panel
     sys.panels.bdTimePortrait.title = 'Time Portrait';
-    sys.panels.bdTimePortrait.mod = true;
+    sys.panels.bdTimePortrait.modulo = 'on';
  
     % Phase Portrait panel
     sys.panels.bdPhasePortrait.title = 'Phase Portrait';
-    sys.panels.bdPhasePortrait.mod = true;
+    sys.panels.bdPhasePortrait.modulo = 'on';
 
     % Auxiliary panel
     sys.panels.bdAuxiliary.title = 'Auxiliary';
@@ -140,9 +141,9 @@ function centroid1(ax,t,sol,Kij,k,Aij,a,omega)
     ztheta = exp(1i.*theta);
     
     % Plot the centroid.
-    centroidplot(ztheta);
-    text(-1,-1,num2str(t,'time = %g'));
-    title('centroid of oscillators'); 
+    centroidplot(ax,ztheta);
+    text(ax,-1,-1,num2str(t,'time = %g'));
+    title(ax,'centroid of oscillators'); 
 end
 
 % Auxiliary function that plots the centroid of the oscillators
@@ -157,30 +158,30 @@ function centroid2(ax,t,sol,Kij,k,Aij,a,omega)
     ztheta = exp(1i.*theta) .* exp(-1i*theta(1));
     
     % Plot the centroid.
-    centroidplot(ztheta);
-    text(-1,-1,num2str(t,'time = %g'));
-    title('centroid (rotating frame)'); 
+    centroidplot(ax,ztheta);
+    text(ax,-1,-1,num2str(t,'time = %g'));
+    title(ax,'centroid (rotating frame)'); 
 end
 
 % Utility function for plotting the centroid
-function centroidplot(ztheta)
+function centroidplot(ax,ztheta)
     % compute the phase centroid
     centroid = mean(ztheta);
     
     % plot the unit circle
-    plot(exp(1i.*linspace(-pi,pi,100)), 'color',[0.75 0.75 0.75]);
+    plot(ax,exp(1i.*linspace(-pi,pi,100)), 'color',[0.75 0.75 0.75]);
     
     % plot the oscillator phases on the unit circle
-    plot(ztheta,'o','color','k');
+    plot(ax,ztheta,'o','color','k');
     
     % plot the centroid (yellow paddle)
-    plot([0 centroid], 'color', 'k');
-    plot(centroid,'o','color','k', 'Marker','o', 'MarkerFaceColor','y', 'MarkerSize',10);
+    plot(ax,[0 centroid], 'color', 'k');
+    plot(ax,centroid,'o','color','k', 'Marker','o', 'MarkerFaceColor','y', 'MarkerSize',10);
     
     % axis limits etc
-    axis equal;
-    xlim([-1.1 1.1]);
-    ylim([-1.1 1.1]);
+    axis(ax,'equal');
+    xlim(ax,[-1.1 1.1]);
+    ylim(ax,[-1.1 1.1]);
 end
 
 % Auxiliary function for plotting the Kuramoto order parameter (R).
@@ -192,15 +193,15 @@ function KuramotoR(ax,t,sol,Kij,k,Aij,a,omega)
     centroid = mean(ztheta);
 
     % plot the amplitide of the centroid versus time.
-    %axis normal;
-    plot(sol.x,abs(centroid),'color','k','linewidth',1.5);
+    axis(ax,'normal');
+    plot(ax,sol.x,abs(centroid),'color','k','linewidth',1.5);
     
     % axis limits etc
     t0 = sol.x(1);
     t1 = sol.x(end);
-    xlim([t0 t1]);
-    ylim([-0.1 1.1]);
-    xlabel('time');
-    ylabel('R = abs(centroid)');
-    title('Kuramoto Order Parameter (R)');
+    xlim(ax,[t0 t1]);
+    ylim(ax,[-0.1 1.1]);
+    xlabel(ax,'time');
+    ylabel(ax,'R = abs(centroid)');
+    title(ax,'Kuramoto Order Parameter (R)');
 end

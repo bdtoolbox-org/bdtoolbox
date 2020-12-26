@@ -44,9 +44,9 @@
 %   WilsonCowanRing
 %
 % AUTHOR
-%   Stewart Heitmann (2018b)
+%   Stewart Heitmann (2018b,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -86,26 +86,27 @@ function sys = WilsonCowanNet(Kij,Je,Ji)
     % Handle to the ODE function
     sys.odefun = @odefun;
     
-    % Determine the best limits for Kij    
-    KijLim = bdPanel.RoundLim(min(Kij(:)),max(Kij(:)));
-    
     % ODE parameters
-    sys.pardef = [ struct('name','wee',  'value',10,   'lim',[0 30]);
-                   struct('name','wei',  'value',10,  'lim',[0 30]);
-                   struct('name','wie',  'value',10,   'lim',[0 30]);
-                   struct('name','wii',  'value',-2,   'lim',[0 30]);
-                   struct('name','k',    'value', 1,   'lim',[0 5]);
-                   struct('name','Kij',  'value', Kij, 'lim',KijLim);
-                   struct('name','be',   'value', 0,   'lim',[0 10]);
-                   struct('name','bi',   'value', 0,   'lim',[0 10]);
-                   struct('name','Je',   'value', Je,  'lim',[0 5]); 
-                   struct('name','Ji',   'value', Ji,  'lim',[0 5]);
-                   struct('name','taue', 'value', 1,   'lim',[1 20]);
-                   struct('name','taui', 'value', 1,   'lim',[1 20])];
+    sys.pardef = [ 
+        struct('name','wee',  'value',10,   'lim',[0 30])
+        struct('name','wei',  'value',10,  'lim',[0 30])
+        struct('name','wie',  'value',10,   'lim',[0 30])
+        struct('name','wii',  'value',-2,   'lim',[0 30])
+        struct('name','k',    'value', 1,   'lim',[0 5])
+        struct('name','Kij',  'value', Kij, 'lim',[0 1])
+        struct('name','be',   'value', 0,   'lim',[0 10])
+        struct('name','bi',   'value', 0,   'lim',[0 10])
+        struct('name','Je',   'value', Je,  'lim',[0 5]) 
+        struct('name','Ji',   'value', Ji,  'lim',[0 5])
+        struct('name','taue', 'value', 1,   'lim',[1 20])
+        struct('name','taui', 'value', 1,   'lim',[1 20])
+        ];
               
     % ODE variables
-    sys.vardef = [ struct('name','Ue', 'value',rand(n,1), 'lim',[0 1]);
-                   struct('name','Ui', 'value',rand(n,1), 'lim',[0 1])];
+    sys.vardef = [
+        struct('name','Ue', 'value',rand(n,1), 'lim',[0 1])
+        struct('name','Ui', 'value',rand(n,1), 'lim',[0 1])
+        ];
  
     % Default time span
     sys.tspan = [0 100];
@@ -115,28 +116,28 @@ function sys = WilsonCowanNet(Kij,Je,Ji)
     
     % Latex Panel
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{WilsonCowanNet}'
+        '$\textbf{WilsonCowanNet}$'
         ''
         'A network of Wilson-Cowan equations where the nodes of the network'
         'are local populations of excitatory and inhibitory neurons. Only the'
         'excitatory cells are connected by the network. The inhibitory interact-'
         'ions are local only. The dynamical equations are'
         ''
-        '\qquad $\tau_e \; \dot U_e = -U_e + F\big(w_{ee} U_e - w_{ei} U_i - b_e + J_e + k \sum_j K_{ij} U_e\big)$'
-        '\qquad $\tau_i \; \dot U_i\; = -U_i \; + F\big(w_{ie} U_e - w_{ii} U_i - b_i + J_i \big)$'
+        '{ }{ }{ } $\tau_e \; \dot U_e = -U_e + F\big(w_{ee} U_e - w_{ei} U_i - b_e + J_e + k \sum_j K_{ij} U_e\big)$'
+        '{ }{ }{ } $\tau_i \; \dot U_i\; = -U_i \; + F\big(w_{ie} U_e - w_{ii} U_i - b_i + J_i \big)$'
         ''
         'where'
-        '\qquad $U_e$ is the firing rate of the \textit{excitatory} populations (nx1),'
-        '\qquad $U_i$ is the firing rate of the \textit{inhibitory} populations (nx1),'
-        '\qquad $w_{ei}$ is the weight of the connection to $e$ from $i$,'
-        '\qquad $K_{ij}$ in an nxn connectivity matrix,'
-        '\qquad $k$ is a scaling constant,'
-        '\qquad $b_{e}$ and $b_{i}$ are threshold constants,'
-        '\qquad $J_{e}$ and $J_i$ are injection currents (1x1 or nx1),'
-        '\qquad $\tau_{e}$ and $\tau_{i}$ are time constants,'
-        '\qquad $F(v)=1/(1+\exp(-v))$ is a sigmoidal firing-rate function,'
+        '{ }{ }{ } $U_e\;$ is the firing rate of the excitatory populations (nx1),'
+        '{ }{ }{ } $U_i\;$ is the firing rate of the inhibitory populations (nx1),'
+        '{ }{ }{ } $w_{ei}\;$ is the weight of the connection to $e\;$ from $i\;$,'
+        '{ }{ }{ } $K_{ij}\;$ in an nxn connectivity matrix,'
+        '{ }{ }{ } $k\;$ is a scaling constant,'
+        '{ }{ }{ } $b_{e}\;$ and $b_{i}\;$ are threshold constants,'
+        '{ }{ }{ } $J_{e}\;$ and $J_i\;$ are injection currents (1x1 or nx1),'
+        '{ }{ }{ } $\tau_{e}\;$ and $\tau_{i}\;$ are time constants,'
+        '{ }{ }{ } $F(v)=1/(1+\exp(-v))\;$ is a sigmoidal firing-rate function,'
         ''
-        '\textbf{References}'
+        'References'
         'Wilson \& Cowan (1972) Biophysics Journal 12(1):1-24.'
         'Hlinka \& Coombes (2012) Euro J Neurosci 36:2137-2145.'
         };

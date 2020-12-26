@@ -15,9 +15,9 @@
 %   gui = bdGUI(sys);       % open the Brain Dynamics GUI
 %
 % Authors
-%   Stewart Heitmann (2016a,2017a,2018a)
+%   Stewart Heitmann (2016a,2017a,2018a,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -69,19 +69,19 @@ function sys = HopfieldNet(Wij)
  
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
-    sys.panels.bdLatexPanel.latex = {'\textbf{HopfieldNet}';
-        '';
-        'The Continuous Hopfield Network';
-        '\qquad $\tau \dot V_i = -V_i + \sum_j W_{ij} \tanh(b\, V_i) + I_{app}$';
-        'where';
-        '\qquad $V$ is the firing rate of each neuron ($n$ x $1$),';
-        '\qquad $K$ is the connectivity matrix ($n$ x $n$),';
-        '\qquad $b$ is a slope parameter,';
-        '\qquad $I_{app}$ is the applied current ($n$ x $1$),';
-        '\qquad $i{=}1 \dots n$.';
-        '';
-        'Notes';
-        ['\qquad 1. This simulation has $n{=}',num2str(n),'$.']};
+    sys.panels.bdLatexPanel.latex = {
+        '$\textbf{HopfieldNet}$'
+        ''
+        'The Continuous Hopfield Network'
+        '{ }{ }{ } $\tau \dot V_i = -V_i + \sum_j W_{ij} \tanh(b\, V_i) + I_{app}$'
+        'where'
+        '{ }{ }{ } $V~$ is the firing rate of each neuron ($n\;$ x $1$),'
+        '{ }{ }{ } $K~$ is the connectivity matrix ($n\;$ x $n$),'
+        '{ }{ }{ } $b~$ is a slope parameter,'
+        '{ }{ }{ } $I_{app}~$ is the applied current ($n\;$ x $1$),'
+        '{ }{ }{ } $i{=}1 \dots n$.'
+        ['{ }{ }{ } $n{=}',num2str(n),'$.']
+        };
     
     % Include the Time Portrait panel in the GUI
     sys.panels.bdTimePortrait.title = 'Time Portrait';

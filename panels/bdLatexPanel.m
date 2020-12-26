@@ -1,12 +1,12 @@
-classdef bdLatexPanel < bdPanel
+classdef bdLatexPanel < bdPanelBase
     %bdLatexPanel Display panel for rendering LaTeX equations in bdGUI.
     %It renders the LaTeX strings found in the sys.panels.bdLatexPanel.latex
     %field of the system structure.
     %
     %AUTHORS
-    %Stewart Heitmann (2016a,2017a-c,2018a)   
+    %Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2020a)   
     
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -34,162 +34,296 @@ classdef bdLatexPanel < bdPanel
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
    
-    properties (Constant)
-        title = 'Equations';
-    end    
-
-    properties
-        latex       % A copy of the latex strings being rendered.
-        fontsize    % Font size
+    properties (Dependent)
+        options
+    end
+    
+    properties (Access=public)
+        axes                matlab.ui.control.UIAxes
+        textarea            matlab.ui.control.TextArea
     end
     
     properties (Access=private)
-        ax              % Handle to the axes
-        scrollpanel     % Handle to the scrollpanel
+        sysobj              bdSystem
+        tab                 matlab.ui.container.Tab
+        scrollpanel         matlab.ui.container.Panel
+        textobj             matlab.graphics.primitive.Text
+        menu                matlab.ui.container.Menu
+        menuDock            matlab.ui.container.Menu
     end
     
     methods
-        function this = bdLatexPanel(tabgroup,control)
-            % Construct a new LaTeX panel in the given tabgroup
+        function this = bdLatexPanel(tabgrp,sysobj,opt)
+            %disp('bdLatexPanel');
             
-            % initialise the base class (specifically this.tab and this.menu)
-            this@bdPanel(tabgroup);
+            % remember the parents
+            this.sysobj = sysobj;
+                        
+            % get the parent figure of the TabGroup
+            fig = ancestor(tabgrp,'figure');
             
-            % apply default settings to sys.panels.bdLatexPanel
-            control.sys.panels.bdLatexPanel = bdLatexPanel.syscheck(control.sys);
-
-            % get the initial fontsize
-            this.fontsize = control.sys.panels.bdLatexPanel.fontsize;
+            % Create the panel menu and assign it a unique Tag to identify it.
+            this.menu = uimenu('Parent',fig, ...
+                'Label','Equations', ...
+                'Tag', bdPanelBase.FocusMenuID(), ...     % unique Tag used by the FocusMenu function
+                'Visible','off');
             
-            % customise the menu
-            this.menu.Label = control.sys.panels.bdLatexPanel.title;
-            uimenu('Parent',this.menu, 'Label','Larger Font', 'Callback',@(~,~) this.FontCallback(1.25));
-            uimenu('Parent',this.menu, 'Label','Smaller Font', 'Callback',@(~,~) this.FontCallback(0.8));
-            uimenu('Parent',this.menu, 'Label','Close', 'Callback',@(~,~) close(this)); 
+            % construct the EDIT menu item
+            uimenu(this.menu, ...
+                'Label', 'Edit', ...
+                'Tooltip', 'Edit the latex markup', ...            
+                'Callback', @(src,~) this.callbackEdit(src) );
 
-            % customise the tab
-            this.tab.Title = control.sys.panels.bdLatexPanel.title;
+            % construct the DOCK menu item
+            this.menuDock = uimenu(this.menu, ...
+                'Label', 'Undock', ...
+                'Tooltip', 'Undock the display panel', ...            
+                'Callback', @(src,~) this.callbackDock(src,tabgrp) );
+
+            % construct the CLOSE menu item
+            uimenu(this.menu, ...
+                'Separator','on', ...
+                'Label','Close', ...
+                'Tooltip', 'Close the display panel', ...            
+                'Callback', @(~,~) this.callbackClose(fig) );
+
+            % Create Tab and give it the focus. The tab should have the same
+            % Tag as the panel menu so that each can be found by the other.
+            this.tab = uitab(tabgrp, 'Title','Equations', 'Tag',this.menu.Tag);
+            tabgrp.SelectedTab = this.tab;
             
-            % get the latex string from the sys structure
-            this.latex = control.sys.panels.bdLatexPanel.latex;
+            % Create GridLayout within the Tab
+            GridLayout = uigridlayout(this.tab);
+            GridLayout.ColumnWidth = {'1x'};
+            GridLayout.RowHeight = {'1x'};
+            GridLayout.Padding = [10 10 10 10];
+            GridLayout.Visible = 'off';
+            
+            % Create scrollable panel
+            this.scrollpanel = uipanel(GridLayout);
+            this.scrollpanel.Layout.Row = 1;
+            this.scrollpanel.Layout.Column = 1;
+            this.scrollpanel.BackgroundColor = [1 1 1];
+            this.scrollpanel.Scrollable = 'on';
+            this.scrollpanel.AutoResizeChildren = 'off';
+            this.scrollpanel.SizeChangedFcn = @(~,~) callbackSizeChanged(this);
+            
+            % Create axes in the scrollable panel
+            this.axes = uiaxes(this.scrollpanel);
+            this.axes.NextPlot = 'add';
+            this.axes.XTick = [];
+            this.axes.YTick = [];
+            this.axes.Units = 'pixels';
+            this.axes.Position = [1 1 100 100];
+            this.axes.XGrid = 'off';
+            this.axes.YGrid = 'off';
+            this.axes.Box = 'off';
+            this.axes.XColor = 'w';
+            this.axes.YColor = 'w';
+            this.axes.BackgroundColor = 'w';
+            this.axes.Visible = 'on';
+            this.axes.Toolbar.Visible = 'off';
+            this.axes.HitTest = 'off';
+            disableDefaultInteractivity(this.axes);
 
-            % construct scrolling uipanel
-            panelh = numel(this.latex)*this.fontsize;      % only approximate (exact height depends on font:pixel ratio)
-            this.scrollpanel = bdScroll(this.tab,900,panelh,'BackgroundColor',[1 1 1]); 
+            % Create text area (overlaying the axes/panel)
+            this.textarea = uitextarea(GridLayout);
+            this.textarea.Layout.Row = 1;
+            this.textarea.Layout.Column = 1;
+            this.textarea.FontName = 'Courier';
+            this.textarea.Visible = 'off';
+            
+            % apply the custom options (and render the image)
+            this.options = opt;
 
-            % get panel height
-            parenth = this.scrollpanel.panel.Position(4);
-
-            % construct the axes
-            this.ax = axes('Parent',this.scrollpanel.panel, ...
-                'Units','normal', ...
-                'Position',[0 0 1 1], ...
-                'XTick', [], ...
-                'YTick', [], ...
-                'XColor', [1 1 1], ...
-                'YColor', [1 1 1]);
-
-            % render the equations
-            this.redraw();
+            % make our panel menu visible and hide the others
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % make the grid visible
+            GridLayout.Visible = 'on';            
         end
         
+        function opt = get.options(this)
+            opt.title = this.tab.Title;
+            opt.latex = this.textarea.Value;
+            opt.fontsize = this.axes.FontSize;
+        end
+        
+        function set.options(this,opt)   
+            % check the incoming options and apply defaults to missing values
+            opt = this.optcheck(opt);
+             
+            % update the tab title
+            this.tab.Title = opt.title;
+            
+            % update the menu title
+            this.menu.Text = opt.title;
+                                   
+            % update the latex source
+            this.textarea.Value = opt.latex;
+            
+            % update the font size
+            this.axes.FontSize = opt.fontsize;
+            
+            % Redraw everything
+            this.Render();
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
+        end
+        
+        function delete(this)
+           %disp('bdLatexPanel.delete()');
+           delete(this.menu);
+           delete(this.tab);
+        end
     end
     
     methods (Access=private)
 
-        function redraw(this)
-            % celar the axes
-            cla(this.ax);
-
-            % init yoffset near the bottom of the panel
-            yoffset = this.fontsize;        % pixels
-            xmax = 100;                     % pixels            
-
-            % Render the latex strings one line at a time (in reverse order).
-            % Rendering each string separately is better than rendering
-            % them all at once in a single text box because (i) the latex
-            % interpreter has limited memory for monumental strings, and
-            % (ii) it is difficult for the user to locate latex syntax
-            % errors in monumental strings.
-            for l = numel(this.latex):-1:1
-                
-                % special case: small skip for empty strings
-                if numel(this.latex{l})==0
-                    yoffset = yoffset + 0.25*this.fontsize;      % small skip
-                    continue;
-                end 
+        function Render(this)
+            %disp('Render()');
             
-                % render the text
-                obj = text(8,yoffset, this.latex{l}, ...
+            % Number of latex strings to render
+            ntext = numel(this.textarea.Value);
+            
+            % Text geometry
+            fontsize = this.axes.FontSize;
+
+            % Delete existing Text objects
+            textobjs = findobj(this.axes,'Type','Text');
+            delete(textobjs);
+
+            % Track the maximal text width
+            maxtextw = 100;
+            
+            % Copy text from the Text Area into the Axes.
+            % Start at the bottom line and work upwards.
+            ypos = 1;
+            for indx = ntext:-1:1
+                this.textobj = text(this.axes,1,ypos, ...
+                ...    ['{ }',this.textarea.Value{indx}], ...
+                    this.textarea.Value{indx}, ...
                     'interpreter','latex', ...
-                    'Parent',this.ax, ...
                     'Units','pixels', ...
                     'FontUnits','pixels', ...
-                    'FontSize',this.fontsize, ...
-                    'VerticalAlignment','bottom'); 
+                    'FontSize',fontsize, ...
+                    'VerticalAlignment','bottom', ...
+                    'PickableParts','none'); 
                 
-                % error handling 
-                if obj.Extent(4)==0
-                    % latex syntax error occured. Colour the offending text red.
-                    obj.Color = [1 0 0];                    
-                    yoffset = yoffset + this.fontsize;         % skip one line (approx)
+                % track the maximal text width
+                textw = this.textobj.Extent(1) + this.textobj.Extent(3) + 10;
+                maxtextw = max(maxtextw,textw);     
+                
+                % next line position
+                if isempty(this.textarea.Value{indx})
+                    % empty lines are half height
+                    ypos = ypos + fontsize/2;
                 else
-                    yoffset = yoffset + 1.1*obj.Extent(4);     % skip one line (exactly)
-                    xmax = max(xmax,obj.Extent(1)+obj.Extent(3));
-                end
-                
-            end
-            
-            % skip half a line at the top
-            yoffset = yoffset + 0.5*this.fontsize;
-            
-            % adjust the size of the scroll panel to fit the text
-            this.scrollpanel.panel.Position(3) = xmax + 10;
-            this.scrollpanel.panel.Position(4) = yoffset;
+                    % non-empty lines are full height
+                    texth = this.textobj.Extent(4);
+                    ypos = ypos + 1.025*texth;
+                end                
+            end                  
+                      
+            % Resize the axes (vertically) based on the final (highest) text object
+            ytop = this.textobj.Extent(2) + this.textobj.Extent(4);
+            ybot = this.scrollpanel.Position(4) - this.axes.Position(4);
+            this.axes.Position(4) = ytop + 10;            
+            this.axes.Position(2) = max(ybot,1);
+
+            % Resize the axes (horizontally)
+            this.axes.Position(1) = 1;
+            this.axes.Position(3) = maxtextw;
+        end        
+               
+        % Scrollpanel SIZECHANGED callback
+        function callbackSizeChanged(this)
+            %disp('bdLatexPanel.callbackSizeChanged');
+            % Resize the axes (vertically) based on the geometry of the first line of text
+            ybot = this.scrollpanel.Position(4) - this.axes.Position(4);
+            this.axes.Position(2) = max(ybot,1);
         end
         
-        function FontCallback(this,scale)
-            this.fontsize = scale * this.fontsize;
-            this.redraw();
+        % EDIT menu callback
+        function callbackEdit(this,menuitem)
+            %disp('callbackEdit');
+            this.MenuToggle(menuitem);      % Toggle the menu state
+            switch menuitem.Checked
+                case 'on'
+                    % Show the Text Area and hide the Axes
+                    this.textarea.Visible = 'on';
+                    this.scrollpanel.Visible = 'off';
+                otherwise
+                    % Render the latex, hide the Text Area and show the Axes
+                    this.Render();
+                    this.textarea.Visible = 'off';
+                    this.scrollpanel.Visible = 'on';
+                    % Push the new settings onto the UNDO stack
+                    notify(this.sysobj,'push');
+            end
         end
+        
+        % DOCK menu callback
+        function callbackDock(this,menuitem,tabgrp)
+            %disp('callbackDock');
+            switch menuitem.Label
+                case 'Undock'
+                    newfig = bdPanelBase.Undock(this.tab,this.menu);
+                    newfig.DeleteFcn = @(src,~) this.delete();
+                    menuitem.Label='Dock';
+                    menuitem.Tooltip='Dock the display panel';
+                case 'Dock'
+                    bdPanelBase.Dock(this.tab,this.menu,tabgrp);
+                    menuitem.Label='Undock';
+                    menuitem.Tooltip='Undock the display panel';
+            end
+        end
+        
+        % CLOSE menu callback
+        function callbackClose(this,guifig)
+            % find the parents of the panel tab 
+            tabgrp = ancestor(this.tab,'uitabgroup');
+            fig = ancestor(this.tab,'figure');
+            
+            % remember sysobj
+            sysobjhnd = this.sysobj;
+            
+            % delete the panel
+            delete(this);
+            
+            % reveal the menu of the newly selected panel 
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % if the parent figure is not the same as the gui figure then ...
+            if fig ~= guifig
+                % The panel is undocked from the gui. Its figure should be closed too. 
+                delete(fig);
+            end
+            
+            % Push the new settings onto the UNDO stack
+            notify(sysobjhnd,'push');
+        end
+        
     end
     
     methods (Static)
         
-        function syspanel = syscheck(sys)
-            % Apply default values to missing fields in sys.panels.bdLatexPanel
-
-            % Default panel settings
-            syspanel.title = bdLatexPanel.title;
-            syspanel.latex = {'\textbf{No latex equations to display}',
-                              '', 
-                              'The \texttt{latex} strings need to be defined for this model.',
-                              ''
-                              '\texttt{sys.panels.bdLatexPanel.latex} = \{`latex string 1'', `latex string 2'', ... \};',
-                              ''
-                              'See the section on \textsl{LaTeX Equations} in the Handbook for the Brain Dynamics Toolbox.'};
-            syspanel.fontsize = 16;              
+        function optout = optcheck(opt)
+            % check the format of incoming options and apply defaults to missing values
+            optout.title    = bdPanelBase.GetOption(opt, 'title', 'Equations');
+            optout.latex    = bdPanelBase.GetOption(opt, 'latex', {'your latex equations here'});
+            optout.fontsize = bdPanelBase.GetOption(opt, 'fontsize', 16);
             
-            % Nothing more to do if sys.panels.bdLatexPanel is undefined
-            if ~isfield(sys,'panels') || ~isfield(sys.panels,'bdLatexPanel')
-                return;
+            % warn of unrecognised field in the incoming options
+            infields  = fieldnames(opt);                % the field names we were given
+            outfields = fieldnames(optout);             % the field names we expected
+            newfields = setdiff(infields,outfields);    % unrecognised field names
+            for idx=1:numel(newfields)
+                warning('Ignoring unknown panel option ''%s.%s''',mfilename, newfields{idx});
             end
-            
-            % sys.panels.bdLatexPanel.title
-            if isfield(sys.panels.bdLatexPanel,'title')
-                syspanel.title = sys.panels.bdLatexPanel.title;
-            end
-            
-            % sys.panels.bdLatexPanel.latex
-            if isfield(sys.panels.bdLatexPanel,'latex')
-                syspanel.latex = sys.panels.bdLatexPanel.latex;
-            end
-            
-            % sys.panels.bdLatexPanel.fontsize
-            if isfield(sys.panels.bdLatexPanel,'fontsize')
-                syspanel.fontsize = sys.panels.bdLatexPanel.fontsize;
-            end            
-        end   
+        end
+        
     end
-    
 end
+

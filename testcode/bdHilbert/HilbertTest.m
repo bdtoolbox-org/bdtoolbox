@@ -1,6 +1,6 @@
 function HilbertTest()
-    addpath ..
-    addpath ../panels
+    addpath ../..
+    addpath ../../panels
     
     % compare hilbert() versus bdHilbert.hilbert() for a random signal
     for rep=1:100

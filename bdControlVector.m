@@ -1,12 +1,11 @@
-classdef bdControlVector < handle
-   %bdControlVector  Control panel widget for vector values in bdGUI.
-    %  This class is specialised for use with bdControlPanel.
-    %  It is not intended to be called directly by users.
+classdef bdControlVector < handle 
+    %bdControlVector  Control panel widget for bdGUI.
+    %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2017d,2018a)
+    %  Stewart Heitmann (2017d,2018a,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -33,348 +32,321 @@ classdef bdControlVector < handle
     % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
- 
-    properties (Constant)
-        rowh = 24;
-        roww = 220;
-    end
-
-    properties (Access=private)
-        parent
-        panel
-        minbox
-        maxbox
-        plusbtn
-        minusbtn
-        randbtn        
-        baxes
-        bgraph
-        labelbtn
-        listener1
-        listener2
-        dialog
+    
+    properties
+        EditField1   matlab.ui.control.NumericEditField
+        EditField2   matlab.ui.control.NumericEditField
+        RandButton   matlab.ui.control.Button
+        PerbButton   matlab.ui.control.Button
+        AxesPanel    matlab.ui.container.Panel
+        Axes         matlab.ui.control.UIAxes
+        BarGraph     matlab.graphics.chart.primitive.Bar
+        Button       matlab.ui.control.Button
+        listener1    event.listener
+        listener2    event.proplistener
+        dialogbox    bdDialogVector
     end
     
     methods
-        function this = bdControlVector(control,xxxdef,xxxindx,parent,ypos,modecheckbox)
-            %disp('bdControlVector()');
+        function this = bdControlVector(sysobj,cpanel,xxxdef,xxxindx,xxxmode,gridlayout,gridrow)
+            %UNTITLED2 Construct an instance of this class
+            %   Detailed explanation goes here
 
-            % init empty handle to dialog box
-            this.dialog = bdControlVectorDialog.empty(0);
-
-            % extract the relevant fields from control.sys.xxxdef
-            xxxname  = control.sys.(xxxdef)(xxxindx).name;
-            xxxvalue = control.sys.(xxxdef)(xxxindx).value;
-            xxxlim   = control.sys.(xxxdef)(xxxindx).lim;
-
-            % remember our parent and the vertical offset
-            this.parent = parent;
+            this.dialogbox = bdDialogVector(sysobj,xxxdef,xxxindx);
             
-            % define widget geometry
-            colw = 22.5;                % column width
-            gap = 5;                    % column gap
-            col1 = 2;
-            col2 = ceil(col1 + colw + gap);
-            col3 = floor(col2 + colw + gap);
-            col4 = ceil(col3 + colw + gap);
-            col5 = floor(col4 + colw + gap);
-            col6 = ceil(col5 + colw + gap);
-            col7 = floor(col6 + colw + gap);
-            col8 = ceil(col7 + colw + gap);
-            col9 = floor(col8 + colw + gap);
+            % Extract data from sysobj
+            name  = sysobj.(xxxdef)(xxxindx).name;
+            value = sysobj.(xxxdef)(xxxindx).value;
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+                        
+            % Create EditField1
+            this.EditField1 = uieditfield(gridlayout, 'numeric');
+            this.EditField1.Layout.Row = gridrow;
+            this.EditField1.Layout.Column = 1;
+            this.EditField1.HorizontalAlignment = 'center';
+            this.EditField1.Value = limit(1);
+            this.EditField1.Visible = 'off';
+            this.EditField1.ValueChangedFcn = @(~,~) EditField1ValueChanged(this,sysobj,xxxdef,xxxindx);
+            this.EditField1.Tooltip = ['Lower limit of ''',name,''''];
             
-            % Construct the panel container
-            this.panel = uipanel('Parent',parent, ...
-                'Units','pixels', ...
-                'Position',[2 ypos this.roww this.rowh], ...
-                'BorderType','none', ...
-                'DeleteFcn', @(~,~) delete(this.dialog) );
-                
-            % Construct the min box
-            this.minbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col1 2 col3-col1-gap this.rowh-4], ...
-                'String',num2str(xxxlim(1),'%0.4g'), ...
-                'Value',xxxlim(1), ...
-                'HorizontalAlignment','center', ...
-                'Visible','off', ...
-                'Callback', @(~,~) this.minboxCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['lower limit for ''' xxxname '''']);
-
-            % Construct the max box
-            this.maxbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col3 2 col5-col3-gap this.rowh-4], ...
-                'String',num2str(xxxlim(2),'%0.4g'), ...
-                'Value',xxxlim(2), ...
-                'HorizontalAlignment','center', ...
-                'Visible','off', ...
-                'Callback', @(~,~) this.maxboxCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['upper limit for ''' xxxname '''']);
-
-            % Construct the PLUS button
-            this.plusbtn = uicontrol('Parent',this.panel, ...
-                'Style','pushbutton', ...
-                'Units','pixels', ...
-                'Position',[col1 2 col2-col1-gap this.rowh-5], ...
-                'String','+', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Callback', @(~,~) this.PlusCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['Increment the values of ''' xxxname '''']);            
-
-            % Construct the MINUS button
-            this.minusbtn = uicontrol('Parent',this.panel, ...
-                'Style','pushbutton', ...
-                'Units','pixels', ...
-                'Position',[col2 2 col3-col2-gap this.rowh-5], ...
-                'String','-', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Callback', @(~,~) this.MinusCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['Decrement the values of ''' xxxname '''']);            
+            % Create EditField2
+            this.EditField2 = uieditfield(gridlayout, 'numeric');
+            this.EditField2.Layout.Row = gridrow;
+            this.EditField2.Layout.Column = 2;
+            this.EditField2.HorizontalAlignment = 'center';
+            this.EditField2.Value = limit(2);
+            this.EditField2.Visible = 'off';
+            this.EditField2.ValueChangedFcn = @(~,~) EditField2ValueChanged(this,sysobj,xxxdef,xxxindx);
+            this.EditField2.Tooltip = ['Upper limit of ''',name,''''];
             
-            % Construct the RAND button
-            this.randbtn = uicontrol('Parent',this.panel, ...
-                'Style','pushbutton', ...
-                'Units','pixels', ...
-                'Position',[col3 2 col5-col3-gap this.rowh-5], ...
-                'String','RAND', ...
-                'HorizontalAlignment','center', ...
-                'FontUnits','pixels', ...
-                'FontSize',12, ...
-                'Callback', @(~,~) this.RandCallback(control,xxxdef,xxxindx), ...
-                'ToolTipString',['Assign Uniform Random values to ''' xxxname '''']);            
-
-            % construct bar graph widget for the vector
-            this.baxes = axes('Parent', this.panel, ...
-                'Units','pixels', ...
-                'Position',[col5+1 3 col7-col5-gap-2 this.rowh-6]);
-            this.bgraph = bar(this.baxes,xxxvalue);
-            xlim(this.baxes,[0.5 numel(xxxvalue)+0.5]);
-            ylim(this.baxes,xxxlim);
-            this.baxes.XTick=[];
-            this.baxes.YTick=[];
-            this.baxes.XColor =[0.7 0.7 0.7];
-            this.baxes.YColor =[0.7 0.7 0.7];
-
-            % Construct the label button
-            this.labelbtn = uicontrol('Parent',this.panel, ...
-                'Style', 'pushbutton', ...
-                'Units','pixels',...
-                'Position',[col7 2 col9-col7-gap this.rowh-5], ...
-                'String',xxxname, ...
-            ...    'BackgroundColor','g', ...
-                'FontWeight','normal', ...
-                'Callback', @(~,~) this.labelbtnCallback(control,xxxdef,xxxindx,xxxname), ...
-                'ToolTipString',xxxname);
+            % Create RAND Button
+            this.RandButton = uibutton(gridlayout, 'push');
+            this.RandButton.Layout.Row = gridrow;
+            this.RandButton.Layout.Column = 1;
+            this.RandButton.Text = 'RAND';
+            this.RandButton.Visible = 'on';
+            this.RandButton.ButtonPushedFcn = @(~,~) RandButtonPushedFcn(this,sysobj,xxxdef,xxxindx);
+            this.RandButton.Tooltip = ['Random ''',name,''''];
+            this.RandButton.Interruptible = 'off';
+            this.RandButton.BusyAction = 'cancel';
             
-            % force a refresh at startup
-            this.refresh(control,xxxdef,xxxindx,modecheckbox);
-  
-            % listen for widget refresh events from the control panel 
-            this.listener1 = addlistener(control,'refresh', @(~,~) this.refresh(control,xxxdef,xxxindx,modecheckbox));
-            this.listener2 = addlistener(control,xxxdef, @(~,~) this.refresh(control,xxxdef,xxxindx,modecheckbox));           
+            % Create PERB Button
+            this.PerbButton = uibutton(gridlayout, 'push');
+            this.PerbButton.Layout.Row = gridrow;
+            this.PerbButton.Layout.Column = 2;
+            this.PerbButton.Text = 'PERB';
+            this.PerbButton.Visible = 'on';
+            this.PerbButton.ButtonPushedFcn = @(~,~) PerbButtonPushedFcn(this,sysobj,xxxdef,xxxindx);
+            this.PerbButton.Tooltip = ['Perturb ''',name,''''];
+            this.PerbButton.Interruptible = 'off';
+            this.PerbButton.BusyAction = 'cancel';
+                        
+            % Create Panel for the Axes
+            this.AxesPanel = uipanel(gridlayout);
+            this.AxesPanel.Layout.Row = gridrow;
+            this.AxesPanel.Layout.Column = 3;
+            
+            % Create Axes for the bar graph
+            this.Axes = uiaxes(this.AxesPanel);
+            this.Axes.Toolbar.Visible = 'off';
+            this.Axes.Interactions = [];
+            this.Axes.BackgroundColor = 'w';
+            this.Axes.XTickMode = 'manual';
+            this.Axes.YTickMode = 'manual';
+            this.Axes.XTick = [];
+            this.Axes.YTick = [];
+            this.Axes.XAxis.TickLabels = {};
+            this.Axes.YAxis.TickLabels = {};
+            this.Axes.XAxis.LimitsMode = 'manual';
+            this.Axes.YAxis.LimitsMode = 'manual';
+            this.Axes.XAxis.Visible = 'off';
+            this.Axes.YAxis.Visible = 'off';
+            this.Axes.XAxisLocation = 'origin';
+            this.Axes.XLim = [0 numel(value)+1];
+            this.Axes.YLim = limit;
+            this.Axes.Box = 'off';
+            this.Axes.Position = [-4 -4 this.AxesPanel.InnerPosition(3)+10 this.AxesPanel.InnerPosition(4)+10];
+            %this.Axes.Tooltip = 'current values';
+            axis(this.Axes,'off');
+            
+            % Add callback to the AxesPanel to resize the Axes
+            this.AxesPanel.AutoResizeChildren='off';
+            this.AxesPanel.SizeChangedFcn = @(~,~) this.AxesPanelSizeChangedFcn();
+
+            % Create Bar Graph
+            this.BarGraph = bar(this.Axes,value);
+            this.BarGraph.HitTest = 'off';
+           
+            % Create Button
+            this.Button = uibutton(gridlayout, 'push');
+            this.Button.Layout.Row = gridrow;
+            this.Button.Layout.Column = 4;
+            this.Button.Text = name;
+            this.Button.ButtonPushedFcn = @(~,~) ButtonPushedFcn(this,sysobj,xxxdef,xxxindx);
+            %this.Button.Tooltip = sprintf('%s [%dx%d]',name,size(value,1),size(value,2));
+            this.Button.Interruptible = 'off';
+            this.Button.BusyAction = 'cancel';
+            
+            % refresh the widgets
+            %this.ValueListener(sysobj,xxxvalue,xxxlimit,name);
+            %this.LimitListener(sysobj,xxxvalue,xxxlimit,name);
+            
+            % listen to sysobj for REDRAW events
+            this.listener1 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(src,evnt,xxxdef,xxxindx));
+
+            % listen to cpanel for changes to the xxxmode switch
+            this.listener2 = listener(cpanel,xxxmode,'PostSet', @(src,evnt) this.ModeListener(cpanel,xxxmode));
         end
         
-        % Destructor
         function delete(this)
-            delete(this.listener2);
+            %disp 'bdControlVector.delete'
             delete(this.listener1);
+            delete(this.listener2);
+            delete(this.dialogbox);
         end
         
         function mode(this,flag)            
             %disp('bdControlVector.mode()');
             if flag
-                this.minbox.Visible = 'off';
-                this.maxbox.Visible = 'off';
-                this.plusbtn.Visible = 'on';
-                this.minusbtn.Visible = 'on';
-                this.randbtn.Visible = 'on';
+                this.EditField1.Visible = 'off';
+                this.EditField2.Visible = 'off';
+                this.RandButton.Visible = 'on';
+                this.PerbButton.Visible = 'on';
             else
-                this.minbox.Visible = 'on';
-                this.maxbox.Visible = 'on';
-                this.plusbtn.Visible = 'off';
-                this.minusbtn.Visible = 'off';
-                this.randbtn.Visible = 'off';
+                this.EditField1.Visible = 'on';
+                this.EditField2.Visible = 'on';
+                this.RandButton.Visible = 'off';
+                this.PerbButton.Visible = 'off';
             end                        
-        end
-
-    end
-   
-    methods (Access=private)
-        
-        % min box callback function
-        function minboxCallback(this,control,xxxdef,xxxindx)
-            %disp('bdControlVector.minboxCallback()');
-            % read the minbox string and convert to a number
-            str = this.minbox.String;
-            minval = str2double(str);
-            if isnan(minval)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the minbox string to its previous value
-                this.minbox.String = num2str(this.minbox.Value,'%0.4g');                 
-            else           
-                % adjust the max box if necessary
-                maxval = max(this.maxbox.Value, minval);
-                
-                % update control.sys
-                control.sys.(xxxdef)(xxxindx).lim = [minval maxval];
-                
-                % notify all widgets (which includes ourself) that sys.xxxdef has changed
-                %notify(control,'refresh');
-                notify(control,xxxdef);
-
-                % notify all display panels to redraw themselves
-                notify(control,'redraw');
-            end
-        end        
-
-        % max box callback function
-        function maxboxCallback(this,control,xxxdef,xxxindx)
-            %disp('bdControlVector.maxboxCallback()');
-            % read the maxbox string and convert to a number
-            str = this.maxbox.String; 
-            maxval = str2double(str);
-            if isnan(maxval)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the maxbox string to its previous value
-                this.maxbox.String = num2str(this.maxbox.Value,'%0.4g');                 
-            else   
-                % adjust the min box if necessary
-                minval = min(this.minbox.Value, maxval);
-                
-                % update control.sys
-                control.sys.(xxxdef)(xxxindx).lim = [minval maxval];
-                
-                % notify all widgets (which includes ourself) that sys.xxxdef has changed
-                %notify(control,'refresh');
-                notify(control,xxxdef);
-
-                % notify all display panels to redraw themselves
-                notify(control,'redraw');
-            end
-        end
-
-        % PLUS button callback. Increments the current values by 5 percent
-        % of the limit specified in xxxdef.
-        function PlusCallback(this,control,xxxdef,xxxindx)
-            % determine the limits of the values
-            xxxlim = control.sys.(xxxdef)(xxxindx).lim;
-            lo = xxxlim(1);
-            hi = xxxlim(2);
-            
-            % update the control panel with an incremented version of the data
-            valsize = size(control.sys.(xxxdef)(xxxindx).value);
-            control.sys.(xxxdef)(xxxindx).value =  ...
-                control.sys.(xxxdef)(xxxindx).value + 0.05*(hi-lo);
-            
-            % notify all widgets (which includes ourself) that sys.xxxdef has changed
-            notify(control,xxxdef);
-            
-            % tell the solver to recompute the solution
-            notify(control,'recompute');
-        end
-
-        % MINUS button callback. Decrements the current values by 5 percent
-        % of the limit specified in xxxdef.
-        function MinusCallback(this,control,xxxdef,xxxindx)
-            % determine the limits of the values
-            xxxlim = control.sys.(xxxdef)(xxxindx).lim;
-            lo = xxxlim(1);
-            hi = xxxlim(2);
-            
-            % update the control panel with a decremented version of the data
-            valsize = size(control.sys.(xxxdef)(xxxindx).value);
-            control.sys.(xxxdef)(xxxindx).value =  ...
-                control.sys.(xxxdef)(xxxindx).value - 0.05*(hi-lo);
-            
-            % notify all widgets (which includes ourself) that sys.xxxdef has changed
-            notify(control,xxxdef);
-            
-            % tell the solver to recompute the solution
-            notify(control,'recompute');
-        end
-        
-        % RAND button callback. Replaces the current value with a uniform
-        % random number drawn from the limits specified in xxxdef.
-        function RandCallback(this,control,xxxdef,xxxindx)
-            % determine the limits of the random values
-            xxxlim = control.sys.(xxxdef)(xxxindx).lim;
-            lo = xxxlim(1);
-            hi = xxxlim(2);
-            
-            % update the control panel.
-            valsize = size(control.sys.(xxxdef)(xxxindx).value);
-            control.sys.(xxxdef)(xxxindx).value = (hi-lo)*rand(valsize) + lo;
-            
-            % notify all widgets (which includes ourself) that sys.xxxdef has changed
-            notify(control,xxxdef);
-
-            % tell the solver to recompute the solution
-            notify(control,'recompute');
-        end
-
-        
-        % label button callback function
-        function labelbtnCallback(this,control,xxxdef,xxxindx,xxxname)
-            if isvalid(this.dialog)
-                % a dialog box already exists, make it visible
-                this.dialog.visible('on');
-            else
-                % contruct a new dialog box
-                this.dialog = bdControlVectorDialog(control,xxxdef,xxxindx,['Edit Vector ',xxxname]);
-            end      
-        end
-
-        % Update the widgets according to the values in control.sys.xxxdef
-        function refresh(this,control,xxxdef,xxxindx,modecheckbox) 
-            %disp(['bdControlVector.refresh:' xxxdef]);
-            
-            % extract the relevant fields from control.sys.xxxdef
-            xxxvalue = control.sys.(xxxdef)(xxxindx).value;
-            xxxlim   = control.sys.(xxxdef)(xxxindx).lim;
-
-            % update the min box widget
-            this.minbox.Value = xxxlim(1);
-            this.minbox.String = num2str(xxxlim(1),'%0.4g');
-            
-            % update the max box widget
-            this.maxbox.Value = xxxlim(2);
-            this.maxbox.String = num2str(xxxlim(2),'%0.4g');
-
-            % update the bar graph
-            this.bgraph.YData = xxxvalue;
-            this.baxes.YLim = xxxlim + [-1e-6 1e-6];
-            
-            % show/hide the slider widget according to the state of the caller's modecheckbox
-            this.mode(modecheckbox.Value);
-            
-            % special case: if this is a vardef control and the evolve button
-            % is ON then disable the plus/minus/rand buttons.
-            switch xxxdef
-                case 'vardef'
-                    if control.sys.evolve
-                        % disable the buttons
-                        this.plusbtn.Enable = 'off';
-                        this.minusbtn.Enable = 'off';
-                        this.randbtn.Enable = 'off';
-                    else
-                        % enable the buttons
-                        this.plusbtn.Enable = 'on';
-                        this.minusbtn.Enable = 'on';
-                        this.randbtn.Enable = 'on';
-                    end
-            end
-        end
-        
+        end                
     end
     
-end
+    % Callbacks that handle component events
+    methods (Access = private)
+            
+        function Redraw(this,sysobj,sysevent,xxxdef,xxxindx)
+            %disp 'bdControlVector.Redraw()'
+            
+            % Extract data from sysobj
+            value = sysobj.(xxxdef)(xxxindx).value;
+            limit = sysobj.(xxxdef)(xxxindx).lim;
 
+            % Extract data status from sysevent
+            value_changed = sysevent.(xxxdef)(xxxindx).value;
+            limit_changed = sysevent.(xxxdef)(xxxindx).lim;
+
+            % if the limit in sysobj has changed then ...
+            if limit_changed
+                % update lower and upper edit field widgets
+                this.EditField1.Value = limit(1);
+                this.EditField2.Value = limit(2);
+                
+                % update the Y limits in the bar graph
+                this.Axes.YLim = limit + [-1e-6 1e-6];
+            end
+            
+            % if the value in sysobj has changed then ...
+            if value_changed
+                % update the Y data in the bar graph
+                this.BarGraph.YData = value;
+            end            
+        end
+        
+        % Listener for cpanel.xxxmode events
+        function ModeListener(this,cpanel,xxxmode)
+            %disp('bdControlVector.ModeListener');
+            
+            % extract the relevant mode flag from cpanel
+            flag = cpanel.(xxxmode);
+            
+            % apply the mode to this widget
+            this.mode(flag);
+        end
+        
+        % EditField1 Value Changed callback
+        function EditField1ValueChanged(this,sysobj,xxxdef,xxxindx)
+            % extract the relevant fields from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            
+            % extract value from widget
+            value = this.EditField1.Value;
+            
+            % apply it to the lower limit
+            limit(1) = value;
+            
+            % adjust the upper limit if necessary
+            if limit(2)<limit(1)
+                limit(2) = value;
+            end
+            
+            % write the new limits back to sysobj
+            sysobj.(xxxdef)(xxxindx).lim = limit;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % EditField2 Value Changed callback
+        function EditField2ValueChanged(this,sysobj,xxxdef,xxxindx)
+            % extract the relevant fields from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            
+            % extract value from widget
+            value = this.EditField2.Value;
+            
+            % apply it to the upper limit
+            limit(2) = value;
+            
+            % adjust the lower limit if necessary
+            if limit(1)>limit(2)
+                limit(1) = value;
+            end
+            
+            % write the new limits back to sysobj
+            sysobj.(xxxdef)(xxxindx).lim = limit;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % RAND Button callback
+        function RandButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+            % retrieve the relevant data from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            value = sysobj.(xxxdef)(xxxindx).value;
+
+            % generate uniform random data between the lower and upper limits
+            lo = limit(1);
+            hi = limit(2);
+            sz = size(value);
+            value = (hi-lo)*rand(sz) + lo;           
+
+            % write the data back to sysobj
+            sysobj.(xxxdef)(xxxindx).value = value;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % PERB Button callback
+        function PerbButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+            % retrieve the relevant data from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            value = sysobj.(xxxdef)(xxxindx).value;
+
+            % apply a uniform random perturbation to the data
+            lo = limit(1);
+            hi = limit(2);
+            sz = size(value);
+            value = value + 0.05*(hi-lo)*(rand(sz)-0.5);
+            
+            % write the data back to sysobj
+            sysobj.(xxxdef)(xxxindx).value = value;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+
+        % SHUF Button callback
+        function ShufButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+            % retrieve the relevant data from sysobj
+            value = sysobj.(xxxdef)(xxxindx).value;
+
+            % shuffle the order
+            len = numel(value);
+            idx = randperm(len);
+            value = value(idx);
+            
+            % write the data back to sysobj
+            sysobj.(xxxdef)(xxxindx).value = value;
+            
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);            
+        end
+        
+        % ButtonPushedFcn callback
+        function ButtonPushedFcn(this,sysobj,xxxdef,xxxindx)
+            name = sysobj.(xxxdef)(xxxindx).name;
+            switch xxxdef
+                case 'pardef'
+                    title = ['Parameter ''',name,''''];
+                case 'lagdef'
+                    title = ['Lag Parameter ''',name,''''];
+                case 'vardef'
+                    title = ['Initial Condition ''',name,''''];
+            end
+            fig = ancestor(this.Button,'figure');
+            xpos = fig.Position(1) + fig.Position(3)+ randi(30);
+            ypos = fig.Position(2) + this.Button.Position(2);
+            this.dialogbox.OpenFigure(xpos,ypos,title);
+        end
+        
+        % AxesPanel Resize callback
+        function AxesPanelSizeChangedFcn(this)
+            %disp('bdControlVector.AxesPanelSizeChangedFcn()');
+            w = this.AxesPanel.InnerPosition(3);
+            h = this.AxesPanel.InnerPosition(4);
+            this.Axes.Position = [-4 -4 w+10 h+10];
+        end
+    end
+end

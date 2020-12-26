@@ -1,10 +1,10 @@
-classdef bdAuxiliary < bdPanel
-    %bdAuxiliary Display panel for plotting model-specific functions.
-    %
+classdef bdAuxiliary < bdPanelBase
+    %bdAuxiliary Display panel for plotting model-specific functions
+    % 
     %AUTHORS
-    %  Stewart Heitmann (2018a,2018b)
+    %  Stewart Heitmann (2018a,2018b,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -32,261 +32,327 @@ classdef bdAuxiliary < bdPanel
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
     
-    properties (Constant)
-        title = 'Auxiliary'
+    properties (Dependent)
+        options
     end
     
-    properties
-        ax              % Handle to the plot axes
-        UserData        % User data returned by the auxiliary function     
+    properties (Access=public)
+        axes                matlab.ui.control.UIAxes
+        UserData            struct
     end
     
     properties (Access=private)
-        holdmenu        % handle to HOLD menu item
-        submenu = []    % handle to subpanel selector menu item
-        listener        % handle to our listener object
+        sysobj              bdSystem
+        tab                 matlab.ui.container.Tab    
+        dropdown            matlab.ui.control.DropDown
+        label               matlab.ui.control.Label
+        menu                matlab.ui.container.Menu
+        menuHold            matlab.ui.container.Menu
+        menuDock            matlab.ui.container.Menu     
+        listener1           event.listener
     end
     
     methods
+        function this = bdAuxiliary(tabgrp,sysobj,opt)
+            %disp('bdAuxiliary');
+            
+            % remember the parents
+            this.sysobj = sysobj;
+                        
+            % get the parent figure of the TabGroup
+            fig = ancestor(tabgrp,'figure');
+            
+            % Create the panel menu and assign it a unique Tag to identify it.
+            this.menu = uimenu('Parent',fig, ...
+                'Label','Space Time', ...
+                'Tag', bdPanelBase.FocusMenuID(), ...     % unique Tag used by the FocusMenu function
+                'Visible','off');
+            
+            % construct the HOLD menu item
+            this.menuHold = uimenu(this.menu, ...
+                'Label', 'Hold All', ...
+                'Tooltip', 'Hold the graphics', ...            
+                'Callback', @(~,~) this.callbackHold() );
+                                    
+            % construct the CLEAR menu item
+            uimenu(this.menu, ...
+                'Label', 'Clear', ...
+                'Tooltip', 'Clear the graphics', ...            
+                'Callback', @(~,~) this.callbackClear() );
+
+            % construct the DOCK menu item
+            this.menuDock = uimenu(this.menu, ...
+                'Label', 'Undock', ...
+                'Tooltip', 'Undock the display panel', ...            
+                'Callback', @(src,~) this.callbackDock(src,tabgrp) );
+
+            % construct the CLOSE menu item
+            uimenu(this.menu, ...
+                'Separator','on', ...
+                'Label','Close', ...
+                'Tooltip', 'Close the display panel', ...            
+                'Callback', @(~,~) this.callbackClose(fig) );
+
+            % Create Tab and give it the focus. The tab should have the same
+            % Tag as the panel menu so that each can be found by the other.
+            this.tab = uitab(tabgrp, 'Title','Auxiliary', 'Tag',this.menu.Tag);
+            tabgrp.SelectedTab = this.tab;
+            
+            % Create GridLayout within the Tab
+            GridLayout = uigridlayout(this.tab);
+            GridLayout.ColumnWidth = {'1x','2x'};
+            GridLayout.RowHeight = {21,'1x'};
+            GridLayout.ColumnSpacing = 50;
+            GridLayout.RowSpacing = 10;
+            GridLayout.Visible = 'off';
+
+            % Create DropDown widget
+            this.dropdown = uidropdown(GridLayout);
+            this.dropdown.Layout.Row = 1;
+            this.dropdown.Layout.Column = 1;
+            this.dropdown.Items = {};
+            this.dropdown.ItemsData = {};
+            this.dropdown.Value = {};
+            this.dropdown.ValueChangedFcn = @(~,~) this.dropdownChanged();
+                     
+            % Create Label widget
+            this.label = uilabel(GridLayout);
+            this.label.Layout.Row = 1;
+            this.label.Layout.Column = 2;
+            this.label.Text = 'No Auxiliary plot functions defined';
+            this.label.VerticalAlignment = 'center';
+            this.label.HorizontalAlignment = 'right';
+            this.label.FontWeight = 'normal'; 
+            this.label.FontColor = 'r';
+
+            % Create axes
+            this.axes = uiaxes(GridLayout);
+            this.axes.Layout.Row = 2;
+            this.axes.Layout.Column = [1 2];
+            this.axes.NextPlot = 'add';
+            this.axes.XGrid = 'off';
+            this.axes.YGrid = 'off';
+            this.axes.Box = 'on';
+            this.axes.FontSize = 11;
+                        
+            % apply the custom options
+            this.options = opt;
+            
+            % make our panel menu visible and hide the others
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % make the grid visible
+            GridLayout.Visible = 'on';
+            
+            % listen for Redraw events
+            this.listener1 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(evnt));
+        end
         
-        function this = bdAuxiliary(tabgroup,control)
-            % Construct a new Auxiliary Panel in the given tabgroup
-
-            % initialise the base class (specifically this.menu and this.tab)
-            this@bdPanel(tabgroup);
+        function opt = get.options(this)
+            opt.title      = this.tab.Title;
+            opt.hold       = this.menuHold.Checked;
+            opt.auxfun     = this.dropdown.ItemsData;
+        end
+        
+        function set.options(this,opt)   
+            % check the incoming options and apply defaults to missing values
+            opt = this.optcheck(opt);
+             
+            % update the tab title
+            this.tab.Title = opt.title;
             
-            % assign default values to missing options in sys.panels.bdTimePortrait
-            control.sys.panels.bdAuxiliary = bdAuxiliary.syscheck(control.sys);
-
-            % configure the pull-down menu
-            this.menu.Label = control.sys.panels.bdAuxiliary.title;
-            this.InitHoldMenu(control);
-            this.InitExportMenu(control);
-            this.InitCloseMenu(control);
-
-            % configure the panel graphics
-            this.tab.Title = control.sys.panels.bdAuxiliary.title;
-            this.InitSubpanel(control);
+            % update the menu title
+            this.menu.Text = opt.title;
             
-            % listen to the control panel for redraw events
-            this.listener = addlistener(control,'redraw',@(~,~) this.redraw(control));    
+            % update the HOLD menu
+            this.menuHold.Checked = opt.hold;
+            
+            % update the dropdown menu for the auxiliary functions
+            nitems = numel(opt.auxfun);
+            if nitems>0
+                Items = cell(nitems,1);
+                for indx=1:nitems
+                    Items{indx} = func2str(opt.auxfun{indx});
+                end
+                this.dropdown.Items = Items;
+                this.dropdown.ItemsData = opt.auxfun;
+                this.dropdown.Enable = 'on';
+                this.label.Visible = 'off';
+            else
+                this.dropdown.Items = {};
+                this.dropdown.ItemsData = {};
+                this.dropdown.Value = {};
+                this.dropdown.Enable = 'off';
+                this.label.Visible = 'on';
+            end
+
+            % Redraw everything
+            this.Render();
+            
+            % Push the new settings onto the UNDO stack
+            notify(this.sysobj,'push');
         end
         
         function delete(this)
-            % Destructor
-            delete(this.listener)
+           %disp('bdAuxiliary.delete()');
+           delete(this.listener1);
+           delete(this.menu);
+           delete(this.tab);
         end
-         
     end
     
     methods (Access=private)
-        
-        % Initialise the HOLD menu item
-        function InitHoldMenu(this,control)
-             % get the hold menu setting from sys.panels options
-            if control.sys.panels.bdAuxiliary.hold
-                holdcheck = 'on';
-            else
-                holdcheck = 'off';
-            end
-            
-            % construct the menu item
-            this.holdmenu = uimenu(this.menu, ...
-                'Label','Hold', ...
-                'Checked',holdcheck, ...
-                'Callback', @HoldMenuCallback );
 
-            % Menu callback function
-            function HoldMenuCallback(menuitem,~)
-                switch menuitem.Checked
-                    case 'on'
-                        menuitem.Checked='off';
-                    case 'off'
-                        menuitem.Checked='on';
-                end
-                % redraw this panel
-                this.redraw(control);
-            end
+        % Listener for REDRAW events
+        function Redraw(this,evnt)
+            %disp('bdAuxiliary.Redraw()');
+            if evnt.sol || evnt.tval
+                this.Render();
+            end              
         end
         
-        % Initialise the EXPORT menu item
-        function InitExportMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-               'Label','Export Figure', ...
-               'Callback',@callback);
-           
-            function callback(~,~)
-                % Construct a new figure
-                fig = figure();    
-                
-                % Change mouse cursor to hourglass
-                set(fig,'Pointer','watch');
-                drawnow;
-                
-                % Copy the plot data to the new figure
-                axnew = copyobj(this.ax,fig);
-
-                % Allow the user to hit everything in ax1new
-                objs = findobj(axnew,'-property', 'HitTest');
-                set(objs,'HitTest','on');
-                
-                % Change mouse cursor to arrow
-                set(fig,'Pointer','arrow');
-                drawnow;
-            end
-        end
-
-        % Initialise the CLOSE menu item
-        function InitCloseMenu(this,~)
-            % construct the menu item
-            uimenu(this.menu, ...
-                   'Label','Close', ...
-                   'Callback',@(~,~) this.close());
-        end
-        
-        % Initialise the subpanel
-        function InitSubpanel(this,control)
-            % construct the subpanel
-            [this.ax,cmenu] = bdPanel.Subpanel(this.tab,[0 0 1 1],[0 0 1 1]);
+        function Render(this)
+            %disp('Render');
             
-            % default axes for the case of no auxiliary function 
-            title(this.ax,'No Auxiliary Functions');
-            text(0.5,0.5,'No auxiliary plotting functions are defined for this model', ...
-                'HorizontalAlignment','center', 'Parent',this.ax);
-
-            % construct the selector menu for the auxiliary functions
-            naux = numel(control.sys.panels.bdAuxiliary.auxfun);
-            for indx=1:naux
-                UserData.auxfun = control.sys.panels.bdAuxiliary.auxfun{indx};
-                UserData.label = func2str(UserData.auxfun);
-                UserData.rootmenu = cmenu;
-                menuitem = uimenu('Parent',cmenu, ...
-                    'Label',UserData.label, ...
-                    'Checked','off', ...
-                    'Tag','auxmenu', ...
-                    'UserData',UserData, ...
-                    'Callback',@callback);                
-                if indx==1
-                    menuitem.Checked = 'on';
-                    this.submenu = menuitem;
-                end
+            % get the currently selected plot function
+            auxfun  = this.dropdown.Value;
+            if isempty(auxfun)
+                return          % nothing more to do
             end
             
-            
-            % Callback function for the subpanel selector menu
-            function callback(menuitem,~)
-                % check 'on' the selected menu item and check 'off' all others
-                bdPanel.SelectorCheckItem(menuitem);
-                
-                % update our handle to the selected menu item
-                this.submenu = menuitem;
-                
-                % clear the axis, reset to defaults
-                cla(this.ax,'reset');
-                
-                % redraw the panel
-                this.redraw(control);
-            end
-        end
-        
-        % Redraw the data plots
-        function redraw(this,control)
-            %disp('bdAuxiliary.redraw()')
-            
-            % if the submenu is empty (because no auxiliary functions were defined) then break
-            if isempty(this.submenu)
-                return
-            end
-            
-            % make the axis current
-            axes(this.ax);
-
-            % if 'hold' menu is checked then ...
-            switch this.holdmenu.Checked
+            % if 'hold' menu is not checked then clear the axes
+            switch this.menuHold.Checked
                 case 'off'
-                    % Clear the plot axis
-                    cla(this.ax);
+                    cla(this.axes);
+                    this.axes.NextPlot = 'add';
             end
 
-            % get the details of the currently selected plot function
-            auxfun  = this.submenu.UserData.auxfun;
-            
-            % Execute the auxiliary plot function.
-            % The type of the solver function determines the parameters we call it with. 
-            switch control.solvertype
+            % Execute the auxiliary plot function according to the solver type
+            switch this.sysobj.solvertype
                 case 'odesolver'
                     % case of an ODE solver (eg ode45)
-                    parcell = struct2cell(control.par)';
-                    %this.auxdata = feval(auxfun,this.ax,control.sys.tval,control.sol,parcell{:});
+                    parcell = {this.sysobj.pardef.value};
                     if nargout(auxfun)==0
-                        auxfun(this.ax,control.sys.tval,control.sol,parcell{:});
+                        auxfun(this.axes,this.sysobj.tval,this.sysobj.sol,parcell{:});
                     else
-                        this.UserData = auxfun(this.ax,control.sys.tval,control.sol,parcell{:});
+                        this.UserData = auxfun(this.axes,this.sysobj.tval,this.sysobj.sol,parcell{:});
                     end
 
                 case 'ddesolver'
                     % case of a DDE solver (eg dde23)
-                    lagcell = struct2cell(control.lag)';
-                    parcell = struct2cell(control.par)';
+                    lagcell = {this.sysobj.lagdef.value};
+                    parcell = {this.sysobj.pardef.value};
                     allcell = {lagcell{:} parcell{:}};
-                    %feval(auxfun,this.ax,control.sys.tval,control.sol,allcell{:});
                     if nargout(auxfun)==0
-                        auxfun(this.ax,control.sys.tval,control.sol,allcell{:});
+                        auxfun(this.axes,this.sysobj.tval,this.sysobj.sol,allcell{:});
                     else
-                        this.UserData = auxfun(this.ax,control.sys.tval,control.sol,allcell{:});
+                        this.UserData = auxfun(this.axes,this.sysobj.tval,this.sysobj.sol,allcell{:});
                     end
 
                 case 'sdesolver'
                     % case of an SDE solver
-                    parcell = struct2cell(control.par)';
-                    %feval(auxfun,this.ax,control.sys.tval,control.sol,parcell{:});
-                    %this.auxdata = feval(auxfun,this.ax,control.sys.tval,control.sol,parcell{:});
+                    parcell = {this.sysobj.pardef.value};
                     if nargout(auxfun)==0
-                        auxfun(this.ax,control.sys.tval,control.sol,parcell{:});
+                        auxfun(this.axes,this.sysobj.tval,this.sysobj.sol,parcell{:});
                     else
-                        this.UserData = auxfun(this.ax,control.sys.tval,control.sol,parcell{:});
+                        this.UserData = auxfun(this.axes,this.sysobj.tval,this.sysobj.sol,parcell{:});
                     end                    
             end        
+
         end
-
-    end
-    
-    methods (Static)
-        function syspanel = syscheck(sys)
-            % Assign default values to missing fields in sys.panels.bdAuxiliary
-
-            % Default panel settings
-            syspanel.title = bdAuxiliary.title;
-            syspanel.hold = false;
-            syspanel.auxfun = [];
+        
+        % Callback for DROPDOWN widget
+        function dropdownChanged(this)
+            %disp('dropdownChanged');
+            this.Render();
+        end
+                                
+        % Callback for HOLD menu
+        function callbackHold(this)
+            % Toggle the menu state
+            this.MenuToggle(this.menuHold);
             
-            % Nothing more to do if sys.panels.bdAuxiliary is undefined
-            if ~isfield(sys,'panels') || ~isfield(sys.panels,'bdAuxiliary')
-                return;
-            end
+            % Render the data
+            this.Render();
             
-            % sys.panels.bdAuxiliary.title
-            if isfield(sys.panels.bdAuxiliary,'title')
-                syspanel.title = sys.panels.bdAuxiliary.title;
-            end
-            
-            % sys.panels.bdAuxiliary.hold
-            if isfield(sys.panels.bdAuxiliary,'hold')
-                syspanel.hold = sys.panels.bdAuxiliary.hold;
-            end
-            
-            % sys.panels.bdAuxiliary.auxfun
-            if isfield(sys.panels.bdAuxiliary,'auxfun')
-                syspanel.auxfun = sys.panels.bdAuxiliary.auxfun;
+            % Push the UNDO stack
+            notify(this.sysobj,'push');
+        end
+              
+        
+        % CLEAR menu callback
+        function callbackClear(this)
+            %disp('callbackClear');
+            cla(this.axes)
+            this.Render();
+        end
+                
+        % DOCK menu callback
+        function callbackDock(this,menuitem,tabgrp)
+            %disp('callbackDock');
+            switch menuitem.Label
+                case 'Undock'
+                    newfig = bdPanelBase.Undock(this.tab,this.menu);
+                    newfig.DeleteFcn = @(src,~) this.delete();
+                    menuitem.Label='Dock';
+                    menuitem.Tooltip='Dock the display panel';
+                case 'Dock'
+                    bdPanelBase.Dock(this.tab,this.menu,tabgrp);
+                    menuitem.Label='Undock';
+                    menuitem.Tooltip='Undock the display panel';
             end
         end
         
-        function auxdefault(ax,varargin)
-            text(0.5,0.5,'No auxiliary plotting functions are defined for this system', ...
-                'HorizontalAlignment','center', 'Parent',ax);
-            title(ax,'No Auxiliary Functions');
+        % CLOSE menu callback
+        function callbackClose(this,guifig)
+            % find the parents of the panel tab 
+            tabgrp = ancestor(this.tab,'uitabgroup');
+            fig = ancestor(this.tab,'figure');
+                       
+            % remember sysobj
+            sysobj = this.sysobj;
+
+            % delete the panel
+            delete(this);
+            
+            % reveal the menu of the newly selected panel 
+            bdPanelBase.FocusMenu(tabgrp);
+            
+            % if the parent figure is not the same as the gui figure then ...
+            if fig ~= guifig
+                % The panel is undocked from the gui. Its figure should be closed too. 
+                delete(fig);
+            end
+            
+            % Push the new settings onto the UNDO stack
+            notify(sysobj,'push');            
         end
+        
     end
     
+    methods (Static)
+        
+        function optout = optcheck(opt)
+            % check the format of incoming options and apply defaults to missing values
+            optout.title = bdPanelBase.GetOption(opt, 'title', 'Auxiliary');
+            optout.hold  = bdPanelBase.GetOption(opt, 'hold', 'off');
+            if isfield(opt,'auxfun')
+                optout.auxfun = opt.auxfun;
+            else
+                optout.auxfun = function_handle.empty();
+            end
+            %optout.selectorX  = bdPanelBase.GetOption(opt, 'selectorX', {1,1,1});
+            %optout.selectorY  = bdPanelBase.GetOption(opt, 'selectorY', {1,1,1});
+            
+            % warn of unrecognised field in the incoming options
+            infields  = fieldnames(opt);                % the field names we were given
+            outfields = fieldnames(optout);             % the field names we expected
+            newfields = setdiff(infields,outfields);    % unrecognised field names
+            for idx=1:numel(newfields)
+                warning('Ignoring unknown panel option ''bdAuxiliary.%s''',newfields{idx});
+            end
+        end
+        
+    end
 end
+

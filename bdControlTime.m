@@ -1,12 +1,11 @@
 classdef bdControlTime < handle
-   %bdControlTime  Control panel widget for the time domain.
-    %  This class implements the control panel widgets for the time domain.
-    %  It is not intended to be called directly by users.
+    %bdControlTime  Control panel widget for bdGUI.
+    %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2018a)
+    %  Stewart Heitmann (2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2020 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -34,369 +33,370 @@ classdef bdControlTime < handle
     % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     % POSSIBILITY OF SUCH DAMAGE.
     
-    properties (Constant)
-        rowh = 24;
-        roww = 220;
-    end
-    
-    properties (Access=private)
-        parent
-        panel
-        minbox
-        maxbox
-        jslider
-        valbox
-        redrawflag
-        timer 
+    properties (Access=public)
+        GridLayout          matlab.ui.container.GridLayout
+        CheckBox            matlab.ui.control.CheckBox
+        BackwardButton      matlab.ui.control.CheckBox
+        EditField1          matlab.ui.control.NumericEditField
+        EditField2          matlab.ui.control.NumericEditField
+        EditField3          matlab.ui.control.NumericEditField
+        EditField4          matlab.ui.control.NumericEditField
+        Label1              matlab.ui.control.Label
+        Label2              matlab.ui.control.Label
+        Label3              matlab.ui.control.Label
+        Slider              matlab.ui.control.Slider
+        rlistener           event.listener
     end
     
     methods
-        % Constructor
-        function this = bdControlTime(control,parent,ypos,modecheckbox)
-            %disp('bdControlTime()');
-            
-            % init the redraw flag
-            this.redrawflag = false;
+        function this = bdControlTime(sysobj,uiparent)
+            % Create the GridLayout
+            this.GridLayout = uigridlayout(uiparent);
+            this.GridLayout.ColumnWidth = {'1x','1x','1x','1x'};
+            this.GridLayout.RowHeight = {'1x',21,21,21};
+            this.GridLayout.ColumnSpacing = 5;
+            this.GridLayout.RowSpacing = 5;
+            this.GridLayout.Padding = [5 0 5 0];
 
-            % remeber our parent
-            this.parent = parent;
+            % Time Domain Checkbox
+            this.CheckBox = uicheckbox(this.GridLayout);
+            this.CheckBox.Text = 'Time Domain';
+            this.CheckBox.FontWeight = 'bold';
+            this.CheckBox.Layout.Row = 2;
+            this.CheckBox.Layout.Column = [1 2];
+            this.CheckBox.Value = 1;
+            this.CheckBox.ValueChangedFcn = @(src,evnt) this.ModeChanged(src);
             
-            % extract the time domain values from control.sys
-            tspan = control.sys.tspan;
-            tval = control.sys.tval;
-            
-            % define widget geometry
-            colw = 50;
-            col1 = 2;
-            col2 = col1 + colw + 5;
-            col3 = col2 + colw + 5;
-            col4 = col3 + colw + 5;
-            labelw = 50;
-            
-            % Construct the panel container
-            this.panel = uipanel('Parent',parent, ...
-                'Units','pixels', ...
-                'Position',[2 ypos this.roww this.rowh], ...
-                'BorderType','none');
-                
-            % Get the backgorund colour of our panel
-            bgcolor = this.panel.BackgroundColor;
-            
-            % Construct the slider. I use a java slider because on OS/X the
-            % matlab uicontrol slider ignoes its specified height/width.
-            % See Yair Altman's Undocumented Matlab for the use of java
-            % swing components in matlab.
-            jsliderobj = javax.swing.JSlider;
-            jsliderobj.setBackground(java.awt.Color(bgcolor(1),bgcolor(2),bgcolor(3)));
-            javacomponent(jsliderobj,[col1 2 col3-col1 this.rowh-4],this.panel);
-            this.jslider = handle(jsliderobj,'CallbackProperties');
-            this.jslider.StateChangedCallback = @(~,~) this.sliderCallback(control);
-            this.jslider.ToolTipText = 'time slider';
+            % Backwards Checkbox
+            this.BackwardButton = uicheckbox(this.GridLayout);
+            this.BackwardButton.Text = 'Backward';
+            this.BackwardButton.Value = sysobj.backward;
+            this.BackwardButton.Layout.Row = 4;
+            this.BackwardButton.Layout.Column = [1 2];
+            this.BackwardButton.ValueChangedFcn = @(src,evnt) BackwardChanged(this,sysobj);
+            this.BackwardButton.Tooltip = 'Integrate backwards in time';
+            switch sysobj.solvertype
+                case 'odesolver'
+                    this.BackwardButton.Enable='on';
+                otherwise
+                    this.BackwardButton.Enable='off';
+            end
 
-            % update the value in the slider widget
-            this.sliderUpdate(tspan(1),tspan(2),tval);
-
-            % Construct the min box
-            this.minbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col1 2 colw this.rowh-4], ...
-                'String',num2str(tspan(1),'%0.4g'), ...
-                'Value',tspan(1), ...
-                'HorizontalAlignment','center', ...
-                'ForegroundColor', 'b', ...
-                'Visible','off', ...
-                'Callback', @(~,~) this.minboxCallback(control), ...
-                'ToolTipString',['start time']);
-
-            % Construct the max box
-            this.maxbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col2 2 colw this.rowh-4], ...
-                'String',num2str(tspan(2),'%0.4g'), ...
-                'Value',tspan(2), ...
-                'HorizontalAlignment','center', ...
-                'ForegroundColor', 'b', ...
-                'Visible','off', ...
-                'Callback', @(~,~) this.maxboxCallback(control), ...
-                'ToolTipString','end time');
-                  
-            % Construct the val box
-            this.valbox = uicontrol('Parent',this.panel, ...
-                'Style', 'edit', ...
-                'Units','pixels',...
-                'Position',[col3 2 colw this.rowh-4], ...
-                'String',num2str(tval,'%0.4g'), ...
-                'Value',tval, ...
-                'HorizontalAlignment','center', ...
-                'FontWeight','normal', ...
-                'Visible','on', ...
-                'Callback', @(~,~) this.valboxCallback(control), ...
-                'ToolTipString','end of transient window');
+            % Create EditField1 (t0)
+            this.EditField1 = uieditfield(this.GridLayout, 'numeric');
+            this.EditField1.Layout.Row = 3;
+            this.EditField1.Layout.Column = 1;
+            this.EditField1.HorizontalAlignment = 'center';
+            this.EditField1.Visible = 'off';
+            this.EditField1.ValueChangedFcn = @(~,~) EditField1Changed(this,sysobj);
+            this.EditField1.Tooltip = 'Start';
             
-            % Construct the time label 
-            uicontrol('Parent',this.panel, ...
-                'Style', 'text', ...
-                'Units','pixels',...
-                'Position',[col4 2 labelw this.rowh-5], ...
-                'String','time', ...
-                'HorizontalAlignment', 'left', ...
-            ...    'BackgroundColor','g', ...
-                'FontWeight','bold');
-       
-            % listen for widget refresh events from the control panel 
-            addlistener(control,'refresh', @(~,~) this.refresh(control,modecheckbox));
+            % Create EditField2 (t1)
+            this.EditField2 = uieditfield(this.GridLayout, 'numeric');
+            this.EditField2.Layout.Row = 3;
+            this.EditField2.Layout.Column = 2;
+            this.EditField2.HorizontalAlignment = 'center';
+            this.EditField2.Visible = 'off';
+            this.EditField2.ValueChangedFcn = @(~,~) EditField2Changed(this,sysobj);
+            this.EditField2.Tooltip = 'Finish';
             
-            % init the timer object and start it.           
-            this.timer = timer('BusyMode','drop', ...
-                'ExecutionMode','fixedSpacing', ...
-                'Period',0.05, ...
-                'TimerFcn', @(~,~) this.TimerFcn(control));
-            start(this.timer);            
+            % Create EditField3 (tval)
+            this.EditField3 = uieditfield(this.GridLayout, 'numeric');
+            this.EditField3.Layout.Row = 3;
+            this.EditField3.Layout.Column = 3;
+            this.EditField3.HorizontalAlignment = 'center';
+            this.EditField3.ValueChangedFcn = @(~,~) EditField3Changed(this,sysobj);
+            %this.EditField3.Tooltip = 'tval';
+            
+            % Create EditField4 (tstep)
+            this.EditField4 = uieditfield(this.GridLayout, 'numeric');
+            this.EditField4.Layout.Row = 3;
+            this.EditField4.Layout.Column = 4;
+            this.EditField4.HorizontalAlignment = 'center';
+            this.EditField4.Visible = 'on';
+            this.EditField4.ValueChangedFcn = @(~,~) EditField4Changed(this,sysobj);
+            this.EditField4.Tooltip = 'Interpolation time step';
+                       
+            %Create Label1 (tval)
+            this.Label1 = uilabel(this.GridLayout);
+            this.Label1.Text = 'time';
+            this.Label1.HorizontalAlignment = 'center';
+            this.Label1.VerticalAlignment = 'bottom';
+            this.Label1.Layout.Row = 2;
+            this.Label1.Layout.Column = 3;
+            this.Label1.Visible = 'on';
+
+            %Create Label2 (tstep)
+            this.Label2 = uilabel(this.GridLayout);
+            this.Label2.Text = 'step';
+            this.Label2.HorizontalAlignment = 'center';
+            this.Label2.VerticalAlignment = 'bottom';
+            this.Label2.Layout.Row = 2;
+            this.Label2.Layout.Column = 4;
+            this.Label2.Visible = 'on';
+            
+            %Create Label3 (bdtoolbox)
+            this.Label3 = uilabel(this.GridLayout);
+            this.Label3.Text = 'bdtoolbox.org';
+            this.Label3.HorizontalAlignment = 'right';
+            this.Label3.VerticalAlignment = 'bottom';
+            this.Label3.FontWeight = 'normal';
+            this.Label3.FontSize = 16;
+            this.Label3.FontColor = [0.75 0.75 0.75];
+            this.Label3.Layout.Row = 4;
+            this.Label3.Layout.Column = [2 4];
+            this.Label3.Visible = 'on';
+            
+            % Create Slider
+            this.Slider = uislider(this.GridLayout);
+            this.Slider.Limits = [0 1];
+            this.Slider.Layout.Row = 3;
+            this.Slider.Layout.Column = [1 2];
+            this.Slider.MajorTicks = [];
+            this.Slider.MinorTicks = [];
+            %this.Slider.Interruptible = 'off';
+            %this.Slider.BusyAction = 'queue';
+            this.Slider.ValueChangingFcn = @(~,evnt) SliderChanging(this,sysobj,evnt);
+           
+            % update the widget values
+            t0 = sysobj.tspan(1);
+            t1 = sysobj.tspan(2);
+            tstep = sysobj.tstep;
+            tval = sysobj.tval;
+            WriteWidgets(this,t0,t1,tval,tstep);
+            
+            % listen to sysobj for REDRAW events
+            this.rlistener = listener(sysobj,'redraw',@(src,evnt) this.Redraw(src,evnt));
         end
-  
-        function mode(this,flag)            
-            %disp('bdControlTime.mode()');
-            if flag
-                set(this.minbox,'Visible','off');
-                set(this.maxbox,'Visible','off');
-                set(this.jslider,'Visible',1);
+        
+        function ModeChanged(this,checkbox)
+            %disp('bdControlTime.ModeChanged');
+            if checkbox.Value
+                this.EditField1.Visible = 'off';
+                this.EditField2.Visible = 'off';
+                %this.EditField4.Visible = 'off';
+                %this.Label1.Visible = 'off';
+                %this.Label2.Visible = 'off';
+                %this.BackwardButton.Visible = 'on';
+                this.Slider.Visible = 'on';
             else
-                set(this.jslider,'Visible',0);
-                set(this.minbox,'Visible','on');
-                set(this.maxbox,'Visible','on');
+                this.EditField1.Visible = 'on';
+                this.EditField2.Visible = 'on';
+                %this.EditField4.Visible = 'on';
+                %this.Label1.Visible = 'on';
+                %this.Label2.Visible = 'on';
+                %this.BackwardButton.Visible = 'off';
+                this.Slider.Visible = 'off';
             end                        
         end
-
-        % Destructor
-        function delete(this)
-            stop(this.timer);
-            delete(this.timer);
-        end
-  end
-   
-    methods (Access=private)
         
-        % min box callback function
-        function minboxCallback(this,control)
-            %disp('bdControlTime.minboxCallback()');
-            % read the minbox string and convert to a number
-            str = this.minbox.String;
-            minval = str2double(str);
-            if isnan(minval)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the minbox string to its previous value
-                this.minbox.String = num2str(this.minbox.Value,'%0.4g');                 
-            else           
-                % update the minbox value
-                this.minbox.Value = minval;
-
-                % update the maxbox widget if necessary
-                if this.maxbox.Value < minval
-                    this.maxbox.Value = minval;
-                    this.maxbox.String = num2str(minval,'%0.4g');                
-                end
-                
-                % update the valbox widget if necessary
-                if this.valbox.Value < minval
-                    this.valbox.Value = minval;
-                    this.valbox.String = num2str(minval,'%0.4g');                
-                end
-                
-                % update the slider widget
-                this.sliderUpdate(this.minbox.Value, this.maxbox.Value, this.valbox.Value);
-                            
-                % update control.sys
-                control.sys.tspan = [this.minbox.Value this.maxbox.Value];
-                control.sys.tval = this.valbox.Value;
-
-                % notify the solver to recompute the solution because the time domain has changed
-                notify(control,'recompute');
-            end
-        end        
-
-        % max box callback function
-        function maxboxCallback(this,control)
-            %disp('bdControlTime.maxboxCallback()');
-            % read the maxbox string and convert to a number
-            str = this.maxbox.String; 
-            maxval = str2double(str);
-            if isnan(maxval)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the maxbox string to its previous value
-                this.maxbox.String = num2str(this.maxbox.Value,'%0.4g');                 
-            else           
-                % update the maxbox value
-                this.maxbox.Value = maxval;
-
-                % update the minbox widget if necessary
-                if this.minbox.Value > maxval
-                    this.minbox.Value = maxval;
-                    this.minbox.String = num2str(maxval,'%0.4g');                
-                end
-                     
-                % update the valbox widget if necessary
-                if this.valbox.Value > maxval
-                    this.valbox.Value = maxval;
-                    this.valbox.String = num2str(maxval,'%0.4g');                
-                end
-                
-                % update the slider widget
-                this.sliderUpdate(this.minbox.Value, this.maxbox.Value, this.valbox.Value);
-
-                % update control.sys
-                control.sys.tspan = [this.minbox.Value this.maxbox.Value];
-                control.sys.tval = this.valbox.Value;
-
-                % notify the solver to recompute the solution because the time domain has changed
-                notify(control,'recompute');
-            end
-        end        
-
-        % val box callback function
-        function valboxCallback(this,control)
-            %disp('bdControlTime.valboxCallback()');
-            % read the valbox string and convert to a number
-            str = this.valbox.String; 
-            val = str2double(str);
-            if isnan(val)
-                hndl = errordlg(['Invalid number: ',str], 'Invalid Number', 'modal');
-                uiwait(hndl);
-                % restore the valbox string to its previous value
-                this.valbox.String = num2str(this.valbox.Value,'%0.4g');                 
-            else           
-                % update the valbox value
-                this.valbox.Value = val;
-
-                % recompute flag
-                recomputeflag = false;
-                
-                % update the minbox widget if necessary
-                if this.minbox.Value > val
-                    this.minbox.Value = val;
-                    this.minbox.String = num2str(val,'%0.4g');
-                    recomputeflag = true;
-                end
-                
-                % update the maxbox widget if necessary
-                if this.maxbox.Value < val
-                    this.maxbox.Value = val;
-                    this.maxbox.String = num2str(val,'%0.4g');
-                    recomputeflag = true;
-                end
-                
-                % update the slider widget
-                this.sliderUpdate(this.minbox.Value, this.maxbox.Value, this.valbox.Value);
-
-                % update control.sys
-                control.sys.tspan = [this.minbox.Value this.maxbox.Value];
-                control.sys.tval = this.valbox.Value;
-
-                if recomputeflag
-                    % notify the solver to recompute the solution because the time domain has changed
-                    notify(control,'recompute');
-                else
-                    % update the indicies of the non-tranient time steps in sol.x
-                    control.tindx = (control.sol.x >= control.sys.tval);
-                    
-                    % notify all display panels to redraw themselves
-                    notify(control,'redraw');
-                end
-            end
-        end        
-        
-        % jslider callback function
-        function sliderCallback(this,control,xxxdef,xxxindx)
-            %disp('bdControlTime.sliderCallback()');
-            % get the slider value (0..100)
-            sliderval = get(this.jslider,'Value');
-            
-            % convert the slider value to (min..max) range 
-            minval = this.minbox.Value;
-            maxval = this.maxbox.Value;
-            val = (maxval-minval)*sliderval/100.0 + minval;
-            
-            % assign the new value to the edit box
-            this.valbox.Value = val;
-            this.valbox.String = num2str(val,'%0.4g');
-
-            % update control.sys
-            control.sys.tval = val;
-                    
-            % update the indicies of the non-tranient time steps in sol.x
-            control.tindx = (control.sol.x >= control.sys.tval);
-            
-            % have the timer function notify all display panels to redraw themselves
-            this.redrawflag = true;
-            %notify(control,'redraw');            
+        function BackwardChanged(this,sysobj)
+            %disp('bdControlTime.BackwardChanged');
+            sysobj.backward = this.BackwardButton.Value;
+            sysobj.NotifyRedraw([]);
         end
         
-        % update the jslider widget
-        function sliderUpdate(this,minval,maxval,val)
-            % disable the slider callback function
-            jslidercallback = this.jslider.StateChangedCallback;
-            this.jslider.StateChangedCallback = [];
+        % Callback for t0
+        function EditField1Changed(this,sysobj)
+            %disp('bdControlTime.EditField1Changed');
             
-            % update the slider value (0..100)
-            if minval==maxval
-                sliderval = minval;
+            % read the widgets (t0 has changed)
+            [t0,t1,tval,tstep] = ReadWidgets(this);
+            
+            % ensure t1 is not less than t0
+            if t1<t0
+                t1 = t0;
+            end
+            
+            % ensure tval is not less than t0
+            if tval<t0
+                tval = t0;
+            end
+            
+            % ensure tval is not greater than t1
+            if tval>t1
+                tval = t1;
+            end
+            
+            % update the widgets
+            WriteWidgets(this,t0,t1,tval,tstep);
+
+            % update sysobj
+            this.WriteSys(sysobj,t0,t1,tval,tstep);
+            
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw(this.rlistener);
+        end
+        
+        function EditField2Changed(this,sysobj)
+            %disp('bdControlTime.EditField2Changed');
+            
+            % read the widgets (t1 has changed)
+            [t0,t1,tval,tstep] = ReadWidgets(this);
+            
+            % ensure t0 is not greater than t1
+            if t1<t0
+                t0 = t1;
+            end
+            
+            % ensure tval is not less than t0
+            if tval<t0
+                tval = t0;
+            end
+            
+            % ensure tval is not greater than t1
+            if tval>t1
+                tval = t1;
+            end
+            
+            % update the widgets
+            WriteWidgets(this,t0,t1,tval,tstep);
+
+            % update sysobj
+            this.WriteSys(sysobj,t0,t1,tval,tstep);
+
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw(this.rlistener);
+        end
+        
+        function EditField3Changed(this,sysobj)
+            %disp('bdControlTime.EditField3Changed');
+            
+            % read the widgets (tt has changed)
+            [t0,t1,tval,tstep] = ReadWidgets(this);
+
+            % ensure t0 is not greater than tval
+            if tval<t0
+                t0 = tval;
+            end
+            
+            % ensure t1 is not less than tval
+            if t1<tval
+                t1 = tval;
+            end
+            
+            % update the widgets
+            WriteWidgets(this,t0,t1,tval,tstep);
+
+            % update sysobj
+            this.WriteSys(sysobj,t0,t1,tval,tstep);
+
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw(this.rlistener);
+        end
+        
+        function EditField4Changed(this,sysobj)
+            %disp('bdControlTime.EditField4Changed');
+            
+            % read the widgets (tstep has changed)
+            tstep = this.EditField4.Value;
+            
+            % ensure tstep>0
+            if tstep<0
+                tstep = abs(tstep);
+            end
+            
+            % ensure tstep is not too small
+            if tstep < 1e-10
+                tstep = 1e-10;
+            end
+                        
+            % update the widgets
+            this.EditField4.Value = tstep;
+
+            % update sysobj
+            sysobj.tstep = tstep;
+
+            % redraw the widgets (and anything else)
+            sysobj.NotifyRedraw([]);
+        end
+        
+        function SliderChanging(this,sysobj,evnt)
+            %disp('bdControlTime.SliderChanging');
+
+            % read the widgets
+            t0 = this.EditField1.Value;
+            t1 = this.EditField2.Value;
+            tval = (t1-t0) * evnt.Value + t0;
+            
+            % update widgets
+            this.EditField3.Value = tval;
+
+            % update sysobj
+            sysobj.tval = tval;
+
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw(this.rlistener);
+        end
+        
+        function [t0,t1,tval,tstep] = ReadWidgets(this)
+            %disp('bdControlTime.ReadWidgets');
+            t0 = this.EditField1.Value;
+            t1 = this.EditField2.Value;
+            tval = this.EditField3.Value;
+            tstep = this.EditField4.Value;
+        end
+        
+        function WriteWidgets(this,t0,t1,tval,tstep)
+            %disp('bdControlTime.WriteWidgets');
+            % compute slider position
+            if t1==t0
+                ss = 0.5;
             else
-                sliderval = 100*(val - minval)/(maxval - minval);
+                ss = (tval-t0)./(t1-t0);
             end
-            set(this.jslider,'Value',sliderval);
-            
-            % re-enable the slider callback
-            this.jslider.StateChangedCallback = jslidercallback;
+
+            % update widgets
+            this.EditField1.Value = t0;
+            this.EditField2.Value = t1;
+            this.EditField3.Value = tval;
+            this.EditField4.Value = tstep;
+            this.Slider.Value = ss;
         end
         
-        % Update the widgets according to the values in control
-        function refresh(this,control,modecheckbox) 
-            %disp('bdControlTime.refresh');
+        function Redraw(this,sysobj,sysevent)
+            %disp('bdControlTime.Redraw()')
+            %dbstack()
             
-            % extract the relevant fields from control.sys
-            tspan = control.sys.tspan;
-            tval = control.sys.tval;
-            
-            % update the min box widget
-            this.minbox.Value = tspan(1);
-            this.minbox.String = num2str(tspan(1),'%0.4g');
-            
-            % update the max box widget
-            this.maxbox.Value = tspan(2);
-            this.maxbox.String = num2str(tspan(2),'%0.4g');
-            
-            % update the val box widget
-            this.valbox.Value = tval;
-            this.valbox.String = num2str(tval,'%0.4g');
-
-            % update the slider widget
-            this.sliderUpdate(tspan(1), tspan(2), tval);
-            
-            % show/hide the slider widget according to the state of the caller's modecheckbox
-            this.mode(modecheckbox.Value)
-        end
-        
-        % Timer function. It throttles the number of redraw events issued from the slider.        
-        function TimerFcn(this,control)
-            %disp('bdControlTim.TimerFcn');
-            
-            % if the parent object (ie the control panel) is gone then... 
-            if ~ishghandle(this.parent)
-                stop(this.timer);       % stop the timer
-                return
+            % if sysobj.tspan or sysobj.tval or sysobj.tstep has changed then ...
+            if sysevent.tspan || sysevent.tval || sysevent.tstep
+                % Read the current values from sysobj
+                [t0,t1,tval,tstep] = this.ReadSys(sysobj);
+                % Update the widgets with those values
+                this.WriteWidgets(t0,t1,tval,tstep)
             end
-            
-            % issue a redraw event if required
-            if this.redrawflag
-                this.redrawflag = false;
-                notify(control,'redraw');
+           
+            % if sysobj.backward has changed then ...
+            if sysevent.backward
+                this.BackwardButton.Value = sysobj.backward;
             end
-        end
-
+        end        
     end
-    
+
+    methods(Static)
+        
+        function [t0,t1,tval,tstep] = ReadSys(sysobj)
+            %disp('bdControlTime.ReadSys()')
+            t0 = sysobj.tspan(1);
+            t1 = sysobj.tspan(2);
+            tval = sysobj.tval;
+            tstep = sysobj.tstep;
+        end
+        
+        function WriteSys(sysobj,t0,t1,tval,tstep)
+            %disp('bdControlTime.WriteSys()')
+            if ~isequal(sysobj.tspan,[t0 t1])
+                sysobj.tspan = [t0 t1];
+            end
+            if sysobj.tval ~= tval
+                sysobj.tval = tval;
+            end
+            if sysobj.tstep ~= tstep
+                sysobj.tstep = tstep;
+            end
+        end
+        
+    end
+
 end
 

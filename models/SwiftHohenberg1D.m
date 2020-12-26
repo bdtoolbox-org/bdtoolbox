@@ -15,9 +15,9 @@ function sys = SwiftHohenberg1D(n,dx)
     %   gui = bdGUI(sys);               % open the Brain Dynamics GUI
     %
     % Authors
-    %   Stewart Heitmann (2016a,2017a,2017c,2018a)
+    %   Stewart Heitmann (2016a,2017a,2017c,2018a,2020a)
 
-    % Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -59,43 +59,44 @@ function sys = SwiftHohenberg1D(n,dx)
     sys.odefun = @odefun;
     
     % Our ODE parameters
-    sys.pardef = [ struct('name','mu', 'value',1.5);
-                   struct('name','nu', 'value',3.0);
-                   struct('name','dx', 'value',dx) ];
+    sys.pardef = [ 
+        struct('name','mu', 'value',1.5)
+        struct('name','nu', 'value',3.0)
+        struct('name','dx', 'value',dx)
+        ];
                
     % Our ODE variables
     sys.vardef = struct('name','U', 'value',U0);
     
     % Default time span
-    sys.tspan = [0 20];
+    sys.tspan = [0 10];
+    sys.tstep = 1;
          
     % Specify ODE solvers and default options
-    %sys.odesolver = {@ode45,@ode23,@ode113,@odeEuler};  % ODE solvers
-    sys.odeoption = odeset('RelTol',1e-6);              % ODE solver options
+    sys.odesolver = {@ode15s};  % ODE solvers
 
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
-    sys.panels.bdLatexPanel.latex = {'\textbf{SwiftHohenberg1D}';
-        '';
-        'Spatially discretized Swift-Hohenberg partial differential equation';
-        '\qquad $\dot U = -(I + D_{xx})^2 U - \mu U + \nu U^3 - U^5$';
-        'where';
-        '\qquad $I$ is the Identity matrix,';
-        '\qquad $D_{xx}$ is the Laplacian operator,';
-        '\qquad $\mu$ and $\nu$ are scalar constants.';
-        '';
-        'Notes';
-        '\qquad 1. $D_{xx,i} = \big( U_{i+1} - 2U_{i} + U_{i+1} \big) / dx^2$.';
-        '\qquad 2. $dx$ is the step size of the spatial discretization,';
-        '\qquad 3. Boundary conditions are periodic.';
-        ['\qquad 4. This simulation has $n{=}',num2str(n),'$.'];
-        '';
-        'Adapted from Avitabile (2016) Numerical computation of coherent';
-        'structures in spatially-extended neural networks. ICMNS 2016.'};
+    sys.panels.bdLatexPanel.latex = {
+        '$\textbf{SwiftHohenberg1D}$'
+        ''
+        'Spatially discretized Swift-Hohenberg partial differential equation'
+        '{ }{ }{ } $\dot U = -(I + D_{xx})^2 U - \mu U + \nu U^3 - U^5$'
+        'where'
+        '{ }{ }{ } $I~$ is the Identity matrix,'
+        '{ }{ }{ } $D_{xx}~$ is the Laplacian operator,'
+        '{ }{ }{ } $\mu\;$ and $\nu\;$ are scalar constants.'
+        ''
+        'Notes'
+        '{ }{ }{ } 1. $D_{xx,i} = \big( U_{i+1} - 2U_{i} + U_{i+1} \big) / dx^2$.'
+        '{ }{ }{ } 2. $dx~$ is the step size of the spatial discretization,'
+        '{ }{ }{ } 3. Boundary conditions are periodic.'
+        ['{ }{ }{ } 4. This simulation has $n{=}',num2str(n),'$.']
+        ''
+        'Adapted from Avitabile (2016) Numerical computation of coherent'
+        'structures in spatially-extended neural networks. ICMNS 2016.'
+        };
               
-    % Include the Time Portrait panel in the GUI
-    sys.panels.bdTimePortrait = [];
- 
     % Include the Space-Time panel in the GUI
     sys.panels.bdSpaceTime = [];
 

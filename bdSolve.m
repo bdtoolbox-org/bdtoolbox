@@ -17,6 +17,9 @@
 %   you must also supply the solvertype string ('odesolver', 'ddesolver'
 %   or 'sdesolver').
 %
+%   The sys.evolve, sys.perturb, sys.backward and sys.halt switches are
+%   ignored.
+%
 %RETURNS
 %   sol is the solution structure. It has the same format as that returned
 %      by the matlab ode45 solver. Use the bdEval function to extract the
@@ -32,9 +35,9 @@
 %   xlabel('time'); ylabel('y');
 %
 %AUTHORS
-%   Stewart Heitmann (2016a-2018b)
+%   Stewart Heitmann (2016a,2017a,2018a,2018b,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -77,7 +80,7 @@ function sol = bdSolve(sys,tspan,solverfun,solvertype)
    
         % check the validity of the sys struct and fill missing fields with default values
         try
-            sys = bd.syscheck(sys);
+            sys = bdSystem.syscheck(sys);
         catch ME
             throwAsCaller(ME);
         end
@@ -136,9 +139,9 @@ function sol = bdSolve(sys,tspan,solverfun,solvertype)
                 end
         end
         
-        % Call the appropriate solver
+        % Run the solver
         try
-            sol = bd.solve(sys,tspan,solverfun,solvertype);
+            sol = bdSystem.solvesys(sys,tspan,solverfun,solvertype);
         catch ME
             throwAsCaller(ME);
         end

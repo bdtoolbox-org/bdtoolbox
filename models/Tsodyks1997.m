@@ -23,9 +23,9 @@
 %    Wilson, Cowan (1972) Biophysics Journal 12(1)
 %
 % AUTHOR
-%   Stewart Heitmann (2019a)
+%   Stewart Heitmann (2019a,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -58,20 +58,24 @@ function sys = Tsodyks1997()
     sys.odefun = @odefun;
     
     % ODE parameters
-    sys.pardef = [ struct('name','Jee',  'value', 25,   'lim',[0 50]);
-                   struct('name','Jei',  'value', 25,   'lim',[0 50]);
-                   struct('name','Jie',  'value', 15,   'lim',[0 50]);
-                   struct('name','Jii',  'value',  7,   'lim',[0 50]);
-                   struct('name','beta', 'value',0.1,  'lim',[0.02 0.2]);
-                   struct('name','theta','value',  0,   'lim',[0 5]);
-                   struct('name','Se',   'value',  5,   'lim',[0 5]); 
-                   struct('name','Si',   'value',  0,   'lim',[0 5]);
-                   struct('name','taue', 'value', 10,   'lim',[1 20]);
-                   struct('name','taui', 'value',  5,   'lim',[1 20])];
+    sys.pardef = [
+        struct('name','Jee',  'value', 25,   'lim',[0 50])
+        struct('name','Jei',  'value', 25,   'lim',[0 50])
+        struct('name','Jie',  'value', 15,   'lim',[0 50])
+        struct('name','Jii',  'value',  7,   'lim',[0 50])
+        struct('name','beta', 'value',0.1,   'lim',[0.02 0.2])
+        struct('name','theta','value',  0,   'lim',[0 5])
+        struct('name','Se',   'value',  5,   'lim',[0 5]) 
+        struct('name','Si',   'value',  0,   'lim',[0 5])
+        struct('name','taue', 'value', 10,   'lim',[1 20])
+        struct('name','taui', 'value',  5,   'lim',[1 20])
+        ];
               
     % ODE variables
-    sys.vardef = [ struct('name','E', 'value',rand, 'lim',[-0.2 1.2]);
-                   struct('name','I', 'value',rand, 'lim',[-0.2 1.2])];
+    sys.vardef = [
+        struct('name','E', 'value',rand, 'lim',[-0.2 1.2])
+        struct('name','I', 'value',rand, 'lim',[-0.2 1.2])
+        ];
  
     % Default time span
     sys.tspan = [0 500];
@@ -81,46 +85,46 @@ function sys = Tsodyks1997()
     
     % Latex Panel
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{Tsodyks, et al (1997) Paradoxical Effects of External Modulation}'
-        '\textbf{of Inhibitory Interneurons}'
+        '$\textbf{Tsodyks, et al (1997) Paradoxical Effects of External Modulation}$'
+        '$\textbf{of Inhibitory Interneurons}$'
                 
         ''
         'The equations follow the Wilson-Cowan (1972) model of reciprocally'
         'coupled populations of excitatory and inhibitory neurons'
         ''
-        '\qquad $\tau_e \; \dot E = -E + G\big(J_{ee} E - J_{ei} I + S_e\big)$'
-        '\qquad $\tau_i \; \dot I \; = -I \; + G\big(J_{ie} E - J_{ii} I + S_i \big)$'
+        '{ }{ }{ } $\tau_e \; \dot E = -E + G\big(J_{ee} E - J_{ei} I + S_e\big)$'
+        '{ }{ }{ } $\tau_i \; \dot I \; = -I \; + G\big(J_{ie} E - J_{ii} I + S_i \big)$'
         ''
         'where'
-        '\qquad $E(t)$ is the mean firing rate of the \textit{excitatory} population,'
-        '\qquad $I(t)$ is the mean firing rate of the \textit{inhibitory} population,'
-        '\qquad $J_{ei}$ is the weight of the connection to $E$ from $I$,'
-        '\qquad $S_{e}$ is an external current injected into the excitatory cells,'
-        '\qquad $S_{i}$ is an external current injected into the inhibitory cells,'
-        '\qquad $\tau_{e}$ is the time constant of excitation,'
-        '\qquad $\tau_{i}$ is the time constant of inhibition.'
+        '{ }{ }{ } $E(t)~$ is the mean firing rate of the \textit{excitatory} population,'
+        '{ }{ }{ } $I(t)~$ is the mean firing rate of the \textit{inhibitory} population,'
+        '{ }{ }{ } $J_{ei}~$ is the weight of the connection to $E$ from $I$,'
+        '{ }{ }{ } $S_{e}~$ is an external current injected into the excitatory cells,'
+        '{ }{ }{ } $S_{i}~$ is an external current injected into the inhibitory cells,'
+        '{ }{ }{ } $\tau_{e}~$ is the time constant of excitation,'
+        '{ }{ }{ } $\tau_{i}~$ is the time constant of inhibition.'
         ''
         'For analytical purposes, it uses a linear response function'
-        '\qquad $G(x)=\beta(x-\theta)$'
-        'with slope $\beta$ and firing threshold $\theta$ where the values of $G(x)$ are'
+        '{ }{ }{ } $G(x)=\beta(x-\theta)$'
+        'with slope $\beta\;$ and firing threshold $\theta\;$ where the values of $G(x)\;$ are'
         'capped between 0 and 1.'
         ''
         ''
-        '\textbf{Inhibition-Stabilized Regime}'
+        '$\textbf{Inhibition-Stabilized Regime}$'
         'The inhibition-stabilized regime occurs when $\beta J_{ee}>1$. It exhibits a'
         'concomitant reduction in both E and I when the inhibitory cell is'
         'stimulated. The reduction of activity in the inhibitory cell under'
         'increased stimulation appears to be paradoxical.'
         ''
-        '\textbf{References}'
+        '$\textbf{References}$'
         'Tsodyks, Skaggs, Sejnowski \& McNaughton (1997) J Neurosci 17(11).'
         'Wilson \& Cowan (1972) Biophysics Journal 12(1).'
         };
     
     % Other Panels
     sys.panels.bdTimePortrait = [];
-    sys.panels.bdPhasePortrait.vecfield = true;
-    sys.panels.bdPhasePortrait.nullclines = true;
+    sys.panels.bdPhasePortrait.vectorfield = 'on';
+    sys.panels.bdPhasePortrait.nullclines = 'on';
     sys.panels.bdSolverPanel = [];
 end
 

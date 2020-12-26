@@ -53,10 +53,9 @@
 %   WilsonCowanNet
 %
 % AUTHOR
-%   Stewart Heitmann (2018b)
+%   Stewart Heitmann (2018b,2020a)
 
-
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -88,29 +87,29 @@ function sys = WilsonCowanRing(n,Ke,Ki,Je,Ji)
     % Handle to the ODE function
     sys.odefun = @odefun;
     
-    % Determine the best limits for Ke and Ki
-    KeLim = bdPanel.RoundLim(min(Ke),max(Ke));
-    KiLim = bdPanel.RoundLim(min(Ki),max(Ki));
-    
     % ODE parameters
-    sys.pardef = [ struct('name','wee',  'value',10,   'lim',[0 30]);
-                   struct('name','wei',  'value',8.5,  'lim',[0 30]);
-                   struct('name','wie',  'value',12,   'lim',[0 30]);
-                   struct('name','wii',  'value', 3,   'lim',[0 30]);
-                   struct('name','Ke',   'value', Ke,  'lim',KeLim);
-                   struct('name','Ki',   'value', Ki,  'lim',KiLim);                   
-                   struct('name','ke',   'value', 1,   'lim',[0 5]);
-                   struct('name','ki',   'value', 1,   'lim',[0 5]);                   
-                   struct('name','be',   'value', 2,   'lim',[0 10]);
-                   struct('name','bi',   'value', 3,   'lim',[0 10]);
-                   struct('name','Je',   'value', Je,   'lim',[0 5]); 
-                   struct('name','Ji',   'value', Ji,   'lim',[0 5]);
-                   struct('name','taue', 'value', 10,   'lim',[1 20]);
-                   struct('name','taui', 'value', 30,   'lim',[1 20])];
+    sys.pardef = [ 
+        struct('name','wee',  'value',10,   'lim',[0 30])
+        struct('name','wei',  'value',8.5,  'lim',[0 30])
+        struct('name','wie',  'value',12,   'lim',[0 30])
+        struct('name','wii',  'value', 3,   'lim',[0 30])
+        struct('name','Ke',   'value', Ke,  'lim',[0 1])
+        struct('name','Ki',   'value', Ki,  'lim',[0 1])                   
+        struct('name','ke',   'value', 1,   'lim',[0 5])
+        struct('name','ki',   'value', 1,   'lim',[0 5])                   
+        struct('name','be',   'value', 2,   'lim',[0 10])
+        struct('name','bi',   'value', 3,   'lim',[0 10])
+        struct('name','Je',   'value', Je,   'lim',[0 5]) 
+        struct('name','Ji',   'value', Ji,   'lim',[0 5])
+        struct('name','taue', 'value', 10,   'lim',[1 20])
+        struct('name','taui', 'value', 30,   'lim',[1 20])
+        ];
               
     % ODE variables
-    sys.vardef = [ struct('name','Ue', 'value',rand(n,1), 'lim',[0 1]);
-                   struct('name','Ui', 'value',rand(n,1), 'lim',[0 1])];
+    sys.vardef = [
+        struct('name','Ue', 'value',rand(n,1), 'lim',[0 1])
+        struct('name','Ui', 'value',rand(n,1), 'lim',[0 1])
+        ];
  
     % Default time span
     sys.tspan = [0 1000];
@@ -120,33 +119,33 @@ function sys = WilsonCowanRing(n,Ke,Ki,Je,Ji)
     
     % Latex Panel
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{WilsonCowanRing}'
+        '$\textbf{WilsonCowanRing}$'
         ''
         'A ring of non-locally coupled Wilson-Cowan equations where the nodes of'
         'the ring represent local populations of excitatory and inhibitory neurons.'
         'The dynamical equations are defined as'
         ''
-        '\qquad $\tau_e \; \dot U_e(x,t) = -U_e(x,t) + F\Big(w_{ee} V_e(x,t) - w_{ei} V_i(x,t) - b_e + J_e(x) \Big)$'
-        '\qquad $\tau_i \; \dot U_i(x,t) \; = -U_i(x,t) \; + F\Big(w_{ie} V_e(x,t) - w_{ii} V_i(x,t) - b_i + J_i(x) \Big)$'
+        '{ }{ }{ } $\tau_e \; \dot U_e(x,t) = -U_e(x,t) + F\Big(w_{ee} V_e(x,t) - w_{ei} V_i(x,t) - b_e + J_e(x) \Big)$'
+        '{ }{ }{ } $\tau_i \; \dot U_i(x,t) \; = -U_i(x,t) \; + F\Big(w_{ie} V_e(x,t) - w_{ii} V_i(x,t) - b_i + J_i(x) \Big)$'
         ''
         'where the non-local coupling is defined by the spatial convolution'
         ''
-        '\qquad $V(x,t) = k \int K(x) \; U(x,t) \; dx$'
+        '{ }{ }{ } $V(x,t) = k \int K(x) \; U(x,t) \; dx$'
         ''
         'where'
-        '\qquad $U_e(x,t)$ is the firing rate of the \textit{excitatory} population at position $x$,'
-        '\qquad $U_i(x,t)$ is the firing rate of the \textit{inhibitory} population at position $x$,'
-        '\qquad $V_e(x,t)$ is the spatial sum of \textit{excitation} at position $x$,'
-        '\qquad $V_i(x,t)$ is the spatial sum of \textit{inhibition} at position $x$,'
-        '\qquad $w_{ei}$ is the weight of the connection to $e$ from $i$,'
-        '\qquad $K_e(x)$ and $K_i(x)$ are spatial coupling kernels,'
-        '\qquad $k_e$ and $k_i$ are scaling constants,'
-        '\qquad $b_{e}$ and $b_{i}$ are threshold constants,'
-        '\qquad $J_{e}(x)$ and $J_i(x)$ are spatially extended injection currents,'
-        '\qquad $\tau_{e}$ and $\tau_{i}$ are time constants,'
-        '\qquad $F(v)=1/(1+\exp(-v))$ is a sigmoidal firing-rate function,'
+        '{ }{ }{ } $U_e(x,t)\;$ is the firing rate of the excitatory population at position $x$,'
+        '{ }{ }{ } $U_i(x,t)\;$ is the firing rate of the inhibitory population at position $x$,'
+        '{ }{ }{ } $V_e(x,t)\;$ is the spatial sum of excitation at position $x$,'
+        '{ }{ }{ } $V_i(x,t)\;$ is the spatial sum of inhibition at position $x$,'
+        '{ }{ }{ } $w_{ei}\;$ is the weight of the connection to $e\;$ from $i$,'
+        '{ }{ }{ } $K_e(x)\;$ and $K_i(x)\;$ are spatial coupling kernels,'
+        '{ }{ }{ } $k_e\;$ and $k_i\;$ are scaling constants,'
+        '{ }{ }{ } $b_{e}\;$ and $b_{i}\;$ are threshold constants,'
+        '{ }{ }{ } $J_{e}(x)\;$ and $J_i(x)\;$ are spatially extended injection currents,'
+        '{ }{ }{ } $\tau_{e}\;$ and $\tau_{i}\;$ are time constants,'
+        '{ }{ }{ } $F(v)=1/(1+\exp(-v))~$ is a sigmoidal firing-rate function.'
         ''
-        '\textbf{References}'
+        '$\textbf{References}$'
         'Wilson \& Cowan (1973) Kybernetik 13(2):55-80.'
         'Rule, Stoffregen \& Ermentrout (2011) PLoS Computational Biology 7(9).'
         'Heitmann, Rule, Truccolo \& Ermentrout (2017) PLoS Computational Biology 13(1).'

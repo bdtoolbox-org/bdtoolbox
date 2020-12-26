@@ -1,5 +1,8 @@
-% Analytic Signal and Hilbert Transform. 
-% Reproduced from the Matlab documentation for the hilbert function.
+% Analytic Signal and Hilbert Transform as described in the Matlab
+% documentation for the hilbert function.
+
+addpath ../../
+addpath ../../panels
 
 fs = 1e4;
 t = 0:1/fs:1; 

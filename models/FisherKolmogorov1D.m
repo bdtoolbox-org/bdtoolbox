@@ -19,9 +19,9 @@ function sys = FisherKolmogorov1D(n,bflag)
     %   gui = bdGUI(sys);                   % run the GUI application
     %
     % Authors
-    %   Stewart Heitmann (2019a)
+    %   Stewart Heitmann (2019a,2020a)
     
-    % Copyright (C) 2019 Stewart Heitmann
+    % Copyright (C) 2019-2020 Stewart Heitmann
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -111,22 +111,22 @@ function sys = FisherKolmogorov1D(n,bflag)
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{FisherKolmogorov1D}'
+        '$\textbf{FisherKolmogorov1D}$'
         ''
         'The Fisher-Kolmogorov equation in one spatial dimension'
-        '\qquad $\partial U/ \partial t = D \; \partial^2 U / \partial x^2 + r \; U \; (1-U)$'
+        '{ }{ }{ } $\partial U/ \partial t = D \; \partial^2 U / \partial x^2 + r \; U \; (1-U)$'
         'where'
-        '\qquad $U(x,t)$ is the density of the medium,'
-        '\qquad $D$ is the diffusion coefficient,'
-        '\qquad $r$ is the proliferation rate.'
+        '{ }{ }{ } $U(x,t)~$ is the density of the medium,'
+        '{ }{ }{ } $D~$ is the diffusion coefficient,'
+        '{ }{ }{ } $r~$ is the proliferation rate.'
         ''
-        num2str(n,'Space is discretised into $n{=}%d$ nodes using the method of lines.')
+        num2str(n,'Space is discretised into $n{=}%d~$ nodes using the method of lines.')
         ''
         'The Laplacian is approximated by the second-order central-difference'
-        '\qquad $\partial_{xx} U \approx \big( U_{i-1} - 2U_{i} + U_{i+1} \big) / dx^2$'
+        '{ }{ }{ } $\partial_{xx} U \approx \big( U_{i-1} - 2U_{i} + U_{i+1} \big) / dx^2$'
         ['with ' bflag ' boundary conditions.'];
         ''
-        '\textbf{References}'
+        '$\textbf{References}$'
         'Fisher (1937) The wave of advantageous genes. Annals of Eugenics. 7(4)'
         'Kolmogorov, Petrovski \& Piskunov (1937) Selected works of A.N. Kolmogorov I. p248-270'
         };

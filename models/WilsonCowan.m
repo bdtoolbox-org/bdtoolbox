@@ -24,9 +24,9 @@
 %    WilsonCowanRing
 %
 % AUTHOR
-%   Stewart Heitmann (2018b)
+%   Stewart Heitmann (2018b,2020a)
 
-% Copyright (C) 2016-2019 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -60,20 +60,24 @@ function sys = WilsonCowan()
     sys.odefun = @odefun;
     
     % ODE parameters
-    sys.pardef = [ struct('name','wee',  'value',11,   'lim',[0 30]);
-                   struct('name','wei',  'value',10,   'lim',[0 30]);
-                   struct('name','wie',  'value',10,   'lim',[0 30]);
-                   struct('name','wii',  'value', 1,   'lim',[0 30]);
-                   struct('name','be',   'value', 2.5, 'lim',[0 10]);
-                   struct('name','bi',   'value', 3,   'lim',[0 10]);
-                   struct('name','Je',   'value', 0,   'lim',[0 5]); 
-                   struct('name','Ji',   'value', 0,   'lim',[0 5]);
-                   struct('name','taue', 'value', 5,   'lim',[1 20]);
-                   struct('name','taui', 'value',10,   'lim',[1 20])];
+    sys.pardef = [ 
+        struct('name','wee',  'value',11,   'lim',[0 30])
+        struct('name','wei',  'value',10,   'lim',[0 30])
+        struct('name','wie',  'value',10,   'lim',[0 30])
+        struct('name','wii',  'value', 1,   'lim',[0 30])
+        struct('name','be',   'value', 2.5, 'lim',[0 10])
+        struct('name','bi',   'value', 3,   'lim',[0 10])
+        struct('name','Je',   'value', 0,   'lim',[0 5])
+        struct('name','Ji',   'value', 0,   'lim',[0 5])
+        struct('name','taue', 'value', 5,   'lim',[1 20])
+        struct('name','taui', 'value',10,   'lim',[1 20])
+        ];
               
     % ODE variables
-    sys.vardef = [ struct('name','E', 'value',rand, 'lim',[0 1]);
-                   struct('name','I', 'value',rand, 'lim',[0 1])];
+    sys.vardef = [
+        struct('name','E', 'value',rand, 'lim',[0 1])
+        struct('name','I', 'value',rand, 'lim',[0 1])
+        ];
  
     % Default time span
     sys.tspan = [0 300];
@@ -83,27 +87,27 @@ function sys = WilsonCowan()
     
     % Latex Panel
     sys.panels.bdLatexPanel.latex = {
-        '\textbf{WilsonCowan}'
+        '$\textbf{WilsonCowan}$'
         ''
         'Describes the mean firing rates of reciprocally-coupled populations'
         'of excitatory and inhibitory neurons'
         ''
-        '\qquad $\tau_e \; \dot E = -E + F\big(w_{ee} E - w_{ei} I - b_e + J_e\big)$'
-        '\qquad $\tau_i \; \dot I \; = -I \; + F\big(w_{ie} E - w_{ii} I - b_i + J_i \big)$'
+        '{ }{ }{ } $\tau_e \; \dot E = -E + F\big(w_{ee} E - w_{ei} I - b_e + J_e\big)$'
+        '{ }{ }{ } $\tau_i \; \dot I \; = -I \; + F\big(w_{ie} E - w_{ii} I - b_i + J_i \big)$'
         ''
         'where'
-        '\qquad $E(t)$ is the mean firing rate of the \textit{excitatory} population,'
-        '\qquad $I(t)$ is the mean firing rate of the \textit{inhibitory} population,'
-        '\qquad $F(v)=1/(1+\exp(-v))$ is a sigmoidal firing-rate function,'
-        '\qquad $w_{ei}$ is the weight of the connection to $E$ from $I$,'
-        '\qquad $b_{e}$ is the firing threshold for excitatory cells,'
-        '\qquad $b_{i}$ is the firing threshold for inhibitory cells,'
-        '\qquad $J_{e}$ is an external current injected into the excitatory cells,'
-        '\qquad $J_{i}$ is an external current injected into the inhibitory cells,'
-        '\qquad $\tau_{e}$ is the time constant of excitation,'
-        '\qquad $\tau_{i}$ is the time constant of inhibition.'
+        '{ }{ }{ } $E(t)\;$ is the mean firing rate of the excitatory population,'
+        '{ }{ }{ } $I(t)\;$ is the mean firing rate of the inhibitory population,'
+        '{ }{ }{ } $F(v)=1/(1+\exp(-v))\;$ is a sigmoidal firing-rate function,'
+        '{ }{ }{ } $w_{ei}\;$ is the weight of the connection to $E\;$ from $I$,'
+        '{ }{ }{ } $b_{e}\;$ is the firing threshold for excitatory cells,'
+        '{ }{ }{ } $b_{i}\;$ is the firing threshold for inhibitory cells,'
+        '{ }{ }{ } $J_{e}\;$ is an external current injected into the excitatory cells,'
+        '{ }{ }{ } $J_{i}\;$ is an external current injected into the inhibitory cells,'
+        '{ }{ }{ } $\tau_{e}\;$ is the time constant of excitation,'
+        '{ }{ }{ } $\tau_{i}\;$ is the time constant of inhibition.'
         ''
-        '\textbf{References}'
+        '$\textbf{References}$'
         'Wilson \& Cowan (1972) Biophysics Journal 12(1):1-24.'
         'Wilson \& Cowan (1973) Kybernetik 13(2):55-80.'
         'Kilpatrick (2013) Encyclopedia of Computational Neuroscience. Springer.'
@@ -142,12 +146,14 @@ function compound(ax,~,sol,wee,wei,wie,wii,be,bi,Je,Ji,taue,taui)
     E = sol.y(1,:);
     I = sol.y(2,:);
     
-    plot(t,E+I, 'k','Linewidth',2);
-    plot(t,E, 'k-.');
-    plot(t,I, 'k:');
-    legend('E+I','E','I');
-    xlim([t(1) t(end)]);
-    ylim([0 2]);
-    title('Compound Firing Rate')
-    xlabel('time');
+    plot(ax,t,E+I, 'k','Linewidth',2);
+    plot(ax,t,E, 'k-.');
+    plot(ax,t,I, 'k:');
+    legend(ax,'E+I','E','I');
+    t0 = min(t([1 end]));
+    t1 = max(t([1 end]));
+    xlim(ax,[t0 t1]);
+    ylim(ax,[0 2]);
+    title(ax,'Compound Firing Rate')
+    xlabel(ax,'time');
 end
