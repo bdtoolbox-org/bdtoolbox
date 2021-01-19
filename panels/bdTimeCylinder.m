@@ -2,7 +2,7 @@ classdef bdTimeCylinder < bdPanelBase
     %bdTimeCylinder Display panel for plotting polar time series
     %
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2021a)
 
     % Copyright (C) 2020 Stewart Heitmann
     % All rights reserved.
@@ -337,31 +337,31 @@ classdef bdTimeCylinder < bdPanelBase
             this.marker2c = line(this.axes2,NaN,NaN,'Marker','o','color','k','Linewidth',1,'MarkerFaceColor',[0.6 0.6 0.6]);
 
             % Customise the DataTipTemplate (line1a)
-            dt = datatip(this.line1a,NaN,NaN);
+            dt = datatip(this.line1a);
             this.line1a.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.line1a.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);
             
             % Customise the DataTipTemplate (line1b)
-            dt = datatip(this.line1b,NaN,NaN);
+            dt = datatip(this.line1b);
             this.line1b.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.line1b.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);
             
             % Customise the DataTipTemplate (marker1a)
-            dt = datatip(this.marker1a,NaN,NaN);
+            dt = datatip(this.marker1a);
             this.marker1a.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.marker1a.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);
             
             % Customise the DataTipTemplate (marker1b)
-            dt = datatip(this.marker1b,NaN,NaN);
+            dt = datatip(this.marker1b);
             this.marker1b.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.marker1b.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);
             
             % Customise the DataTipTemplate (marker1c)
-            dt = datatip(this.marker1c,NaN,NaN);
+            dt = datatip(this.marker1c);
             this.marker1c.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.marker1c.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);

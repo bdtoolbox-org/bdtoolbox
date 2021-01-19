@@ -2,7 +2,7 @@ classdef bdHilbert < bdPanelBase
     %bdHilbert Display panel for plotting the Hilbert transform of a time series
     %
     %AUTHORS
-    %  Stewart Heitmann (2017b,2018a,2019a,2020a)
+    %  Stewart Heitmann (2017b,2018a,2019a,2020a,2021a)
 
     % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
@@ -310,45 +310,45 @@ classdef bdHilbert < bdPanelBase
             this.trace1b = line(this.axes1,NaN,NaN, 'LineStyle','-', 'color',[0.8 0.8 0.8], 'Linewidth',1.5, 'PickableParts','none');
             
             % Construct the line plots (containing NaN)
-            this.line1a = line(this.axes1,NaN,NaN,'LineStyle','-','color',[0.5 0.5 0.5],'Linewidth',2);
-            this.line1b = line(this.axes1,NaN,NaN,'LineStyle','-','color',[0 0 0],'Linewidth',2);
-            this.line2a = line(this.axes2,NaN,NaN,'LineStyle','-','color',[0.5 0.5 0.5],'Linewidth',1);
-            this.line2b = line(this.axes2,NaN,NaN,'LineStyle','-','color',[0 0 0],'Linewidth',1.5);
+            this.line1a = line(this.axes1,NaN,NaN, 'LineStyle','-', 'color',[0.5 0.5 0.5], 'Linewidth',2);
+            this.line1b = line(this.axes1,NaN,NaN, 'LineStyle','-', 'color',[0 0 0],'Linewidth',2);
+            this.line2a = line(this.axes2,NaN,NaN, 'LineStyle','-', 'color',[0.5 0.5 0.5],'Linewidth',1);
+            this.line2b = line(this.axes2,NaN,NaN, 'LineStyle','-', 'color',[0 0 0],'Linewidth',1.5);
 
             % Construct the markers
-            this.marker1a = line(this.axes1,NaN,NaN,'Marker','h','color','k','Linewidth',0.75,'MarkerFaceColor','y','MarkerSize',10);
-            this.marker1b = line(this.axes1,NaN,NaN,'Marker','o','color','k','Linewidth',1,'MarkerFaceColor','w');
-            this.marker1c = line(this.axes1,NaN,NaN,'Marker','o','color','k','Linewidth',1,'MarkerFaceColor',[0.6 0.6 0.6]);
-            this.marker2a = line(this.axes2,NaN,NaN,'Marker','h','color','k','Linewidth',0.75,'MarkerFaceColor','y','MarkerSize',10);
-            this.marker2b = line(this.axes2,NaN,NaN,'Marker','o','color','k','Linewidth',1,'MarkerFaceColor','w');
-            this.marker2c = line(this.axes2,NaN,NaN,'Marker','o','color','k','Linewidth',1,'MarkerFaceColor',[0.6 0.6 0.6]);
+            this.marker1a = line(this.axes1,NaN,NaN, 'Marker','h', 'color','k', 'Linewidth',0.75, 'MarkerFaceColor','y', 'MarkerSize',10);
+            this.marker1b = line(this.axes1,NaN,NaN, 'Marker','o', 'color','k', 'Linewidth',1,    'MarkerFaceColor','w');
+            this.marker1c = line(this.axes1,NaN,NaN, 'Marker','o', 'color','k', 'Linewidth',1,    'MarkerFaceColor',[0.6 0.6 0.6]);
+            this.marker2a = line(this.axes2,NaN,NaN, 'Marker','h', 'color','k', 'Linewidth',0.75, 'MarkerFaceColor','y', 'MarkerSize',10);
+            this.marker2b = line(this.axes2,NaN,NaN, 'Marker','o', 'color','k', 'Linewidth',1,    'MarkerFaceColor','w');
+            this.marker2c = line(this.axes2,NaN,NaN, 'Marker','o', 'color','k', 'Linewidth',1,    'MarkerFaceColor',[0.6 0.6 0.6]);
 
             % Customise the DataTipTemplate (line1a)
-            dt = datatip(this.line1a,NaN,NaN);
+            dt = datatip(this.line1a);
             this.line1a.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.line1a.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);
             
             % Customise the DataTipTemplate (line1b)
-            dt = datatip(this.line1b,NaN,NaN);
+            dt = datatip(this.line1b);
             this.line1b.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.line1b.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);
             
             % Customise the DataTipTemplate (marker1a)
-            dt = datatip(this.marker1a,NaN,NaN);
+            dt = datatip(this.marker1a);
             this.marker1a.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.marker1a.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);
             
             % Customise the DataTipTemplate (marker1b)
-            dt = datatip(this.marker1b,NaN,NaN);
+            dt = datatip(this.marker1b);
             this.marker1b.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.marker1b.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);
             
             % Customise the DataTipTemplate (marker1c)
-            dt = datatip(this.marker1c,NaN,NaN);
+            dt = datatip(this.marker1c);
             this.marker1c.DataTipTemplate.DataTipRows(1).Label = 'time';
             this.marker1c.DataTipTemplate.DataTipRows(2) = [];
             delete(dt);
