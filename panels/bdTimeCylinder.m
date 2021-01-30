@@ -2,7 +2,7 @@ classdef bdTimeCylinder < bdPanelBase
     %bdTimeCylinder Display panel for plotting polar time series
     %
     %AUTHORS
-    %  Stewart Heitmann (2020a,2021a)
+    %  Stewart Heitmann (2020a,2020b)
 
     % Copyright (C) 2020 Stewart Heitmann
     % All rights reserved.

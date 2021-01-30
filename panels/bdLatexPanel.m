@@ -4,7 +4,7 @@ classdef bdLatexPanel < bdPanelBase
     %field of the system structure.
     %
     %AUTHORS
-    %Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2020a)   
+    %Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2020a,2020b)   
     
     % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.

@@ -2,7 +2,7 @@ classdef bdHilbert < bdPanelBase
     %bdHilbert Display panel for plotting the Hilbert transform of a time series
     %
     %AUTHORS
-    %  Stewart Heitmann (2017b,2018a,2019a,2020a,2021a)
+    %  Stewart Heitmann (2017b,2018a,2019a,2020a,2020b)
 
     % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.

@@ -2,7 +2,7 @@ classdef bdSystem < handle
     %bdSystem  Internal system object for bdGUI.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2020b)
 
     % Copyright (C) 2020 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
@@ -33,7 +33,7 @@ classdef bdSystem < handle
     % POSSIBILITY OF SUCH DAMAGE.
     
     properties (Constant=true)
-        version = '2020a';      % version number of the toolbox
+        version = '2020b';      % version number of the toolbox
     end
 
     events

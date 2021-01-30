@@ -3,7 +3,7 @@ classdef bdControlScalar < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2018a,2018b,2020a)
+    %  Stewart Heitmann (2018a,2018b,2020a,2020b)
 
     % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
@@ -129,8 +129,8 @@ classdef bdControlScalar < handle
             this.Slider.MinorTicksMode = 'manual';
             this.Slider.MajorTicks = [];
             this.Slider.MinorTicks = [];
-            %this.Slider.Interruptible = 'off';
-            %this.Slider.BusyAction = 'queue';
+            this.Slider.Interruptible = 'off';
+            this.Slider.BusyAction = 'queue';
             %this.Slider.Tooltip = ['Slider for ''',name,''''];
             this.Slider.ValueChangingFcn = @(~,evnt) SliderValueChanging(this,sysobj,xxxdef,xxxindx,evnt);
 

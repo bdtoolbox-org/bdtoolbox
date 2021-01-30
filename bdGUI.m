@@ -75,14 +75,14 @@ classdef bdGUI < matlab.apps.AppBase
     %   gui.fig is a handle to the application figure (read/write)
     %
     %SOFTWARE MANUAL
-    %   Handbook for the Brain Dynamics Toolbox: Version 2020a.
+    %   Handbook for the Brain Dynamics Toolbox: Version 2020.
     %
     %ONLINE COURSES (bdtoolbox.org)
     %   Toolbox Basics - Getting started with the Brain Dynamics Toolbox
     %   Modeller's Workshop - Building custom models with the Brain Dynamics Toolbox
     %
     %AUTHORS
-    %   Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2018b,2019a,2020a)
+    %   Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2018b,2019a,2020a,2020b)
 
     % Copyright (C) 2016-2020 QIMR Berghofer Medical Reserach Institute
     % All rights reserved.
@@ -591,56 +591,68 @@ classdef bdGUI < matlab.apps.AppBase
         function tspan = get.tspan(app)
             tspan = app.sysobj.tspan;
         end
+        
+        % Set tspan property
+        function set.tspan(app,value)
+            % update tspan
+            app.sysobj.tspan = value;
+                              
+            % adjust tval if necessary
+            if app.sysobj.tval < app.sysobj.tspan(1)
+                app.sysobj.tval = app.sysobj.tspan(1);
+            end
+            if app.sysobj.tval > app.sysobj.tspan(2)
+                app.sysobj.tval = app.sysobj.tspan(2);
+            end
+      
+            % notify everything to redraw
+            app.sysobj.NotifyRedraw([]);
+                        
+            % Execute the sysobj TimerFcn manually (and wait for it to complete)
+            app.sysobj.TimerFcn();
+        end
 
         % Get tstep property
         function tstep = get.tstep(app)
             tstep = app.sysobj.tstep;
         end
         
+        % Set tstep property
+        function set.tstep(app,value)
+            % update tstep
+            app.sysobj.tstep = value;
+                        
+            % notify everything to redraw
+            app.sysobj.NotifyRedraw([]);
+                        
+            % Execute the sysobj TimerFcn manually (and wait for it to complete)
+            app.sysobj.TimerFcn();
+        end
+
         % Get tval (time slider value) property
         function tval = get.tval(app)
             tval = app.sysobj.tval;
         end
         
-%         % Set tval (time slider value) property FIX ME
-%         function set.tval(gui,tval)
-%             % error handling
-%             if ~isnumeric(tval) || numel(tval)~=1
-%                 throwAsCaller(MException('bdGUI:tval','gui.tval must be numeric'));
-%             end
-%             
-%             % update the system structure
-%             gui.sysobj.tval = tval;
-%                   
-%             % notify everything to redraw
-%             gui.sysobj.NotifyRedraw([]);
-%             return
-%   
-%             
-%             % adjust tspan if necessary
-%             Tspan = gui.control.sys.tspan;
-%             if tval<Tspan(1) || tval>Tspan(2)
-%                 Tspan(1) = min(Tspan(1),tval);
-%                 Tspan(2) = max(Tspan(2),tval);
-%                 gui.control.sys.tspan = Tspan;
-%             
-%                 % Notify the control panel to refresh its widgets
-%                 notify(gui.control,'refresh');
-%             
-%                 % recompute and wait until complete
-%                 gui.control.RecomputeWait();
-%             else
-%                 % Notify the control panel to refresh its widgets
-%                 notify(gui.control,'refresh');
-% 
-%                 % update the indicies of the non-tranient time steps in sol.x
-%                 gui.control.tindx = (gui.control.sol.x >= gui.control.sys.tval);
-% 
-%                 % Notify all panels to redraw
-%                 notify(gui.control,'redraw');                
-%                 drawnow;
-%             end
-%         end
+        % Set tval property
+        function set.tval(app,value)
+            % update tval
+            app.sysobj.tval = value;
+                                   
+            % adjust tspan if necessary
+            tspan = app.sysobj.tspan;
+            if value<tspan(1) || value>tspan(2)
+                tspan(1) = min(tspan(1),value);
+                tspan(2) = max(tspan(2),value);
+                app.sysobj.tspan = tspan;
+            end
+            
+            % notify everything to redraw
+            app.sysobj.NotifyRedraw([]);
+                        
+            % Execute the sysobj TimerFcn manually (and wait for it to complete)
+            app.sysobj.TimerFcn();
+        end        
 
         % Get t (solution time domain) property
         function t = get.t(app)

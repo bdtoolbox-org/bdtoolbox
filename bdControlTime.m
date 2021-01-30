@@ -154,8 +154,8 @@ classdef bdControlTime < handle
             this.Slider.Layout.Column = [1 2];
             this.Slider.MajorTicks = [];
             this.Slider.MinorTicks = [];
-            %this.Slider.Interruptible = 'off';
-            %this.Slider.BusyAction = 'queue';
+            this.Slider.Interruptible = 'off';
+            this.Slider.BusyAction = 'queue';
             this.Slider.ValueChangingFcn = @(~,evnt) SliderChanging(this,sysobj,evnt);
            
             % update the widget values
