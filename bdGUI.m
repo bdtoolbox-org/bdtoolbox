@@ -84,7 +84,7 @@ classdef bdGUI < matlab.apps.AppBase
     %AUTHORS
     %   Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2018b,2019a,2020a,2020b)
 
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Reserach Institute
+    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
