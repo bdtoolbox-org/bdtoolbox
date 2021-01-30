@@ -814,12 +814,14 @@ classdef bdSystem < handle
                         % if the final state of the solution is not finite then abort
                         if ~all(isfinite(Y0))
                             warning('Evolve halted. Solution has blown out.')
+                            sysobj.halt = true;
+                            sysobj.NotifyRedraw([]);
                             return
                         end
-                
+                        
                         % update the initial conditions
                         sysobj.SetVar0(Y0);
-
+                
                         % update the indicators
                         sysobj.indicators.nevolve = sysobj.indicators.nevolve + 1;
                     end

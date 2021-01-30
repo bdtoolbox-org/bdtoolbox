@@ -198,10 +198,13 @@ classdef bdLatexPanel < bdPanelBase
             
             % Copy text from the Text Area into the Axes.
             % Start at the bottom line and work upwards.
+            % Note that matlab does not update Extent properties with exact
+            % values until after the graphics have been rendered. Hence the
+            % widths and heights of the text objects in this code will be
+            % slightly out when this code block is run for the first time.
             ypos = 1;
             for indx = ntext:-1:1
-                this.textobj = text(this.axes,1,ypos, ...
-                ...    ['{ }',this.textarea.Value{indx}], ...
+                textobj = text(this.axes,1,ypos, ...
                     this.textarea.Value{indx}, ...
                     'interpreter','latex', ...
                     'Units','pixels', ...
@@ -211,7 +214,7 @@ classdef bdLatexPanel < bdPanelBase
                     'PickableParts','none'); 
                 
                 % track the maximal text width
-                textw = this.textobj.Extent(1) + this.textobj.Extent(3) + 10;
+                textw = textobj.Extent(1) + textobj.Extent(3) + 10;
                 maxtextw = max(maxtextw,textw);     
                 
                 % next line position

@@ -214,10 +214,10 @@ classdef bdGUI < matlab.apps.AppBase
             end
             
             if isempty(sol)
-                % Construct sysobj from sys
+                % Construct sysobj from sys only
                 app.sysobj = bdSystem(sys);
 
-                % Run the solver for the first time (FIX ME)
+                % Run the solver for the first time
                 app.sysobj.recompute = true;
             else
                 % Construct sysobj from sys and import the given sol.
@@ -354,20 +354,30 @@ classdef bdGUI < matlab.apps.AppBase
             % Load the display panels 
             app.PanelMgr.ImportPanels(sys.panels);
             
-            %ensure the first Tab is selected
-%             if numel(app.TabGroup.Children) > 1
-%                 app.TabGroup.SelectedTab = app.TabGroup.Children(1);
-%                 bdPanelBase.FocusMenu(app.TabGroup);
-%             end
-            
-            % call the timer function manually to force the first compute
-            app.sysobj.TimerFcn();
-
-            % listen to sysobj for PUSH events
-            app.plistener = listener(app.sysobj,'push',@(~,~) app.Pusher());
-
             % listen to sysobj for REDRAW events
             app.rlistener = listener(app.sysobj,'redraw',@(~,evnt) app.Redraw(evnt));
+
+            % Initiate the first compute (before starting the timer).
+            if app.sysobj.recompute
+                % call the solver 
+                app.sysobj.Solve();
+
+                % interpolate the solution
+                app.sysobj.indicators.InterpolatorInit();
+                app.sysobj.Interpolate();
+                app.sysobj.indicators.InterpolatorDone();
+
+                % redraw all the panels
+                app.sysobj.indicators.GraphicsInit();
+                app.sysobj.NotifyRedraw([]);
+                app.sysobj.indicators.GraphicsUpdate();
+                
+                % clear the recompute flag
+                app.sysobj.recompute = false;
+            end
+               
+            % listen to sysobj for PUSH events
+            app.plistener = listener(app.sysobj,'push',@(~,~) app.Pusher());
 
             % start the timer proper
             app.sysobj.TimerStart();            
