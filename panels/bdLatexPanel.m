@@ -47,7 +47,6 @@ classdef bdLatexPanel < bdPanelBase
         sysobj              bdSystem
         tab                 matlab.ui.container.Tab
         scrollpanel         matlab.ui.container.Panel
-        textobj             matlab.graphics.primitive.Text
         menu                matlab.ui.container.Menu
         menuDock            matlab.ui.container.Menu
     end
@@ -132,7 +131,7 @@ classdef bdLatexPanel < bdPanelBase
             this.textarea.Layout.Column = 1;
             this.textarea.FontName = 'Courier';
             this.textarea.Visible = 'off';
-            
+                   
             % apply the custom options (and render the image)
             this.options = opt;
 
@@ -140,7 +139,7 @@ classdef bdLatexPanel < bdPanelBase
             bdPanelBase.FocusMenu(tabgrp);
             
             % make the grid visible
-            GridLayout.Visible = 'on';            
+            GridLayout.Visible = 'on';   
         end
         
         function opt = get.options(this)
@@ -182,7 +181,7 @@ classdef bdLatexPanel < bdPanelBase
     methods (Access=private)
 
         function Render(this)
-            %disp('Render()');
+            %disp('bdLatexPanel.Render()');
             
             % Number of latex strings to render
             ntext = numel(this.textarea.Value);
@@ -221,13 +220,12 @@ classdef bdLatexPanel < bdPanelBase
                     ypos = ypos + fontsize/2;
                 else
                     % non-empty lines are full height
-                    texth = this.textobj.Extent(4);
-                    ypos = ypos + 1.025*texth;
+                    ypos = textobj.Extent(2) + 1.025*textobj.Extent(4);
                 end                
             end                  
                       
             % Resize the axes (vertically) based on the final (highest) text object
-            ytop = this.textobj.Extent(2) + this.textobj.Extent(4);
+            ytop = textobj.Extent(2) + textobj.Extent(4);
             ybot = this.scrollpanel.Position(4) - this.axes.Position(4);
             this.axes.Position(4) = ytop + 10;            
             this.axes.Position(2) = max(ybot,1);

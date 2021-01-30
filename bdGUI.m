@@ -309,15 +309,7 @@ classdef bdGUI < matlab.apps.AppBase
             app.TabGroup.Layout.Row = [1 2];
             app.TabGroup.Layout.Column = 1;
             app.TabGroup.SelectionChangedFcn = @(tabgrp,~) bdPanelBase.FocusMenu(tabgrp);
-                        
-            % Control Panel container
-            app.ControlPanel = uipanel(app.GridLayout);
-            app.ControlPanel.Title = [];
-            app.ControlPanel.Layout.Row = 1;
-            app.ControlPanel.Layout.Column = 2;
-            app.ControlPanel.BorderType = 'none';
-            bdControlPanel(app.sysobj,app.ControlPanel);
-            
+                                 
             % Solver Panel container
             app.SolverPanel = uipanel(app.GridLayout);
             app.SolverPanel.Title = [];
@@ -334,6 +326,14 @@ classdef bdGUI < matlab.apps.AppBase
             app.TimePanel.BorderType = 'none';
             bdControlTime(app.sysobj,app.TimePanel);
                         
+            % Control Panel container
+            app.ControlPanel = uipanel(app.GridLayout);
+            app.ControlPanel.Title = [];
+            app.ControlPanel.Layout.Row = 1;
+            app.ControlPanel.Layout.Column = 2;
+            app.ControlPanel.BorderType = 'none';
+            bdControlPanel(app.sysobj,app.ControlPanel);
+            
             % Create the panel manager         
             app.PanelMgr = bdPanelMgr(app.TabGroup,app.sysobj);
 
@@ -347,17 +347,19 @@ classdef bdGUI < matlab.apps.AppBase
             % Populate the New-Panel menu items
             app.PanelMgr.PanelMenus(app.NewPanelMenu,sys.panels);
 
-            % Load the display panels and ensure the first Tab is selected
-            app.PanelMgr.ImportPanels(sys.panels);
-            if numel(app.TabGroup.Children) > 1
-                app.TabGroup.SelectedTab = app.TabGroup.Children(1);
-                bdPanelBase.FocusMenu(app.TabGroup);
-            end
-            
-            % make the figure visible
-            app.fig.Visible = syntax.Results.Visible;
+            % make the figure visible (before loading the display panels)
             drawnow;
-                   
+            app.fig.Visible = syntax.Results.Visible;
+            
+            % Load the display panels 
+            app.PanelMgr.ImportPanels(sys.panels);
+            
+            %ensure the first Tab is selected
+%             if numel(app.TabGroup.Children) > 1
+%                 app.TabGroup.SelectedTab = app.TabGroup.Children(1);
+%                 bdPanelBase.FocusMenu(app.TabGroup);
+%             end
+            
             % call the timer function manually to force the first compute
             app.sysobj.TimerFcn();
 

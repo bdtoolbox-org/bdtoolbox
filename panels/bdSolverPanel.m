@@ -245,7 +245,7 @@ classdef bdSolverPanel < bdPanelBase
                                     
             % Redraw everything
             this.Render();
-            drawnow;
+            %drawnow;
             
             % Push the new settings onto the UNDO stack
             notify(this.sysobj,'push');

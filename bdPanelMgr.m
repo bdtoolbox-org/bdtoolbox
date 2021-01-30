@@ -74,7 +74,20 @@ classdef bdPanelMgr < handle
 
             % call the panel's constructor, eg: bdTimePotrait(tabgrp,sysobj,opt)
             panelobj = feval(panelname,this.TabGroup,this.sysobj,opt);
-                    
+            
+            % force a redraw of the panel
+            drawnow;
+            
+            % Hack to refresh the vertical spacing of the text in bdLatexPanel.
+            % The hack is reuired because the Extent properties of the text objects
+            % are not finalized until the graphics are rendered. This means the
+            % line spacing cannot be corrected until after the panel is rendered.
+            switch panelname
+                case 'bdLatexPanel'
+                    % updating the options forces the text objects to be redrawn
+                    panelobj.options = panelobj.options;
+            end
+            
             % keep a copy of the handle in this.panelhndls
             if ~isfield(this.panelhands,panelname)
                 this.panelhands.(panelname) = panelobj;
@@ -124,7 +137,6 @@ classdef bdPanelMgr < handle
                         % construct a new panel object
                         this.NewPanel(panelname,opt);
                     end
-                    drawnow;
                 end
                 
                 if nout > 0
