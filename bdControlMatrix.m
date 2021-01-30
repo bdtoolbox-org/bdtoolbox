@@ -355,8 +355,8 @@ classdef bdControlMatrix < handle
                     title = ['Initial Condition ''',name,''''];
             end
             fig = ancestor(this.Button,'figure');
-            xpos = fig.Position(1) + fig.Position(3)+ randi(30);
-            ypos = fig.Position(2) + this.Button.Position(2);
+            xpos = fig.Position(1) + randi(100);
+            ypos = fig.Position(2) + randi(100);
             this.dialogbox.OpenFigure(xpos,ypos,title);
         end
         
