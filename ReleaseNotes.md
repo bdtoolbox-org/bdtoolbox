@@ -1,6 +1,13 @@
 # Release Notes
 # Brain Dynamics Toolbox
 
+## Version 2020b
+Released 31 Jan 2021
+
+Minor bug fixes and improvements. No new features.
+
+Requires Matlab 2019b or newer.
+
 ## Version 2020a
 Released 26 Dec 2020
 
@@ -15,7 +22,7 @@ Released 6 Aug 2019
 
 This release includes new example scripts for the Morris-Lecar neuron and Tsodyk's (1999) inhibition-stabilised neuron. As well as examples of Partial Differential Equations such as the scalar wave equations and the Fisher-Kolmogorov equations. The damped-and-driven pendulum is included too. The Breakspear-Terry-Friston (2003) model has been revamped. New command-line tools (bdSetPar, bdSetVar, bdSetLag, bdGetPar, bdGetVar, bdGetLag) make it easier to manipulate models in user-defined scripts. The nullclines in the Phase-Portrait have been made smoother. Trajectory end-points in most panels are now marked with a dark filled circle. The correlation panel has an improved colormap.
 
-Requires MATLAB 2015a or newer.
+Requires Matlab 2015a or newer.
 
 ## Version 2018b
 Released 21 Oct 2018

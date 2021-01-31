@@ -1,5 +1,5 @@
 # Brain Dynamics Toolbox
-## Version 2020a
+## Version 2020b
 
 The [Brain Dynamics Toolbox](https://bdtoolbox.org) is open software for simulating dynamical systems in neuroscience.
 
