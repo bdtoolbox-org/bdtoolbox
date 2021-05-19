@@ -2,9 +2,9 @@ classdef bdPanelBase < handle
     % Base class for display panels in the Brain Dynamics Toolbox GUI.
     %
     % AUTHORS
-    % Stewart Heitmann (2018a,2020a)   
+    % Stewart Heitmann (2018a,2020a,2021a)   
     
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -64,6 +64,9 @@ classdef bdPanelBase < handle
         function val = GetOption(opt,fieldname,val)
             if ~isempty(opt) && isfield(opt,fieldname)
                 if isequal(class(opt.(fieldname)),class(val))
+                    val = opt.(fieldname);
+                elseif isequal(class(opt.(fieldname)),'matlab.lang.OnOffSwitchState') && isequal(class(val),'char')
+                    % special case where char (eg 'on') and OnOffState are interoperable 
                     val = opt.(fieldname);
                 else
                     warning(sprintf('option.%s should be %s not %s',fieldname,class(val), class(opt.(fieldname))));
