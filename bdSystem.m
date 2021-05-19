@@ -1,10 +1,15 @@
 classdef bdSystem < handle
-    %bdSystem  Internal system object for bdGUI.
-    % 
+    %bdSystem  System object for the Brain Dynamics Toolbox.
+    % The bdSystem object embodies the core simulation engine of a model as
+    % defined by the model's system structure (sys). As such, it operates as
+    % the computational heart of the graphical user interface (bdGUI).
+    % Nonetheless, the bdSystem object can still be instantiated independently
+    % of the GUI, allowing the model to be run programmatically in scripts.
+    %
     %AUTHORS
-    %  Stewart Heitmann (2020a,2020b)
+    %  Stewart Heitmann (2020a,2020b,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2021 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -33,7 +38,7 @@ classdef bdSystem < handle
     % POSSIBILITY OF SUCH DAMAGE.
     
     properties (Constant=true)
-        version = '2020b';      % version number of the toolbox
+        version = '2021a';      % version number of the toolbox
     end
 
     events
@@ -67,9 +72,6 @@ classdef bdSystem < handle
         odeoption
         ddeoption
         sdeoption
-        
-        % solution structure
-        sol
     end
     
     properties (Access=public)       
@@ -89,9 +91,10 @@ classdef bdSystem < handle
         sdeG = []
         sdesolver = []
                
-        % solution data (work in progress)
-        tdomain
-        vars
+        % solution data
+        sol                 % the variable-step solution returned by the solver
+        tdomain             % fixed-step time domain requested by the user
+        vars                % fixed-step interpolated solution
         
         % private switches
         recompute
@@ -104,7 +107,7 @@ classdef bdSystem < handle
         timer
         laststate
         eventdata
-        %presets
+        odeOutputTic
     end
         
     methods (Access=public) 
@@ -181,15 +184,14 @@ classdef bdSystem < handle
             addlistener(sysobj,'odeoption', 'PostSet',@(src,evnt) sysobj.PropListener(src,evnt));
             addlistener(sysobj,'ddeoption', 'PostSet',@(src,evnt) sysobj.PropListener(src,evnt));
             addlistener(sysobj,'sdeoption', 'PostSet',@(src,evnt) sysobj.PropListener(src,evnt));
-            addlistener(sysobj,'sol',       'PostSet',@(src,evnt) sysobj.PropListener(src,evnt));
             
             % Init the timer object but don't start it         
             sysobj.timer = timer('BusyMode','drop', ...
                 'ExecutionMode','fixedSpacing', ...
-                'Period',0.05, ...
+                'Period',0.03, ...
                 'TimerFcn', @(~,~) sysobj.TimerFcn());
             
-            % Notify all panels to redraw (and set the recompute flag)
+            % Notify all panels to redraw
             sysobj.NotifyRedraw([]);
             
             % If the caller gave us a precomputed sol structure then override
@@ -552,7 +554,7 @@ classdef bdSystem < handle
                     end
                     
                     % call the solver
-                    sysobj.sol = solver(sysobj.odefun, ...
+                    sol = solver(sysobj.odefun, ...
                         tspan, ...
                         Y0, ...
                         option, ...
@@ -565,7 +567,7 @@ classdef bdSystem < handle
                     solver = sysobj.ddesolver{sysobj.solveritem};
                     
                     % call the solver (backwards integration is not meaningful for DDEs)
-                    sysobj.sol = solver(sysobj.ddefun, ...
+                    sol = solver(sysobj.ddefun, ...
                         lags, ...
                         Y0, ...
                         sysobj.tspan, ...
@@ -581,7 +583,7 @@ classdef bdSystem < handle
                     solver = sysobj.sdesolver{sysobj.solveritem};
                     
                     % call the solver (backwards intergration is not supported)
-                    sysobj.sol = solver(sysobj.sdeF, ...
+                    sol = solver(sysobj.sdeF, ...
                         sysobj.sdeG, ...
                         sysobj.tspan, ...
                         Y0, ...
@@ -589,10 +591,21 @@ classdef bdSystem < handle
                         parms{:});                    
             end
             
-            sysobj.laststate.sol = true;
-            %disp('Solve Complete');
+            % (In)sanity check to verify that the sol structure returned by the
+            % solver is valid. In theory, it should always be valid but I have
+            % seen invalid sol structures occur when there are race conditions
+            % between the TimerFcn and callbacks of the graphical widgets. 
+            if ~isfield(sol,'x') || ~isfield(sol,'y') || ~isfield(sol,'stats')
+                warning('Solver returned an invalid ''sol'' structure');
+            else
+                % apply the computed solution to sysobj
+                sysobj.sol = sol;            
+                % flag the change of sol in the eventdata (used by NotifyRedraw)
+                sysobj.eventdata.sol = true;
+            end
+            
         end
-                
+                        
         function Evolve(sysobj,nrep)
             %disp('Evolve');
             
@@ -631,6 +644,7 @@ classdef bdSystem < handle
         
         function Interpolate(sysobj)
             % Updates this.tdomain and this.vars from this.sol
+            %disp('Interpolate');
             
             % enumerate the time domain
             if sysobj.backward      
@@ -806,6 +820,9 @@ classdef bdSystem < handle
                 if sysobj.recompute && ~sysobj.halt
                     %fprintf('bdSystem.TimerFcn: %s\n', datetime('now'));
                     
+                    % reset the recompute flag
+                    sysobj.recompute = false;
+
                     % evolve the initial conditions (if required)
                     if sysobj.evolve
                         % extract the final state as a monolithic vector
@@ -813,7 +830,9 @@ classdef bdSystem < handle
                 
                         % if the final state of the solution is not finite then abort
                         if ~all(isfinite(Y0))
-                            warning('Evolve halted. Solution has blown out.')
+                            disp('Evolve halted. Solution has blown out.')
+                            sysobj.indicators.ErrorUpdate('Overflow','Evolution halted. Solution has blown out to infinity.');
+                            sysobj.evolve = false;
                             sysobj.halt = true;
                             sysobj.NotifyRedraw([]);
                             return
@@ -821,36 +840,41 @@ classdef bdSystem < handle
                         
                         % update the initial conditions
                         sysobj.SetVar0(Y0);
-                
+                        sysobj.NotifyRedraw([]);
+                        sysobj.recompute = false;
+
                         % update the indicators
                         sysobj.indicators.nevolve = sysobj.indicators.nevolve + 1;
                     end
                     
-                    % call the solver 
-                    sysobj.Solve();
-                    
-                    % interpolate the solution
+                    % Call the solver. It updates sysobj.sol and sets sysobj.eventdata.sol=true.
+                    sysobj.Solve();     % Solve repeatedly calls the odeOutputFcn to report progress.
+
+                    % Warn of overflow (if relevant) but do not halt.
+                    if ~all(isfinite(sysobj.sol.y(:,end)))
+                        sysobj.indicators.ErrorUpdate('Overflow','Solution has blown out to infinity');
+                    else
+                        % clear the error indicator
+                        sysobj.indicators.ErrorUpdate([],[]);
+                    end
+
+                    % Interpolate the solution. It updates sysobj.tdomain and sysobj.vars.
                     sysobj.indicators.InterpolatorInit();
                     sysobj.Interpolate();
                     sysobj.indicators.InterpolatorDone();
                     
-                    % redraw all the panels
+                    % redraw all panels
                     sysobj.indicators.GraphicsInit();
                     sysobj.NotifyRedraw([]);
                     sysobj.indicators.GraphicsUpdate();
-                    
-                    % reset the recompute flag
-                    sysobj.recompute = false;
-
+                     
                     % allow the panels to update the controls
                     notify(sysobj,'respond');
                     sysobj.indicators.GraphicsDone();
                 end
             catch ME
                 % display the warning
-                %this.ui_warning.String = ME.identifier;
-                %this.ui_warning.TooltipString = ME.message;
-                %this.ui_warning.ForegroundColor = 'r';
+                sysobj.indicators.ErrorUpdate(ME.identifier,ME.message);
                 warning(ME.identifier,'%s',ME.message);
                 for indx=1:size(ME.stack)
                     [~,filename,fileext] = fileparts(ME.stack(indx).file);
@@ -861,14 +885,16 @@ classdef bdSystem < handle
                 
                 % halt the solver
                 sysobj.halt = true;
-                
-                % notify the widgets to refresh themselves
+                                
+                % redraw all panels (including the HALT button)
+                sysobj.indicators.GraphicsInit();
                 sysobj.NotifyRedraw([]);
+                sysobj.indicators.GraphicsUpdate();
             end
-                
         end
         
         function TimerStart(sysobj)
+            % Start the timer (if it is not already running)
             switch sysobj.timer.Running
                 case 'off'
                     start(sysobj.timer);
@@ -876,6 +902,7 @@ classdef bdSystem < handle
         end
         
         function TimerStop(sysobj)
+            % Stop the timer (if it is running)
             switch sysobj.timer.Running
                 case 'on'
                     stop(sysobj.timer);
@@ -966,16 +993,18 @@ classdef bdSystem < handle
                 exlisteners(ix).Enabled = false;
             end
             
+            % notify all widgets/panels to redraw themselves
             notify(sysobj,'redraw',eventdata);
-            drawnow;
             
             % re-enable listeners in the exclusion set
             for ix = 1:numel(exlisteners)
                 exlisteners(ix).Enabled = true;
             end
         end
-        
+               
         function delete(sysobj)
+            % Ensure we stop the timer when the sysobj is destroyed
+            % otherwise it will keep running.
             sysobj.TimerStop();
         end
     end
@@ -1000,25 +1029,49 @@ classdef bdSystem < handle
         end
         
         function status = odeOutputFcn(sysobj,t,~,flag,varargin)
-            % Callback for ODE solver output
-            persistent tic0
+            % The callback for ODE solver output. It used by bdGUI
+            % to update the progress indicators (via sysobj).
             switch flag
                 case 'init'
                     % reset the indicators
                     sysobj.indicators.SolverInit(t);
-                    tic0 = tic;
-                    
+                    sysobj.odeOutputTic = tic();
+
+                    % force a redraw to update the progress display and
+                    % to execute any callbacks (such as the HALT button).
+                    drawnow limitrate
+                   
                 case '' 
                     % update the indicators periodically
-                    if toc(tic0) > 0.15
+                    if toc(sysobj.odeOutputTic) > 0.2
+                        % update the solver progress indicator
                         sysobj.indicators.SolverUpdate(t(end));
-                        tic0 = tic;
+
+                        % force a redraw to update the progress display and
+                        % to execute any callbacks (such as the HALT button).
+                        % We don't want to do this too often otherwise matlab
+                        % can crash. Hence we use the time since the last
+                        % call (odeOutputTic) to limit the number of calls.
+                        drawnow limitrate
+
+                        % record the time of the last drawnow
+                        sysobj.odeOutputTic = tic();
                     end
                     
                 case 'done'
-                    sysobj.indicators.SolverDone();
+                    if sysobj.halt
+                        % update the solver time indicator but not the progress indicator
+                        sysobj.indicators.SolverHalt();
+                    else
+                        % update both the solver time and progress indicators
+                        sysobj.indicators.SolverDone();
+                    end
+                    
+                    % force a redraw to update the progress display and
+                    % to execute any callbacks (such as the HALT button).
+                    drawnow limitrate
             end 
-            
+
             % return the state of the HALT button
             status = sysobj.halt;
         end
@@ -1029,10 +1082,10 @@ classdef bdSystem < handle
         function sysout = syscheck(sys)
             % Checks a system structure for validity.
             %    sysout = bdSystem.syscheck(sys)
-            % Validates the contents of sys and throws an exception if a
-            % problem is found. If no problem is found then it returns a
-            % 'safe' copy of sys in which all missing fields are filled
-            % with their default values.
+            % It validates the contents of the incoming sys and throws an
+            % exception if a problem is found. If no problem is found then
+            % it returns a 'safe' copy of sys in which all missing fields
+            % are filled with their default values.
             
             % init empty output
             sysout = [];
@@ -1500,8 +1553,9 @@ classdef bdSystem < handle
             end    
         end
 
+        
         % The functionality of bdSolve but without the error checking on sys
-        function sol = solvesys(sys,tspan,solverfun,solvertype)
+        function sol = quicksolve(sys,tspan,solverfun,solvertype)
             % The type of the solver function determines how we apply it 
             switch solvertype
                 case 'odesolver'
@@ -1527,6 +1581,7 @@ classdef bdSystem < handle
                     % case of an unsupported solver function
                     solvername = func2str(solverfun);
                     throw(MException('bdtoolkit:solve:solverfun','Unknown solvertype for solver ''@%s''. Specify an appropriate solvertype in the calling function.',solvername));
+                    
                 otherwise
                     throw(MException('bdtoolkit:solve:solvertype','Invalid solvertype ''%s''',solvertype));
                 end        
