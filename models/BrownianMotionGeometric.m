@@ -1,26 +1,17 @@
-% BrownianMotion  SDE model of Geometric Brownian motion
-%   Ito Stochastic Differential Equation (SDE)
+% BrownianMotionGeometric  bdtoolbox model of geometric Brownian motion
+%   The Ito form of the Stochastic Differential Equation (SDE) is
 %        dy(t) = mu*y(t)*dt + sigma*y(t)*dW(t)
-%   decribing geometric Brownian motion. The Brain Dynamics toolbox
-%   requires the determeinstic and stochastic parts of the SDE to be
-%   implemented separately. In this case, the deterministic coefficient is  
-%        F(t,y) = mu*y(t)
-%   and the stochastic coefficient is
-%        G(t,y) = sigma*y(t)
-%   The toolbox numerically integrates the combined equations using the
-%   fixed step Euler-Maruyama method. Specifically, each step is computed as
-%        dy(t) = F(t,y)*dt + G(t,y)*sqrt(dt)*randn()
-%   where F(t,y) is implemented by sys.odefun(t,y,a,b)
-%   and G(t,y) is implemented by sys.sdefun(t,y,a,b).
+%   where the drift and diffusion coefficients are both proproptional to y(t).
 %
 % Example:
-%   sys = BrownianMotion();       % construct the system struct
-%   gui = bdGUI(sys);             % open the Brain Dynamics GUI
+%   n = 100;                            % number of random processes
+%   sys = BrownianMotionGeometric(n);   % construct the system struct
+%   gui = bdGUI(sys);                   % open the Brain Dynamics GUI
 %
 % Authors
-%   Stewart Heitmann (2016a,2017a,2018a,2020a)
+%   Stewart Heitmann (2016a,2017a,2018a,2020a,2021a)
 
-% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -47,37 +38,45 @@
 % LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 % ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 % POSSIBILITY OF SUCH DAMAGE.
-function sys = BrownianMotion()
+function sys = BrownianMotionGeometric(n)
     % Handles to our SDE functions
     sys.sdeF   = @sdeF;                 % deterministic coefficients
-    sys.sdeG   = @sdeG;                 % stochastic coefficints
+    sys.sdeG   = @sdeG;                 % stochastic coefficients
 
     % Our SDE parameters
-    sys.pardef = [ struct('name','mu',    'value',-0.1);
-                   struct('name','sigma', 'value', 0.1) ];
+    sys.pardef = [ 
+        struct('name','mu',    'value', 0.5,  'lim',[0 1])
+        struct('name','sigma', 'value', 0.5,  'lim',[0 1])
+        ];
                
     % Our SDE variables
-    sys.vardef =  struct('name','Y', 'value',5);
+    sys.vardef =  struct('name','Y', 'value',ones(n,1), 'lim',[0 20]);
     
     % Default time span
-    sys.tspan = [0 10];
+    sys.tspan = [0 5];
     sys.tstep = 0.01;
               
    % Specify SDE solvers and default options
     sys.sdesolver = {@sdeEM};           % Relevant SDE solvers
     sys.sdeoption.InitialStep = 0.01;   % SDE solver step size (optional)
-    sys.sdeoption.NoiseSources = 1;     % Number of driving Wiener processes
+    sys.sdeoption.NoiseSources = n;     % Number of driving Wiener processes
 
     % Include the Latex (Equations) panel in the GUI
     sys.panels.bdLatexPanel.title = 'Equations'; 
     sys.panels.bdLatexPanel.latex = {
-        '$\textbf{Brownian Motion}$'
+        '$\textbf{Geometric Brownian Motion}$'
         ''
-        'An Ito Stochastic Differential Equation of geometric Brownian motion'
+        'The Ito Stochastic Differential Equation is'
         '{ }{ }{ } $dY = \mu\,Y\,dt + \sigma\,Y\,dW_t$'
         'where'
-        '{ }{ }{ } $Y(t)\;$ is the dynamic variable,'
-        '{ }{ }{ } $\mu\;$ and $\sigma\;$ are scalar constants.'
+        '{ }{ }{ } $Y(t)\;$ is the random variable,'
+        '{ }{ }{ } $\mu\;$ is the drift parameter,'
+        '{ }{ }{ } $\sigma\;$ is the diffusion parameter.'
+        ''
+        'The random variable $Y(t)\;$ is normally distributed with mean $Y_0 \exp(\mu t)\;$'
+        'and variance $Y_0^2 \exp(2\mu t) (\exp(\sigma^2 t) - 1)$.'
+        ''
+        sprintf('This simulation has n=%d independent processes',n)        
         };
     
     % Include the Time Portrait panel in the GUI
@@ -88,11 +87,12 @@ function sys = BrownianMotion()
 end
 
 % The deterministic coefficient function.
-function F = sdeF(~,Y,a,~)  
-    F = a*Y;
+function F = sdeF(t,Y,mu,sigma) 
+    F = mu.*Y;
 end
 
 % The noise coefficient function.
-function G = sdeG(~,Y,~,b)  
-    G = b*Y;
+function G = sdeG(t,Y,mu,sigma)
+    n = numel(Y);
+    G = sigma.*Y.*eye(n,n);
 end
