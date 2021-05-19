@@ -301,9 +301,13 @@ classdef bdSurrogate < bdPanelBase
             % part of the solution.
             this.t = tdomain(tindx1);
             this.y = Y(:,tindx1);
-                          
-            % compute the surrogate data
-            this.ysurr = this.ampsurr(this.y);
+                  
+            if numel(this.y) > 1
+                % compute the surrogate data
+                this.ysurr = this.ampsurr(this.y);
+            else
+                this.ysurr = this.y;
+            end
         end
   
         % Render the background traces
