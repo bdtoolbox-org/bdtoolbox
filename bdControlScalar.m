@@ -3,9 +3,9 @@ classdef bdControlScalar < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2018a,2018b,2020a,2020b)
+    %  Stewart Heitmann (2018a,2018b,2020a,2020b,2021a)
 
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -36,16 +36,14 @@ classdef bdControlScalar < handle
     properties
         EditField1   matlab.ui.control.NumericEditField
         EditField2   matlab.ui.control.NumericEditField
-        EditField3   matlab.ui.control.NumericEditField
+        Spinner      matlab.ui.control.Spinner
         Button       matlab.ui.control.Button
         Slider       matlab.ui.control.Slider
-        %DecrButton   matlab.ui.control.Button
-        %IncrButton   matlab.ui.control.Button
         RandButton   matlab.ui.control.Button
         PerbButton   matlab.ui.control.Button
         widgetmode
-        listener1    event.listener
-        listener2    event.proplistener
+        rlistener    event.listener
+        plistener    event.proplistener
     end
     
     methods
@@ -65,6 +63,8 @@ classdef bdControlScalar < handle
             this.EditField1.HorizontalAlignment = 'center';
             this.EditField1.Value = limit(1);
             this.EditField1.Visible = 'off';
+            this.EditField1.Interruptible = 'off';
+            this.EditField1.BusyAction = 'cancel';
             this.EditField1.ValueChangedFcn = @(~,~) EditField1ValueChanged(this,sysobj,xxxdef,xxxindx);
             this.EditField1.Tooltip = ['Lower limit of ''',name,''''];
             
@@ -75,39 +75,35 @@ classdef bdControlScalar < handle
             this.EditField2.HorizontalAlignment = 'center';
             this.EditField2.Value = limit(2);
             this.EditField2.Visible = 'off';
+            this.EditField2.Interruptible = 'off';
+            this.EditField2.BusyAction = 'cancel';
             this.EditField2.ValueChangedFcn = @(~,~) EditField2ValueChanged(this,sysobj,xxxdef,xxxindx);
             this.EditField2.Tooltip = ['Upper limit of ''',name,''''];
             
-            % Create EditField3
-            this.EditField3 = uieditfield(gridlayout, 'numeric');
-            this.EditField3.Layout.Row = gridrow;
-            this.EditField3.Layout.Column = 3;
-            this.EditField3.HorizontalAlignment = 'center';
-            this.EditField3.Value = value;
-            this.EditField3.ValueChangedFcn = @(~,~) EditField3ValueChanged(this,sysobj,xxxdef,xxxindx);
-            %this.EditField3.Tooltip = ['''',name,''''];
-            
-%             spinnerR = uispinner(gridlayout);
-%             spinnerR.Layout.Row = gridrow;
-%             spinnerR.Layout.Column = 3;
-%             spinnerR.Value = 1;
-%             spinnerR.Step = 1;
-%             spinnerR.Limits = [0 1];
-%             spinnerR.Enable = 'on';
-%             spinnerR.LowerLimitInclusive = 'on';
-%             spinnerR.UpperLimitInclusive = 'on';
-%             spinnerR.RoundFractionalValues = 'on';
-%             spinnerR.Tooltip = 'row subscript';
-%             spinnerR.ValueChangingFcn = @(~,evnt) this.EditField3ValueChanged(evnt,sysobj,xxxdef,xxxindx);
-% 
+            % Create Spinner
+            this.Spinner = uispinner(gridlayout);
+            this.Spinner.Layout.Row = gridrow;
+            this.Spinner.Layout.Column = 3;
+            this.Spinner.Value = value;
+            this.Spinner.Step = 0.05 * (limit(2) - limit(1));
+            this.Spinner.Limits = [-Inf Inf];
+            this.Spinner.Enable = 'on';
+            this.Spinner.LowerLimitInclusive = 'off';
+            this.Spinner.UpperLimitInclusive = 'off';
+            this.Spinner.RoundFractionalValues = 'off';
+            this.Spinner.Interruptible = 'off';
+            this.Spinner.BusyAction = 'cancel';
+            this.Spinner.ValueChangingFcn = @(~,~) SpinnerValueChanging(this);
+            this.Spinner.ValueChangedFcn  = @(~,evnt) SpinnerValueChanged(this,sysobj,xxxdef,xxxindx,evnt);
+
             % Create Button
             this.Button = uibutton(gridlayout, 'push');
             this.Button.Layout.Row = gridrow;
             this.Button.Layout.Column = 4;
             this.Button.Text = name;
-            this.Button.ButtonPushedFcn = @(~,~) ButtonPushedFcn(this,sysobj,xxxdef,xxxindx,cpanel);
+            this.Button.ButtonPushedFcn = @(~,~) ButtonPushedFcn(this);
             %this.Button.Tooltip = sprintf('%s=%g',name,value);
-            %this.Button.Tooltip = 'Toggle slider/buttons';
+            this.Button.Tooltip = 'RAND/PERB Mode';
             this.Button.Interruptible = 'off';
             this.Button.BusyAction = 'cancel';
 
@@ -130,32 +126,9 @@ classdef bdControlScalar < handle
             this.Slider.MajorTicks = [];
             this.Slider.MinorTicks = [];
             this.Slider.Interruptible = 'off';
-            this.Slider.BusyAction = 'queue';
-            %this.Slider.Tooltip = ['Slider for ''',name,''''];
+            this.Slider.BusyAction = 'cancel';
             this.Slider.ValueChangingFcn = @(~,evnt) SliderValueChanging(this,sysobj,xxxdef,xxxindx,evnt);
-
-            
-%             % Create DECR Button
-%             this.DecrButton = uibutton(gridlayout, 'push');
-%             this.DecrButton.Layout.Row = gridrow;
-%             this.DecrButton.Layout.Column = 1;
-%             this.DecrButton.Text = 'DECR';
-%             this.DecrButton.Visible = 'off';
-%             this.DecrButton.ButtonPushedFcn = @(~,~) DecrButtonPushed(this,sysobj,xxxdef,xxxindx);
-%             this.DecrButton.Tooltip = ['Decrement ''',name,''''];
-%             this.DecrButton.Interruptible = 'off';
-%             this.DecrButton.BusyAction = 'cancel';
-%             
-%             % Create INCR Button
-%             this.IncrButton = uibutton(gridlayout, 'push');
-%             this.IncrButton.Layout.Row = gridrow;
-%             this.IncrButton.Layout.Column = 2;
-%             this.IncrButton.Text = 'INCR';
-%             this.IncrButton.Visible = 'off';
-%             this.IncrButton.ButtonPushedFcn = @(~,~) IncrButtonPushed(this,sysobj,xxxdef,xxxindx);
-%             this.IncrButton.Tooltip = ['Increment ''',name,''''];
-%             this.IncrButton.Interruptible = 'off';
-%             this.IncrButton.BusyAction = 'cancel';
+            this.Slider.ValueChangedFcn  = @(~,evnt) SliderValueChanged(this,sysobj,xxxdef,xxxindx,evnt);
 
             % Create RAND Button
             this.RandButton = uibutton(gridlayout, 'push');
@@ -164,7 +137,7 @@ classdef bdControlScalar < handle
             this.RandButton.Text = 'RAND';
             this.RandButton.Visible = 'off';
             this.RandButton.ButtonPushedFcn = @(~,~) RandButtonPushed(this,sysobj,xxxdef,xxxindx);
-            this.RandButton.Tooltip = ['Random ''',name,''''];
+            %this.RandButton.Tooltip = ['Random ''',name,''''];
             this.RandButton.Interruptible = 'off';
             this.RandButton.BusyAction = 'cancel';
             
@@ -175,21 +148,21 @@ classdef bdControlScalar < handle
             this.PerbButton.Text = 'PERB';
             this.PerbButton.Visible = 'off';
             this.PerbButton.ButtonPushedFcn = @(~,~) PerbButtonPushed(this,sysobj,xxxdef,xxxindx);
-            this.PerbButton.Tooltip = ['Perturb ''',name,''''];
+            %this.PerbButton.Tooltip = ['Perturb ''',name,''''];
             this.PerbButton.Interruptible = 'off';
             this.PerbButton.BusyAction = 'cancel';
 
             % listen to sysobj for REDRAW events
-            this.listener1 = listener(sysobj,'redraw',@(src,evnt) this.Redraw(src,evnt,xxxdef,xxxindx));
+            this.rlistener = listener(sysobj,'redraw',@(src,evnt) this.Redraw(src,evnt,xxxdef,xxxindx));
 
             % listen to cpanel for changes to the xxxmode switch
-            this.listener2 = listener(cpanel,xxxmode,'PostSet', @(src,evnt) this.ModeListener(cpanel,xxxmode));
+            this.plistener = listener(cpanel,xxxmode,'PostSet', @(src,evnt) this.ModeListener(cpanel,xxxmode));
         end
         
         function delete(this)
             %disp 'bdControlScalar.delete'
-            delete(this.listener1);
-            delete(this.listener2);
+            delete(this.rlistener);
+            delete(this.plistener);
             %delete(this.dialogbox);
         end
         
@@ -203,10 +176,12 @@ classdef bdControlScalar < handle
                         this.Slider.Visible = 'on';
                         this.RandButton.Visible = 'off';
                         this.PerbButton.Visible = 'off';
+                        this.Button.Tooltip = 'RAND/PERB Mode';
                     case 1
                         this.Slider.Visible = 'off';
                         this.RandButton.Visible = 'on';
                         this.PerbButton.Visible = 'on';
+                        this.Button.Tooltip = 'Slider Mode';
                 end
             else
                 this.EditField1.Visible = 'on';
@@ -222,10 +197,9 @@ classdef bdControlScalar < handle
     methods (Access = private)
             
         function Redraw(this,sysobj,sysevent,xxxdef,xxxindx)
-            %disp 'bdControlScalar.Redraw()'
+            %disp('bdControlScalar.Redraw()');
             
             % Extract data from sysobj
-            name  = sysobj.(xxxdef)(xxxindx).name;
             value = sysobj.(xxxdef)(xxxindx).value;
             limit = sysobj.(xxxdef)(xxxindx).lim;
             
@@ -242,10 +216,8 @@ classdef bdControlScalar < handle
             
             % if the value in sysobj has changed then ...
             if value_changed
-                % update the value edit field widget
-                this.EditField3.Value = value;
-                % update the Tooltip
-                this.Button.Tooltip = sprintf('%s=%g',name,value);
+                % update the spinner
+                this.Spinner.Value = value;
             end
             
             % if either the limit or the value in sysobj has changed then ...
@@ -255,6 +227,13 @@ classdef bdControlScalar < handle
                 val = max(val,0);
                 val = min(val,1);
                 this.Slider.Value = val;
+
+                % if the spinner value exceeds the limits then highlight it in red
+                if value<limit(1) || value>limit(2)
+                    this.Spinner.FontColor = 'r';
+                else
+                    this.Spinner.FontColor = 'k';
+                end
             end
         end
         
@@ -270,27 +249,40 @@ classdef bdControlScalar < handle
         end
         
         % ButtonPushedFcn callback
-        function ButtonPushedFcn(this,~,xxxdef,xxxindx,cpanel)
+        function ButtonPushedFcn(this)
+            %disp('bdControlScalar.ButtonPushedFcn()');
+
             % toggle the widget mode
             this.widgetmode = mod(this.widgetmode+1,2);
 
-            % extract the xxxmode flag from cpanel
-            switch xxxdef
-                case 'pardef'
-                    flag = cpanel.parmode;
-                case 'lagdef'
-                    flag = cpanel.lagmode;
-                case 'vardef'
-                    flag = cpanel.varmode;
+            switch this.EditField1.Visible
+                case 'off'
+                    % Edit fields 1 (and 2) are currently invisible.
+                    % So we must toggle the visiblity of the sliders vs buttons
+                    % according to the value of widgetmode.
+                    switch this.widgetmode
+                        case 0
+                            this.Slider.Visible = 'on';
+                            this.RandButton.Visible = 'off';
+                            this.PerbButton.Visible = 'off';
+                            this.Button.Tooltip = 'RAND/PERB Mode';
+                        case 1
+                            this.Slider.Visible = 'off';
+                            this.RandButton.Visible = 'on';
+                            this.PerbButton.Visible = 'on';
+                            this.Button.Tooltip = 'Slider Mode';
+                    end
+                    
+                case 'on'
+                    % Edit fields 1 and 2 are currently visible,
+                    % meaning that the slider/buttons are invisible.
+                    % There is nothing more to do.
             end
-
-            % (re)apply the xxxmode to this widget
-            this.mode(flag);
         end
 
         % Slider Value Changing callback
         function SliderValueChanging(this,sysobj,xxxdef,xxxindx,event)
-            %disp('SliderValueChanging');
+            %disp('bdControlScalar.SliderValueChanging()');
             
             % extract the relevant fields from sysobj
             limit = sysobj.(xxxdef)(xxxindx).lim;
@@ -299,18 +291,37 @@ classdef bdControlScalar < handle
             val = event.Value;
             value = limit(1) + val*(limit(2)-limit(1));
             
-            % update the edit field widget
-            this.EditField3.Value = value;
+            % update the spinner field
+            this.Spinner.Value = value;
+            this.Spinner.FontColor = [0.5 0.5 0.5];
+        end
+
+        % Slider Value Changed callback
+        function SliderValueChanged(this,sysobj,xxxdef,xxxindx,event)
+            %disp('bdControlScalar.SliderValueChanged()');
+
+            % extract the relevant fields from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+
+            % convert slider value to editbox value
+            val = event.Value;
+            value = limit(1) + val*(limit(2)-limit(1));
+            
+            % update the spinner field
+            this.Spinner.Value = value;
+            this.Spinner.FontColor = [0 0 0];
 
             % update sysobj
             sysobj.(xxxdef)(xxxindx).value = value;
             
-            % notify everything to redraw (excluding self)
-            sysobj.NotifyRedraw(this.listener1);
+            % notify everything to redraw (including self)
+            sysobj.NotifyRedraw([]);
         end
-
+        
         % EditField1 Value Changed callback
         function EditField1ValueChanged(this,sysobj,xxxdef,xxxindx)
+            %disp('bdControlScalar.EditField1ValueChanged()');
+
             % extract the relevant fields from sysobj
             limit = sysobj.(xxxdef)(xxxindx).lim;
             
@@ -334,6 +345,8 @@ classdef bdControlScalar < handle
         
         % EditField2 Value Changed callback
         function EditField2ValueChanged(this,sysobj,xxxdef,xxxindx)
+            %disp('bdControlScalar.EditField2ValueChanged()');
+
             % extract the relevant fields from sysobj
             limit = sysobj.(xxxdef)(xxxindx).lim;
             
@@ -354,64 +367,40 @@ classdef bdControlScalar < handle
             % notify everything to redraw (including self)
             sysobj.NotifyRedraw([]);            
         end
-        
-        % EditField3 Value Changed callback
-        function EditField3ValueChanged(this,sysobj,xxxdef,xxxindx)
-            % write the new value in sysobj
-            sysobj.(xxxdef)(xxxindx).value = this.EditField3.Value;
-            
-            % notify everything to redraw (including self)
-            sysobj.NotifyRedraw([]);       
-                        
-            % notify the solver to recompute the solution
-            %notify(sysobj,'recompute');
+                
+        function SpinnerValueChanging(this)
+            this.Spinner.FontColor = [0.5 0.5 0.5];
         end
         
-%         % DecrButton callback
-%         function DecrButtonPushed(this,sysobj,xxxdef,xxxindx)
-%             disp('DecrButtonPushed');
-%             
-%             % retrieve the relevant data from sysobj
-%             value = sysobj.(xxxdef)(xxxindx).value;
-%             limit = sysobj.(xxxdef)(xxxindx).lim;
-% 
-%             % apply a uniform decrement (5%) to the data 
-%             lo = limit(1);
-%             hi = limit(2);
-%             value = value - 0.05*(hi-lo);
-% 
-%             % do not exceed the lower limit
-%             value = max(value,lo);
-% 
-%             % write the data back to sysobj
-%             sysobj.(xxxdef)(xxxindx).value = value;
-% 
-%             % notify everything to redraw (including self)
-%             sysobj.NotifyRedraw([]);       
-%         end
-% 
-%         % IncrButton callback
-%         function IncrButtonPushed(this,sysobj,xxxdef,xxxindx)
-%             disp('IncrButtonPushed');
-%             
-%             % retrieve the relevant data from sysobj
-%             value = sysobj.(xxxdef)(xxxindx).value;
-%             limit = sysobj.(xxxdef)(xxxindx).lim;
-% 
-%             % apply a uniform increment (5%) to the data 
-%             lo = limit(1);
-%             hi = limit(2);
-%             value = value + 0.05*(hi-lo);
-%             
-%             % do not exceed the upper limit
-%             value = min(value,hi);
-% 
-%             % write the data back to sysobj
-%             sysobj.(xxxdef)(xxxindx).value = value;
-% 
-%             % notify everything to redraw (including self)
-%             sysobj.NotifyRedraw([]);       
-%         end
+        % Spinner Value Changed callback
+        function SpinnerValueChanged(this,sysobj,xxxdef,xxxindx,event)
+            %disp('bdControlScalar.SpinnerValueChanged()');
+
+            % extract the relevant fields from sysobj
+            limit = sysobj.(xxxdef)(xxxindx).lim;
+            
+            % extract value from widget event data
+            value = event.Value;
+
+            % update sysobj with the current spinner value
+            sysobj.(xxxdef)(xxxindx).value = value;
+             
+            % update the slider widget
+            val = (value - limit(1))./(limit(2) - limit(1));
+            val = max(val,0);
+            val = min(val,1);
+            this.Slider.Value = val;
+                 
+            % if the spinner value exceeds the limits then highlight it in red
+            if value<limit(1) || value>limit(2)
+                this.Spinner.FontColor = 'r';
+            else
+                this.Spinner.FontColor = 'k';
+            end
+            
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw([this.rlistener]);
+        end       
         
         % RandButton callback
         function RandButtonPushed(~,sysobj,xxxdef,xxxindx)
