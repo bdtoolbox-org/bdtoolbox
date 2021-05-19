@@ -141,7 +141,7 @@ function sol = bdSolve(sys,tspan,solverfun,solvertype)
         
         % Run the solver
         try
-            sol = bdSystem.solvesys(sys,tspan,solverfun,solvertype);
+            sol = bdSystem.quicksolve(sys,tspan,solverfun,solvertype);
         catch ME
             throwAsCaller(ME);
         end

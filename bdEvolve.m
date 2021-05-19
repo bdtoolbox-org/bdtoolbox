@@ -166,7 +166,7 @@ function [sys,sol] = bdEvolve(sys,rep,tspan,solverfun,solvertype)
             % for each repeat simulation
             for r=1:rep
                 % Run the solver
-                sol = bdSystem.solvesys(sys,tspan,solverfun,solvertype);
+                sol = bdSystem.quicksolve(sys,tspan,solverfun,solvertype);
             
                 % Update the initial conditions
                 sys.vardef = bdSetValues(sys.vardef,sol.y(:,end));
