@@ -5,10 +5,10 @@ classdef bdSurrogate < bdPanelBase
     %   the data using an amplitude-adjusted algorithm. 
     %   
     %AUTHORS
-    %  Stewart Heitmann (2017b,2017c,2018a,2020a)
+    %  Stewart Heitmann (2017b,2017c,2018a,2020a,2021a)
     %  The transform itself is based on original code from Michael Breakspear.
     
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
