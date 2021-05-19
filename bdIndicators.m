@@ -3,9 +3,9 @@ classdef bdIndicators < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2021 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@ classdef bdIndicators < handle
     % POSSIBILITY OF SUCH DAMAGE.
     
     events
-        redraw
+        refresh
     end
 
     properties
@@ -47,7 +47,9 @@ classdef bdIndicators < handle
         graphicstic = 0;
         graphicstoc = 0;
         nevolve = 0;
-        progress = 0;  
+        progress = 0;
+        errorid = [];
+        errormsg = [];
     end
     
     methods
@@ -56,53 +58,65 @@ classdef bdIndicators < handle
             obj.tspan = tspan;
             obj.solvertic = tic();
             obj.busy = true;
-            notify(obj,'redraw');
+            notify(obj,'refresh');
         end
         
         function SolverUpdate(obj,t)
             %disp('bdIndicators.SolverUpdate');
             obj.progress = 100.0*(t - obj.tspan(1))/(obj.tspan(2) - obj.tspan(1));
             obj.solvertoc = toc(obj.solvertic);
-            notify(obj,'redraw');
+            notify(obj,'refresh');
         end
         
         function SolverDone(obj)
             %disp('bdIndicators.SolverDone');
             obj.progress = 100.0;
             obj.solvertoc = toc(obj.solvertic);
-            notify(obj,'redraw');
+            notify(obj,'refresh');
         end
-        
+
+        function SolverHalt(obj)
+            %disp('bdIndicators.SolverHalt');
+            obj.solvertoc = toc(obj.solvertic);
+            notify(obj,'refresh');
+        end
+
         function InterpolatorInit(obj)
             %disp('bdIndicators.InterpInit');
             obj.interptic = tic();
-            notify(obj,'redraw');            
+            notify(obj,'refresh');            
         end
         
         function InterpolatorDone(obj)
             %disp('bdIndicators.InterpDone');
             obj.interptoc = toc(obj.interptic);
-            notify(obj,'redraw');
+            notify(obj,'refresh');
         end
         
         function GraphicsInit(obj)
             %disp('bdIndicators.GraphicsInit');
             obj.graphicstic = tic;
             %obj.graphicstoc = 0;
-            notify(obj,'redraw');
+            notify(obj,'refresh');
         end
         
         function GraphicsUpdate(obj)
             %disp('bdIndicators.GraphicsUpdate');
             obj.graphicstoc = toc(obj.graphicstic);
-            notify(obj,'redraw');
+            notify(obj,'refresh');
         end
         
         function GraphicsDone(obj)
             %disp('bdIndicators.GraphicsDone');
             obj.graphicstoc = toc(obj.graphicstic);
             obj.busy = false;
-            notify(obj,'redraw');
+            notify(obj,'refresh');
+        end
+        
+        function ErrorUpdate(obj,errorid,errormsg)
+            obj.errorid = errorid;
+            obj.errormsg = errormsg;
+            notify(obj,'refresh');
         end
         
         function Reset(obj)
@@ -115,7 +129,9 @@ classdef bdIndicators < handle
             obj.graphicstic = 0;
             obj.graphicstoc = 0;
             obj.nevolve = 0;
-            obj.progress = 0;  
+            obj.progress = 0;
+            obj.errorid = [];
+            obj.errormsg = [];
         end
                 
     end

@@ -3,9 +3,9 @@ classdef bdControlSolver < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2021 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,8 @@ classdef bdControlSolver < handle
         Label14             matlab.ui.control.Label
         Label15             matlab.ui.control.Label
         Label16             matlab.ui.control.Label
+        Label17             matlab.ui.control.Label
+        Label18             matlab.ui.control.Label
         rlistener           event.listener
         plistener           event.listener
     end
@@ -62,7 +64,7 @@ classdef bdControlSolver < handle
         function this = bdControlSolver(sysobj,uiparent)
             % Create the GridLayout
             this.GridLayout = uigridlayout(uiparent);
-            this.GridLayout.ColumnWidth = {50,50,50,50,50,50,50,50,50,50};
+            this.GridLayout.ColumnWidth = {50,50,50,50,50,50,50,50,50,50,'1x'};
             this.GridLayout.RowHeight = {'1x',21,21};
             this.GridLayout.ColumnSpacing = 5;
             this.GridLayout.RowSpacing = 5;
@@ -244,12 +246,32 @@ classdef bdControlSolver < handle
             this.Label16.VerticalAlignment = 'top';
             this.Label16.Layout.Row = 3;
             this.Label16.Layout.Column = 10;
-            
+                  
+            % Create Label17 (Error)
+            this.Label17 = uilabel(this.GridLayout);
+            this.Label17.Text = '   Error';
+            this.Label17.HorizontalAlignment = 'left';
+            this.Label17.VerticalAlignment = 'bottom';
+            this.Label17.Layout.Row = 2;
+            this.Label17.Layout.Column = 11;
+
+            % Create Label18
+            this.Label18 = uilabel(this.GridLayout);
+            this.Label18.Tooltip = '';
+            this.Label18.Text = '   none';
+            this.Label18.HorizontalAlignment = 'left';
+            this.Label18.VerticalAlignment = 'top';
+            this.Label18.Layout.Row = 3;
+            this.Label18.Layout.Column = 11;
+
+            % update our widgets to reflect the contents of sysobj
+            this.UpdateWidgets(sysobj);
+     
             % listen to sysobj for REDRAW events
             this.rlistener = listener(sysobj,'redraw',@(src,evnt) this.Redraw(src,evnt));
             
-            % listen to sysobj.indicators for REDRAW events
-            this.plistener = listener(sysobj.indicators,'redraw',@(~,~) this.Progress(sysobj));
+            % listen to sysobj.indicators for REFRESH events
+            this.plistener = listener(sysobj.indicators,'refresh',@(~,~) this.Progress(sysobj));
         end
 
         function delete(this)
@@ -290,8 +312,16 @@ classdef bdControlSolver < handle
                 sysobj.halt = true;
             else
                 sysobj.halt = false;
+                
+                % Force everything to redraw
+                npardef = numel(sysobj.pardef);
+                nlagdef = numel(sysobj.lagdef);
+                nvardef = numel(sysobj.vardef);
+                eventdata = bdRedrawEvent(true,npardef,nlagdef,nvardef);
+                notify(sysobj,'redraw',eventdata);
+
+                % Flag a recompute
                 sysobj.recompute = true;
-                sysobj.NotifyRedraw([]);
 
                 % Restart the timer in case it has failed
                 sysobj.TimerStart();
@@ -299,7 +329,6 @@ classdef bdControlSolver < handle
             
             % update our widgets
             this.UpdateWidgets(sysobj);
-            %drawnow;
             
             % notify everyone (excluding self) to redraw
             sysobj.NotifyRedraw(this.rlistener);
@@ -387,8 +416,20 @@ classdef bdControlSolver < handle
             % update the Graphics CPU time
             this.Label16.Text = sprintf('%0.2fs',sysobj.indicators.graphicstoc);     
 
-            % force a redraw
-            drawnow();
+            % update the error message
+            if isempty(sysobj.indicators.errorid)
+                % No error message to display
+                this.Label18.Text = '   none';
+                this.Label18.Tooltip = '';
+                this.Label18.FontColor = 'k';
+                this.Label17.FontColor = 'k';
+            else
+                % Display the error message
+                this.Label18.Text = ['   ' sysobj.indicators.errorid];
+                this.Label18.Tooltip = sysobj.indicators.errormsg;
+                this.Label18.FontColor = 'r';
+                this.Label17.FontColor = 'r';
+            end
         end
         
     end
