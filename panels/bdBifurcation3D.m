@@ -1,9 +1,9 @@
 classdef bdBifurcation3D < bdPanelBase
     %bdBifurcation3D Display panel for plotting bifurcations in 3D
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann
+    % Copyright (C) 2020-2021 Stewart Heitmann
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -265,9 +265,6 @@ classdef bdBifurcation3D < bdPanelBase
             this.RenderBackground();
             this.RenderForeground();
             drawnow;
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -437,8 +434,6 @@ classdef bdBifurcation3D < bdPanelBase
             % delete remnant plot lines
             objs = findobj(this.axes,'Type','line','Tag','remnant');
             delete(objs);
-
-            notify(this.sysobj,'push');     % Push the UNDO stack
         end
                               
         % Generic callback for checked menus. Used by TRANSIENTS, MARKERS, etc
@@ -446,7 +441,6 @@ classdef bdBifurcation3D < bdPanelBase
             this.MenuToggle(menuitem);      % Toggle the menu state
             this.RenderBackground();        % Render the background items
             this.RenderForeground();        % Render the foreground items
-            notify(this.sysobj,'push');     % Push the UNDO stack
         end
         
         % POINTS menu callback
@@ -486,9 +480,6 @@ classdef bdBifurcation3D < bdPanelBase
                 case 'off'
                     this.lineB.Marker = 'none';
             end
-            
-            % Push the UNDO stack
-            notify(this.sysobj,'push');
         end
                
         % CLEAR menu callback
@@ -557,9 +548,6 @@ classdef bdBifurcation3D < bdPanelBase
                 % The panel is undocked from the gui. Its figure should be closed too. 
                 delete(fig);
             end
-            
-            % Push the new settings onto the UNDO stack
-            notify(sysobj,'push');            
         end
         
 

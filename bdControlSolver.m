@@ -367,6 +367,7 @@ classdef bdControlSolver < handle
             if sysobj.halt
                 this.HaltButton.Value = 1;
                 rgb = 'r';
+                this.fig.Pointer = 'arrow';
             else
                 this.HaltButton.Value = 0;
                 rgb = 'k';

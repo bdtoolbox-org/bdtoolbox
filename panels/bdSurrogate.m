@@ -249,9 +249,6 @@ classdef bdSurrogate < bdPanelBase
             this.RenderBackground();
             this.RenderForeground();
             drawnow;
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -407,9 +404,6 @@ classdef bdSurrogate < bdPanelBase
             this.ComputeSurrogate();
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % SubscriptChangedCallback
@@ -418,9 +412,6 @@ classdef bdSurrogate < bdPanelBase
             
             % Render the existing result
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
             
         % Recompute BUTTON callback
@@ -451,9 +442,6 @@ classdef bdSurrogate < bdPanelBase
         function callbackMarkers(this,menuitem)
             this.MenuToggle(menuitem);
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % DOCK menu callback
@@ -492,9 +480,6 @@ classdef bdSurrogate < bdPanelBase
                 % The panel is undocked from the gui. Its figure should be closed too. 
                 delete(fig);
             end
-            
-            % Push the new settings onto the UNDO stack
-            notify(sysobj,'push');            
         end
         
 

@@ -3,9 +3,9 @@ classdef bdSpace2D < bdPanelBase
     %  The Space2D panel plots a snapshot of a matrix-based (2D) state variable.
     %
     %AUTHORS
-    %  Stewart Heitmann (2018b,2020a)
+    %  Stewart Heitmann (2018b,2020a,2021a)
 
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -220,9 +220,6 @@ classdef bdSpace2D < bdPanelBase
             % Redraw everything
             this.Render();
             drawnow;
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -302,9 +299,6 @@ classdef bdSpace2D < bdPanelBase
         function SelectorChanged(this)
             %disp('bdSpace2D.selectorChanged');
             this.Render();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % Colormap DropDown callback
@@ -325,9 +319,6 @@ classdef bdSpace2D < bdPanelBase
                     % apply standard colormap
                     colormap(this.axes,mapname);
             end
-            
-            % Push the UNDO stack
-            notify(this.sysobj,'push');       
         end
                       
         % CALIBRATE menu callback
@@ -355,8 +346,6 @@ classdef bdSpace2D < bdPanelBase
             this.MenuToggle(menuitem);
             % render the data
             this.Render();
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % YDIR menu callback
@@ -365,8 +354,6 @@ classdef bdSpace2D < bdPanelBase
             this.MenuToggle(menuitem);
             % render the data
             this.Render();                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % DOCK menu callback

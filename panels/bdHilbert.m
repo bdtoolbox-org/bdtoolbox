@@ -2,9 +2,9 @@ classdef bdHilbert < bdPanelBase
     %bdHilbert Display panel for plotting the Hilbert transform of a time series
     %
     %AUTHORS
-    %  Stewart Heitmann (2017b,2018a,2019a,2020a,2020b)
+    %  Stewart Heitmann (2017b,2018a,2019a,2020a,2020b,2021a)
 
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -422,9 +422,6 @@ classdef bdHilbert < bdPanelBase
             this.RenderBackground();
             this.RenderForeground();
             drawnow;
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -671,18 +668,12 @@ classdef bdHilbert < bdPanelBase
             %disp('bdHilbert.SelectorChanged');
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % Subscript Changed callback
         function SubscriptChanged(this)
             %disp('bdHilbert.SubscriptChanged');
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
          
         % Azimuth Changing callback
@@ -724,27 +715,18 @@ classdef bdHilbert < bdPanelBase
             end
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
                 
         % MARKERS menu callback
         function callbackMarkers(this,menuitem)
             this.MenuToggle(menuitem);
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % POINTS menu callback
         function callbackPoints(this,menuitem)
             this.MenuToggle(menuitem);
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
        
         % RELATIVE PHASE menu callback
@@ -752,9 +734,6 @@ classdef bdHilbert < bdPanelBase
             this.MenuToggle(menuitem);
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
                 
         % HOLD menu callback

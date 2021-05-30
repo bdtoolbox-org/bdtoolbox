@@ -44,7 +44,6 @@ classdef bdSystem < handle
     events
         redraw      % tell the panels to redraw themselves
         respond     % tell the panels it is their time to modify sysobj
-        push        % tell the gui to push the undo-stack
     end
   
     properties (SetObservable)

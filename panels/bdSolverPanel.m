@@ -5,9 +5,9 @@ classdef bdSolverPanel < bdPanelBase
     %   size control.
     %
     %AUTHORS
-    %  Stewart Heitmann (2016a,2017a,2018a,2020a)
+    %  Stewart Heitmann (2016a,2017a,2018a,2020a,2021a)
 
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -245,10 +245,6 @@ classdef bdSolverPanel < bdPanelBase
                                     
             % Redraw everything
             this.Render();
-            %drawnow;
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -398,9 +394,6 @@ classdef bdSolverPanel < bdPanelBase
                 % The panel is undocked from the gui. Its figure should be closed too. 
                 delete(fig);
             end
-            
-            % Push the new settings onto the UNDO stack
-            notify(sysobj,'push');            
         end
         
 

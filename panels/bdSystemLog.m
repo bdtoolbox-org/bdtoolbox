@@ -1,9 +1,9 @@
 classdef bdSystemLog < bdPanelBase
     %bdSystemLog Display system events for debugging purposes
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann
+    % Copyright (C) 2020-2021 Stewart Heitmann
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -119,9 +119,6 @@ classdef bdSystemLog < bdPanelBase
             
             % listen for Respond events
             this.listener2 = listener(sysobj,'respond',@(~,~) this.Respond());  
-            
-            % listen for Push events
-            this.listener3 = listener(sysobj,'push',@(~,~) this.Push());                        
         end
         
         function opt = get.options(this)
@@ -137,9 +134,6 @@ classdef bdSystemLog < bdPanelBase
             
             % update the menu title
             this.menu.Text = opt.title;
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -208,14 +202,7 @@ classdef bdSystemLog < bdPanelBase
             this.trimlog();
         end
         
-        % Listener for PUSH events
-        function Push(this)
-            datestr = datetime('now','Format','HH:mm:ss');
-            this.textarea.Value(end+1) = {sprintf('%s PUSH event',datestr)};
-            this.trimlog();
-        end
-        
-        % discard old messages
+        % Discard old messages
         function trimlog(this)
             ntrim = numel(this.textarea.Value) - 30;
             if ntrim > 0
@@ -265,9 +252,6 @@ classdef bdSystemLog < bdPanelBase
                 % The panel is undocked from the gui. Its figure should be closed too. 
                 delete(fig);
             end
-            
-            % Push the new settings onto the UNDO stack
-            notify(sysobj,'push');
         end
         
     end

@@ -2,9 +2,9 @@ classdef bdTimeCylinder < bdPanelBase
     %bdTimeCylinder Display panel for plotting polar time series
     %
     %AUTHORS
-    %  Stewart Heitmann (2020a,2020b)
+    %  Stewart Heitmann (2020a,2020b,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann
+    % Copyright (C) 2020-2021 Stewart Heitmann
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -439,9 +439,6 @@ classdef bdTimeCylinder < bdPanelBase
             this.RenderBackground();
             this.RenderForeground();
             drawnow;
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -707,18 +704,12 @@ classdef bdTimeCylinder < bdPanelBase
             %disp('bdTimeCylinder.Selector1Changed');
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % Subscript Changed callback
         function SubscriptChanged(this)
             %disp('bdTimeCylinder.SubscriptChanged');
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
          
         % Azimuth Changing callback
@@ -760,27 +751,18 @@ classdef bdTimeCylinder < bdPanelBase
             end
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
                 
         % MARKERS menu callback
         function callbackMarkers(this,menuitem)
             this.MenuToggle(menuitem);
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % POINTS menu callback
         function callbackPoints(this,menuitem)
             this.MenuToggle(menuitem);
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
        
         % RELATIVE PHASE menu callback
@@ -788,9 +770,6 @@ classdef bdTimeCylinder < bdPanelBase
             this.MenuToggle(menuitem);
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % AUTOSTEP menu callback
@@ -798,9 +777,6 @@ classdef bdTimeCylinder < bdPanelBase
             this.MenuToggle(menuitem);
             this.RenderBackground();
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % HOLD menu callback
@@ -938,9 +914,6 @@ classdef bdTimeCylinder < bdPanelBase
                 % The panel is undocked from the gui. Its figure should be closed too. 
                 delete(fig);
             end
-            
-            % Push the new settings onto the UNDO stack
-            notify(sysobj,'push');            
         end
         
     end

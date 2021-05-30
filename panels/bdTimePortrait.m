@@ -4,9 +4,9 @@ classdef bdTimePortrait < bdPanelBase
     %  the time traces of selected variables.
     %
     %AUTHORS
-    %  Stewart Heitmann (2016a,2017a,2017b,2017c,2019a,2020a)
+    %  Stewart Heitmann (2016a,2017a,2017b,2017c,2019a,2020a,2021a)
 
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -333,9 +333,6 @@ classdef bdTimePortrait < bdPanelBase
             this.RenderBackground();
             this.RenderForeground();
             drawnow;
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -668,18 +665,12 @@ classdef bdTimePortrait < bdPanelBase
             %disp('bdTimePortrait.Selector1Changed');
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % SubscriptChangedCallback
         function SubscriptChanged(this)
             %disp('bdTimePortrait.SubscriptChanged');
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
                      
         % CALIBRATE menu callback
@@ -755,27 +746,18 @@ classdef bdTimePortrait < bdPanelBase
             end
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
                 
         % MARKERS menu callback
         function callbackMarkers(this)
             this.MenuToggle(this.menuMarkers);
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % POINTS menu callback
         function callbackPoints(this)
             this.MenuToggle(this.menuPoints);
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
        
         % MODULO menu callback
@@ -783,9 +765,6 @@ classdef bdTimePortrait < bdPanelBase
             this.MenuToggle(this.menuModulo);
             this.RenderBackground();
             this.RenderForeground();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % AUTOSTEP menu callback
@@ -793,9 +772,6 @@ classdef bdTimePortrait < bdPanelBase
             this.MenuToggle(this.menuAutoStep);
             this.RenderBackground();
             this.RenderForeground();
-                        
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % HOLD menu callback
@@ -855,9 +831,6 @@ classdef bdTimePortrait < bdPanelBase
         % HOLD ALL menu callback
         function callbackHoldAll(this)
             this.MenuToggle(this.menuHoldAll);
-                         
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
 
         % DOCK menu callback
@@ -896,9 +869,6 @@ classdef bdTimePortrait < bdPanelBase
                 % The panel is undocked from the gui. Its figure should be closed too. 
                 delete(fig);
             end
-            
-            % Push the new settings onto the UNDO stack
-            notify(sysobj,'push');            
         end
         
     end

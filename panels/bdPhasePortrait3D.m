@@ -1,9 +1,9 @@
 classdef bdPhasePortrait3D < bdPanelBase
     %bdPhasePortrait3D Display panel for plotting phase portraits in 3 variables
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann
+    % Copyright (C) 2020-2021 Stewart Heitmann
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -292,9 +292,6 @@ classdef bdPhasePortrait3D < bdPanelBase
             this.RenderBackground();
             this.RenderForeground();
             drawnow;
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -441,7 +438,6 @@ classdef bdPhasePortrait3D < bdPanelBase
             %disp('bdPhasePortrait3D.SelectorChanged');
             this.RenderBackground();        % Render the background items
             this.RenderForeground();        % Render the foreground items
-            notify(this.sysobj,'push');     % Push the UNDO stack
         end
         
         % Subscript Changed callback
@@ -449,7 +445,6 @@ classdef bdPhasePortrait3D < bdPanelBase
             %disp('bdPhasePortrait3D.SubscriptChanged');
             this.RenderBackground();        % Render the background items
             this.RenderForeground();        % Render the foreground items
-            notify(this.sysobj,'push');     % Push the UNDO stack
         end
                               
         % Generic callback for menus with Checked states (TRANSIENTS, MARKERS, MODULO, AUTOSTEP)
@@ -457,7 +452,6 @@ classdef bdPhasePortrait3D < bdPanelBase
             this.MenuToggle(menuitem);      % Toggle the menu state
             this.RenderBackground();        % Render the background items
             this.RenderForeground();        % Render the foreground items
-            notify(this.sysobj,'push');     % Push the UNDO stack
         end
         
         % CALIBRATE menu callback
@@ -517,9 +511,6 @@ classdef bdPhasePortrait3D < bdPanelBase
         % HOLD ALL menu callback
         function callbackHoldAll(this)
             this.MenuToggle(this.menuHoldAll);
-                         
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         % CLEAR menu callback
@@ -592,9 +583,6 @@ classdef bdPhasePortrait3D < bdPanelBase
                 % The panel is undocked from the gui. Its figure should be closed too. 
                 delete(fig);
             end
-            
-            % Push the new settings onto the UNDO stack
-            notify(sysobj,'push');            
         end      
 
     end

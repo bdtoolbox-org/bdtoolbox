@@ -4,9 +4,9 @@ classdef bdLatexPanel < bdPanelBase
     %field of the system structure.
     %
     %AUTHORS
-    %Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2020a,2020b)   
+    %Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2020a,2020b,2021a)   
     
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -166,9 +166,6 @@ classdef bdLatexPanel < bdPanelBase
             
             % Redraw everything
             this.Render();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -260,8 +257,6 @@ classdef bdLatexPanel < bdPanelBase
                     this.Render();
                     this.textarea.Visible = 'off';
                     this.scrollpanel.Visible = 'on';
-                    % Push the new settings onto the UNDO stack
-                    notify(this.sysobj,'push');
             end
         end
         
@@ -287,9 +282,6 @@ classdef bdLatexPanel < bdPanelBase
             tabgrp = ancestor(this.tab,'uitabgroup');
             fig = ancestor(this.tab,'figure');
             
-            % remember sysobj
-            sysobjhnd = this.sysobj;
-            
             % delete the panel
             delete(this);
             
@@ -301,9 +293,6 @@ classdef bdLatexPanel < bdPanelBase
                 % The panel is undocked from the gui. Its figure should be closed too. 
                 delete(fig);
             end
-            
-            % Push the new settings onto the UNDO stack
-            notify(sysobjhnd,'push');
         end
         
     end

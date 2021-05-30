@@ -2,9 +2,9 @@ classdef bdAuxiliary < bdPanelBase
     %bdAuxiliary Display panel for plotting model-specific functions
     % 
     %AUTHORS
-    %  Stewart Heitmann (2018a,2018b,2020a)
+    %  Stewart Heitmann (2018a,2018b,2020a,2021a)
 
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -188,9 +188,6 @@ classdef bdAuxiliary < bdPanelBase
 
             % Redraw everything
             this.Render();
-            
-            % Push the new settings onto the UNDO stack
-            notify(this.sysobj,'push');
         end
         
         function delete(this)
@@ -274,9 +271,6 @@ classdef bdAuxiliary < bdPanelBase
             
             % Render the data
             this.Render();
-            
-            % Push the UNDO stack
-            notify(this.sysobj,'push');
         end
               
         
@@ -323,9 +317,6 @@ classdef bdAuxiliary < bdPanelBase
                 % The panel is undocked from the gui. Its figure should be closed too. 
                 delete(fig);
             end
-            
-            % Push the new settings onto the UNDO stack
-            notify(sysobj,'push');            
         end
         
     end

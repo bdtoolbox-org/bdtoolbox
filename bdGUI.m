@@ -141,7 +141,6 @@ classdef bdGUI < matlab.apps.AppBase
         ExportMenu          matlab.ui.container.Menu
         CloneMenu           matlab.ui.container.Menu
         QuitMenu            matlab.ui.container.Menu
-        EditMenu            matlab.ui.container.Menu
         UndoMenu            matlab.ui.container.Menu
         RedoMenu            matlab.ui.container.Menu
         NewPanelMenu        matlab.ui.container.Menu
@@ -152,7 +151,6 @@ classdef bdGUI < matlab.apps.AppBase
         ControlSolver       bdControlSolver
         TimePanel           matlab.ui.container.Panel
         PanelMgr            bdPanelMgr
-        UndoStack           bdUndoStack
         rlistener           event.listener
         plistener           event.listener
     end
@@ -222,14 +220,11 @@ classdef bdGUI < matlab.apps.AppBase
                 app.sysobj = bdSystem(sys,'sol',sol);
                 app.sysobj.recompute = false;
             end
-            
-            % initiate the undo stack
-            app.UndoStack = bdUndoStack();
-            app.UndoStack.Push(sys);
-                                    
+                                                
             % Construct a new figure
             app.fig = uifigure('Position',[randi(200),randi(200),950,550], 'Visible','off');
             app.fig.Name = 'Brain Dynamics Toolbox';
+            app.fig.Pointer = 'watch';
             app.fig.CloseRequestFcn = @(src,evnt) app.QuitMenuCallback();
 
             % Add a unique Tag to the figure. Child figure/dialogs get assigned
@@ -283,24 +278,6 @@ classdef bdGUI < matlab.apps.AppBase
             app.QuitMenu.Text = 'Quit';
             app.QuitMenu.Tooltip = 'Quit the GUI';
             app.QuitMenu.MenuSelectedFcn = @(~,~) QuitMenuCallback(app);
-
-            % Create EditMenu
-            app.EditMenu = uimenu(app.fig);
-            app.EditMenu.Text = 'Edit ';
-            
-            % Create UndoMenu
-            app.UndoMenu = uimenu(app.EditMenu);
-            app.UndoMenu.Text = 'Undo';
-            app.UndoMenu.Tooltip = 'Undo the last change';
-            app.UndoMenu.Enable = app.UndoStack.UndoStatus();
-            app.UndoMenu.MenuSelectedFcn = @(~,~) UndoMenuCallback(app);
-
-            % Create RedoMenu
-            app.RedoMenu = uimenu(app.EditMenu);
-            app.RedoMenu.Text = 'Redo';
-            app.RedoMenu.Tooltip = 'Reverse the last Undo';
-            app.RedoMenu.Enable = app.UndoStack.RedoStatus();
-            app.RedoMenu.MenuSelectedFcn = @(~,~) RedoMenuCallback(app);
 
             % Create TabGroup
             app.TabGroup = uitabgroup(app.GridLayout);
@@ -407,6 +384,9 @@ classdef bdGUI < matlab.apps.AppBase
                 bdPanelBase.FocusMenu(app.TabGroup);
             end
             
+            % set the mouse pointer back to arrow
+            app.fig.Pointer = 'arrow';
+            
             % listen to sysobj for REDRAW events
             app.rlistener = listener(app.sysobj,'redraw',@(~,evnt) app.Redraw(evnt));
 
@@ -415,9 +395,6 @@ classdef bdGUI < matlab.apps.AppBase
                 app.sysobj.TimerFcn();
             end
                
-            % listen to sysobj for PUSH events
-            %app.plistener = listener(app.sysobj,'push',@(~,~) app.Pusher());
-
             % start the timer proper
             app.sysobj.TimerStart();            
         end
@@ -804,29 +781,7 @@ classdef bdGUI < matlab.apps.AppBase
                     % start the solver timer
                     app.sysobj.TimerStart();
                 end
-            end
-                                    
-%             % If any of the following events occured then push a new entry onto the undostack
-%             if any([sysevent.pardef.value]) || ...
-%                any([sysevent.pardef.lim]) || ...
-%                any([sysevent.lagdef.value]) || ...
-%                any([sysevent.lagdef.lim]) || ...
-%                any([sysevent.vardef.value]) || ...
-%                any([sysevent.vardef.lim]) || ...
-%                sysevent.tspan || ...
-%                sysevent.tstep || ...
-%                sysevent.tval || ...
-%                sysevent.noisehold || ...
-%                sysevent.evolve || ...
-%                sysevent.perturb || ...
-%                sysevent.backward || ...
-%                sysevent.solveritem || ...
-%                sysevent.odeoption || ...
-%                sysevent.ddeoption || ...
-%                sysevent.sdeoption 
-%                 % Push the changes onto the undo stack
-%                 notify(app.sysobj,'push');
-%             end
+            end           
         end
         
         % Construct the Splash Panel
@@ -1333,86 +1288,7 @@ classdef bdGUI < matlab.apps.AppBase
             % delete the bdGUI object
             delete(app);
         end
-   
-        % Listener for PUSH events
-        function Pusher(app)
-            %disp('gui.Pusher');
-            
-            % Obtain a copy of the current sys structure
-            % including the current panel settings.
-            sys = app.sysobj.ExportSystem();
-            sys.panels = app.PanelMgr.ExportPanels();
-
-            % Push the sys structure onto the Undo stack
-            app.UndoStack.Push(sys);
-
-            % Enable/Disable the Undo menu as appropriate
-            if isvalid(app.UndoMenu)
-                app.UndoMenu.Enable = app.UndoStack.UndoStatus();
-            end
-
-            % Enable/Disable the Re-do menu as appropriate
-            if isvalid(app.RedoMenu)
-                app.RedoMenu.Enable = app.UndoStack.RedoStatus();
-            end 
-        end
-               
-        % Callback for Edit-Undo menu
-        function UndoMenuCallback(app)
-            %disp('bdGUI.UndoMenuCallback');
-            sys = app.UndoStack.Pop();          % Retrieve the previous system settings
-            if ~isempty(sys)
-                halt = app.sysobj.halt;         % Remember the HALT button state
-                app.sysobj.ImportSystem(sys);   % Restore the previous system settings
-                app.sysobj.halt = halt;         % UNDO does not alter the HALT button
-
-                % Restore the previous panels (without invoking Pusher)
-                app.plistener.Enabled = 0;              % Disable the PUSH listener
-                app.PanelMgr.ImportPanels(sys.panels);  % Restore the previous panel settings
-                app.sysobj.NotifyRedraw(app.rlistener); % Notify everything (except self) to REDRAW                
-                app.plistener.Enabled = 1;              % Enable the PUSH listener
-            end
-            
-            % Enable/Disable the Undo menu as appropriate
-            if isvalid(app.UndoMenu)
-                app.UndoMenu.Enable = app.UndoStack.UndoStatus();
-            end
-            
-            % Enable/Disable the Redo menu as appropriate
-            if isvalid(app.RedoMenu)
-                app.RedoMenu.Enable = app.UndoStack.RedoStatus();
-            end
-            %disp('bdGUI.UndoMenuCallback END');
-        end
-        
-        % Callback for Edit-Redo menu
-        function RedoMenuCallback(app)
-            %disp('bdGUI.RedoMenuCallback');
-            sys = app.UndoStack.UnPop();        % Retrieve the earlier system settings
-            if ~isempty(sys)
-                halt = app.sysobj.halt;         % Remember the HALT button state
-                app.sysobj.ImportSystem(sys);   % Apply the retrieved system settings
-                app.sysobj.halt = halt;         % REDO does not alter the HALT button
-                
-                % Restore the previous panels (without invoking Pusher)
-                app.plistener.Enabled = 0;              % Disable the PUSH listener
-                app.PanelMgr.ImportPanels(sys.panels);  % Restore the previous panel settings
-                app.sysobj.NotifyRedraw(app.rlistener); % Notify everything (except self) to REDRAW                
-                app.plistener.Enabled = 1;              % Enable the PUSH listener
-            end
-            
-            % Enable/Disable the Undo menu as appropriate
-            if isvalid(app.UndoMenu)
-                app.UndoMenu.Enable = app.UndoStack.UndoStatus();
-            end
-            
-            % Enable/Disable the Redo menu as appropriate
-            if isvalid(app.RedoMenu)
-                app.RedoMenu.Enable = app.UndoStack.RedoStatus();
-            end
-            %disp('bdGUI.RedoMenuCallback END');
-        end
-        
+                                  
     end
     
     methods (Static)

@@ -97,9 +97,6 @@ classdef bdPanelMgr < handle
             
             % remove stale handle from this.panelhands
             this.CleanPanelHands();
-            
-            % Push the new settings onto the UNDO stack
-            %notify(this.sysobj,'push');
         end
               
         % Reconfigure the display panels as described in the 'panels' struct
