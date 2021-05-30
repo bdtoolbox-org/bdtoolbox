@@ -34,6 +34,7 @@ classdef bdControlSolver < handle
     % POSSIBILITY OF SUCH DAMAGE.
     
     properties (Access=public)
+        fig                 matlab.ui.Figure
         GridLayout          matlab.ui.container.GridLayout
         DropDown            matlab.ui.control.DropDown
         RunButton           matlab.ui.control.Button
@@ -62,6 +63,9 @@ classdef bdControlSolver < handle
     
     methods
         function this = bdControlSolver(sysobj,uiparent)
+            % Keep a handle to the parent figure
+            this.fig = ancestor(uiparent,'figure');
+            
             % Create the GridLayout
             this.GridLayout = uigridlayout(uiparent);
             this.GridLayout.ColumnWidth = {50,50,50,50,50,50,50,50,50,50,'1x'};
@@ -397,6 +401,8 @@ classdef bdControlSolver < handle
                 this.Label6.Enable = 'off';
                 this.Label14.Enable = 'off';
                 this.Label16.Enable = 'off';
+                % set the mouse pointer to 'watch'
+                this.fig.Pointer = 'watch';
             else
                 % enable the indicators
                 this.Label2.Enable = 'on';
@@ -404,6 +410,8 @@ classdef bdControlSolver < handle
                 this.Label6.Enable = 'on';
                 this.Label14.Enable = 'on';
                 this.Label16.Enable = 'on';
+                % set the mouse pointer to 'arrow'
+                this.fig.Pointer = 'arrow';
             end
             
             % update the Solver progress and CPU time
