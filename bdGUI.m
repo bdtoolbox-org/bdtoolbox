@@ -2,22 +2,21 @@ classdef bdGUI < matlab.apps.AppBase
     %bdGUI - The Brain Dynamics Toolbox Graphical User Interface (GUI).
     %
     %The bdGUI application is the graphical user interface for the Brain
-    %Dynamics Toolbox. It loads and runs the model defined by the given
-    %system structure (sys). That structure contains a handle to the
-    %model's ODE function (sys.odefun). It also defines the names and
-    %initial values of the system parameters and state variables.
+    %Dynamics Toolbox. It loads and runs the dynamical system defined by
+    %the given system structure (sys). 
     %
     %   gui = bdGUI(sys);
     %
-    %The system structure may be passed to bdGUI as an input parameter or
-    %loaded from a mat file. If bdGUI is invoked with no parameters then it
-    %prompts the user to load a mat file which is assumed to contain a sys.
+    %The system structure is typically constructed by a model-specific
+    %script that defines, among other things, a handle to the model's ODE
+    %function and the names and initial values of the model's parameters
+    %and state variables. See Chapter 1 of the Handbook for the Brain
+    %Dynamics Toolbox. If bdGUI is invoked with no input parameters then
+    %it prompts the user to load a mat file which is assumed to contain
+    %a system structure named 'sys'.
     %
-    %   gui = bdGUI();
-    %
-    %A previously computed solution (sol) can be loaded in tandem with the
-    %model's system structure. If no solution is provided then bdGUI
-    %automatically computes one at start-up.
+    %A previously computed solution (sol) can be loaded in tandem with
+    %the system structure if you wish to avoid computing it again.
     %
     %   gui = bdGUI(sys,'sol',sol);
     %
@@ -25,19 +24,18 @@ classdef bdGUI < matlab.apps.AppBase
     %
     %   gui = bdGUI(sys,'Visible','off');
     %
-    %In all cases, bdGUI returns a handle (gui) to the bdGUI class. That
-    %handle can be used to control the graphical user interface from the
-    %matlab workspace.
+    %In all cases, bdGUI returns a handle (gui) which can be used to
+    %control the graphical user interface from the matlab workspace.
     %
     %EXAMPLE
     %   >> cd bdtoolbox
     %   >> addpath models
     %   >> sys = LinearODE();
-    %   >> gui = bdGUI(sys);
+    %   >> gui = bdGUI(sys)
     %
     % gui = 
     %   bdGUI with properties:
-    %     version: '2020a'
+    %     version: '2021a'
     %         par: [1×1 struct]
     %         lag: [1×1 struct]
     %        var0: [1×1 struct]
@@ -82,9 +80,9 @@ classdef bdGUI < matlab.apps.AppBase
     %   Modeller's Workshop - Building custom models with the Brain Dynamics Toolbox
     %
     %AUTHORS
-    %   Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2018b,2019a,2020a,2020b)
+    %   Stewart Heitmann (2016a,2017a,2017b,2017c,2018a,2018b,2019a,2020a,2020b,2021a)
 
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -217,7 +215,7 @@ classdef bdGUI < matlab.apps.AppBase
                 % Construct sysobj from sys only
                 app.sysobj = bdSystem(sys);
 
-                % Run the solver for the first time
+                % Flag that the solution needs to be computed
                 app.sysobj.recompute = true;
             else
                 % Construct sysobj from sys and import the given sol.
@@ -228,9 +226,9 @@ classdef bdGUI < matlab.apps.AppBase
             % initiate the undo stack
             app.UndoStack = bdUndoStack();
             app.UndoStack.Push(sys);
-                        
+                                    
             % Construct a new figure
-            app.fig = uifigure('Position',[randi(200),randi(200),900,500], 'Visible','off');
+            app.fig = uifigure('Position',[randi(200),randi(200),950,550], 'Visible','off');
             app.fig.Name = 'Brain Dynamics Toolbox';
             app.fig.CloseRequestFcn = @(src,evnt) app.QuitMenuCallback();
 
@@ -309,7 +307,65 @@ classdef bdGUI < matlab.apps.AppBase
             app.TabGroup.Layout.Row = [1 2];
             app.TabGroup.Layout.Column = 1;
             app.TabGroup.SelectionChangedFcn = @(tabgrp,~) bdPanelBase.FocusMenu(tabgrp);
-                                 
+            app.TabGroup.Visible = 'on';
+       
+            % Add 'Brain Dynamics Toolbox' label to the TabGroup UserData.
+            % The visibility of this text is managed by the bdPanelBase
+            % FocusMenu(tabgrp) function.
+            app.TabGroup.UserData.label1 = uilabel(app.GridLayout);
+            app.TabGroup.UserData.label1.Layout.Row = [1 2];
+            app.TabGroup.UserData.label1.Layout.Column = 1;
+            app.TabGroup.UserData.label1.Text = {'Brain Dynamics','Toolbox','',''};
+            app.TabGroup.UserData.label1.VerticalAlignment = 'center';
+            app.TabGroup.UserData.label1.HorizontalAlignment = 'center';            
+            app.TabGroup.UserData.label1.FontName = 'Times';
+            app.TabGroup.UserData.label1.FontWeight = 'bold';
+            app.TabGroup.UserData.label1.FontSize = 50;
+            app.TabGroup.UserData.label1.FontColor = [0.3 0.3 0.3];
+            
+            % Add 'Version YYYY' label to the TabGroup UserData.
+            % The visibility of this text is managed by the bdPanelBase
+            % FocusMenu(tabgrp) function.
+            app.TabGroup.UserData.label2 = uilabel(app.GridLayout);
+            app.TabGroup.UserData.label2.Layout.Row = [1 2];
+            app.TabGroup.UserData.label2.Layout.Column = 1;
+            app.TabGroup.UserData.label2.Text = {'','','',['Version ' app.sysobj.version]};
+            app.TabGroup.UserData.label2.VerticalAlignment = 'center';
+            app.TabGroup.UserData.label2.HorizontalAlignment = 'center';            
+            app.TabGroup.UserData.label2.FontName = 'Times';
+            app.TabGroup.UserData.label2.FontWeight = 'bold';
+            app.TabGroup.UserData.label2.FontSize = 30;
+            app.TabGroup.UserData.label2.FontColor = [0.3 0.3 0.3];
+
+            % Temporary "Loading" label over the Control panel
+            LoadingLabel = uilabel(app.GridLayout);
+            LoadingLabel.Layout.Row = 1;
+            LoadingLabel.Layout.Column = 2;
+            LoadingLabel.Text = 'Loading ...';
+            LoadingLabel.FontSize = 16;
+            LoadingLabel.FontWeight = 'bold';
+            LoadingLabel.FontColor = [0.5 0.5 0.5];
+            LoadingLabel.HorizontalAlignment = 'center';
+            LoadingLabel.VerticalAlignment = 'center';
+
+            % Make the GUI visible at this point so that teh user is assured
+            % that soemthing is happening. Some models can be very slow to
+            % render all of teh uitools widgets.
+            app.fig.Visible = syntax.Results.Visible;
+            drawnow;
+            
+            % Control Panel container
+            app.ControlPanel = uipanel(app.GridLayout);
+            app.ControlPanel.Visible = 'off';
+            app.ControlPanel.Layout.Row = 1;
+            app.ControlPanel.Layout.Column = 2;
+            app.ControlPanel.BorderType = 'none';
+            bdControlPanel(app.sysobj,app.ControlPanel);
+            
+            % Delete the Control Panel 'Loading' label and make the control panel visible
+            delete(LoadingLabel)
+            app.ControlPanel.Visible = 'on';
+            
             % Solver Panel container
             app.SolverPanel = uipanel(app.GridLayout);
             app.SolverPanel.Title = [];
@@ -325,14 +381,9 @@ classdef bdGUI < matlab.apps.AppBase
             app.TimePanel.Layout.Column = 2;
             app.TimePanel.BorderType = 'none';
             bdControlTime(app.sysobj,app.TimePanel);
-                        
-            % Control Panel container
-            app.ControlPanel = uipanel(app.GridLayout);
-            app.ControlPanel.Title = [];
-            app.ControlPanel.Layout.Row = 1;
-            app.ControlPanel.Layout.Column = 2;
-            app.ControlPanel.BorderType = 'none';
-            bdControlPanel(app.sysobj,app.ControlPanel);
+
+            % Ensure everything is rendered before moving onto the display panels
+            drawnow;
             
             % Create the panel manager         
             app.PanelMgr = bdPanelMgr(app.TabGroup,app.sysobj);
@@ -346,38 +397,26 @@ classdef bdGUI < matlab.apps.AppBase
 
             % Populate the New-Panel menu items
             app.PanelMgr.PanelMenus(app.NewPanelMenu,sys.panels);
-
-            % make the figure visible (before loading the display panels)
-            drawnow;
-            app.fig.Visible = syntax.Results.Visible;
             
             % Load the display panels 
             app.PanelMgr.ImportPanels(sys.panels);
+            
+            % Select the first panel tab
+            if ~isempty(app.TabGroup.Children)
+                app.TabGroup.SelectedTab = app.TabGroup.Children(1);
+                bdPanelBase.FocusMenu(app.TabGroup);
+            end
             
             % listen to sysobj for REDRAW events
             app.rlistener = listener(app.sysobj,'redraw',@(~,evnt) app.Redraw(evnt));
 
             % Initiate the first compute (before starting the timer).
             if app.sysobj.recompute
-                % call the solver 
-                app.sysobj.Solve();
-
-                % interpolate the solution
-                app.sysobj.indicators.InterpolatorInit();
-                app.sysobj.Interpolate();
-                app.sysobj.indicators.InterpolatorDone();
-
-                % redraw all the panels
-                app.sysobj.indicators.GraphicsInit();
-                app.sysobj.NotifyRedraw([]);
-                app.sysobj.indicators.GraphicsUpdate();
-                
-                % clear the recompute flag
-                app.sysobj.recompute = false;
+                app.sysobj.TimerFcn();
             end
                
             % listen to sysobj for PUSH events
-            app.plistener = listener(app.sysobj,'push',@(~,~) app.Pusher());
+            %app.plistener = listener(app.sysobj,'push',@(~,~) app.Pusher());
 
             % start the timer proper
             app.sysobj.TimerStart();            
@@ -767,57 +806,115 @@ classdef bdGUI < matlab.apps.AppBase
                 end
             end
                                     
-            % If any of the following events occured then push a new entry onto the undostack
-            if any([sysevent.pardef.value]) || ...
-               any([sysevent.pardef.lim]) || ...
-               any([sysevent.lagdef.value]) || ...
-               any([sysevent.lagdef.lim]) || ...
-               any([sysevent.vardef.value]) || ...
-               any([sysevent.vardef.lim]) || ...
-               sysevent.tspan || ...
-               sysevent.tstep || ...
-               sysevent.tval || ...
-               sysevent.noisehold || ...
-               sysevent.evolve || ...
-               sysevent.perturb || ...
-               sysevent.backward || ...
-               sysevent.solveritem || ...
-               sysevent.odeoption || ...
-               sysevent.ddeoption || ...
-               sysevent.sdeoption 
-                % Push the changes onto the undo stack
-                notify(app.sysobj,'push');
-            end
+%             % If any of the following events occured then push a new entry onto the undostack
+%             if any([sysevent.pardef.value]) || ...
+%                any([sysevent.pardef.lim]) || ...
+%                any([sysevent.lagdef.value]) || ...
+%                any([sysevent.lagdef.lim]) || ...
+%                any([sysevent.vardef.value]) || ...
+%                any([sysevent.vardef.lim]) || ...
+%                sysevent.tspan || ...
+%                sysevent.tstep || ...
+%                sysevent.tval || ...
+%                sysevent.noisehold || ...
+%                sysevent.evolve || ...
+%                sysevent.perturb || ...
+%                sysevent.backward || ...
+%                sysevent.solveritem || ...
+%                sysevent.odeoption || ...
+%                sysevent.ddeoption || ...
+%                sysevent.sdeoption 
+%                 % Push the changes onto the undo stack
+%                 notify(app.sysobj,'push');
+%             end
+        end
+        
+        % Construct the Splash Panel
+        function panel = SplashPanel(app)
+            panel = uipanel(app.GridLayout);
+            panel.Title = 'Loading';
+            panel.Layout.Row = [1 2];
+            panel.Layout.Column = 1;
+            panel.BorderType = 'line';
+            panel.BackgroundColor = 'w';
+
+            label1 = uilabel(panel);
+            label1.Position = panel.OuterPosition;
+            %label1 = uilabel(app.GridLayout);
+            %label1.Layout.Row = [1 2];
+            %label1.Layout.Column = 1;
+            label1.Text = {'Brain Dynamics','Toolbox','',''};
+            label1.VerticalAlignment = 'center';
+            label1.HorizontalAlignment = 'center';            
+            label1.FontName = 'Times';
+            label1.FontWeight = 'bold';
+            label1.FontSize = 40;
+            %SplashLabel.FontColor = [1 1 1];
+            %SplashLabel.BackgroundColor = [0.7 0.7 0.7];
+            
+            label2 = uilabel(app.GridLayout);
+            label2.Layout.Row = [1 2];
+            label2.Layout.Column = 1;
+            label2.Text = {'','','',['Version ' app.sysobj.version]};
+            label2.VerticalAlignment = 'center';
+            label2.HorizontalAlignment = 'center';            
+            label2.FontName = 'Times';
+            label2.FontWeight = 'bold';
+            label2.FontSize = 30;
+            
         end
         
         % Callback for System-About menu
         function AboutMenuCallback(app)          
             % Create the 'About' figure with the same Tag as the GUI figure
-            dlg = uifigure('Position',[300 300 600 320], 'Name','About', 'Resize','off','Color','w','Tag',app.fig.Tag);
+            dlg = uifigure('Position',[300 300 600 300], 'Name','', 'Resize','off','Tag',app.fig.Tag);
             
             % Create GridLayout
             gridlayout = uigridlayout(dlg);
             gridlayout.ColumnWidth = {'1x','1x'};
-            gridlayout.RowHeight = {70,100,'1x',50};
+            gridlayout.RowHeight = {60,40,40,100,40};
             gridlayout.RowSpacing = 0;
+            %gridlayout.BackgroundColor = 'w';
 
-            % Brain Dynamics Toolbox: Version XXX
+            % Brain Dynamics Toolbox
             label = uilabel(gridlayout);
-            label.Text = {'Brain Dynamics Toolbox',['Version ' app.sysobj.version]};
+            label.Text = {'Brain Dynamics Toolbox'};
             label.FontName = 'Times';
-            label.FontSize = 24;
+            label.FontSize = 40;
             label.FontWeight = 'bold';
             label.HorizontalAlignment = 'center';
+            label.VerticalAlignment = 'bottom';
             label.Layout.Row = 1;
             label.Layout.Column = [1 2];
             
+            % Version XXX
+            label = uilabel(gridlayout);
+            label.Text = {['Version ' app.sysobj.version]};
+            label.FontName = 'Times';
+            label.FontSize = 30;
+            label.FontWeight = 'bold';
+            label.HorizontalAlignment = 'center';
+            label.Layout.Row = 2;
+            label.Layout.Column = [1 2];
+            
+            % website
+            label = uilabel(gridlayout);
+            label.Text = {'https://bdtoolbox.org'};
+            label.FontName = 'Times';
+            label.FontSize = 20;
+            label.FontWeight = 'normal';
+            label.HorizontalAlignment = 'center';
+            label.VerticalAlignment = 'center';
+            label.Layout.Row = 3;
+            label.Layout.Column = [1 2];
+
             % Stewart Heitmann
             label = uilabel(gridlayout);
             label.Text = {'Stewart Heitmann','Victor Chang Cardiac Research Institute','Darlinghurst NSW 2131, Australia','heitmann@bdtoolbox.org'};
             label.FontName = 'Times';
             label.FontSize = 16;
             label.HorizontalAlignment = 'center';
-            label.Layout.Row = 2;
+            label.Layout.Row = 4;
             label.Layout.Column = 1;
             
             % Michael Breakspear
@@ -826,28 +923,21 @@ classdef bdGUI < matlab.apps.AppBase
             label.FontName = 'Times';
             label.FontSize = 16;
             label.HorizontalAlignment = 'center';
-            label.Layout.Row = 2;
-            label.Layout.Column = 2;
-            
-            % Blurb
-            label = uilabel(gridlayout);
-            label.Text = {'The Brain Dynamics Toolbox is open software for simulating dynamical systems in',' neuroscience and related fields. It solves initial-value problems in custom systems', 'of Ordinary Differential Equations (ODEs), Delay Differential Equations (DDEs),', 'Stochastic Differential Equations (SDEs) and Partial Differential Equations (PDEs).'};
-            label.FontName = 'Times';
-            label.FontSize = 16;
-            label.HorizontalAlignment = 'center';
-            label.Layout.Row = 3;
-            label.Layout.Column = [1 2];
-            
-            % website
-            label = uilabel(gridlayout);
-            label.Text = {'Visit bdtoolbox.org for links to the official handbook and online training courses.'};
-            label.FontName = 'Times';
-            label.FontSize = 16;
-            label.HorizontalAlignment = 'center';
             label.Layout.Row = 4;
+            label.Layout.Column = 2;
+                        
+            % License
+            label = uilabel(gridlayout);
+            label.Text = {'This software is distributed under the 2-clause BSD open-source license.',
+                          'Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute and Stewart Heitmann.'};
+            label.FontName = 'Times';
+            label.FontSize = 14;
+            label.FontWeight = 'normal';
+            label.HorizontalAlignment = 'center';
+            label.Layout.Row = 5;
             label.Layout.Column = [1 2];
-        end
-        
+
+        end      
          
         % Callback for System-Load menu
         function LoadMenuCallback(app)
@@ -1398,9 +1488,9 @@ classdef bdGUI < matlab.apps.AppBase
                           'bdtoolkit:syscheck:sdeG'}
                         msg = {ME.message
                                ''
-                               'Explanation: The model could not be loaded because its ''sys'' structure contains a handle to a function that is not in the matlab search path.'
+                               'Explanation: The model could not be loaded because it contains a handle to a function that is not in the matlab search path.'
                                ''
-                               'To succeed, ensure that all functions belonging to the model are accessible to matlab via the search path. See ''Getting Started'' in the Handbook for the Brain Dynamics Toolbox.'
+                               'Ensure that all functions listed in the sys structure are accessible via the search path. See ''Getting Started'' in the Handbook for the Brain Dynamics Toolbox.'
                                ''
                                };
                         uiwait( warndlg(msg,'Missing Function') );

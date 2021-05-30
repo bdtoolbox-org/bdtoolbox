@@ -3,9 +3,9 @@ classdef bdControlPanel < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2021 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -58,12 +58,13 @@ classdef bdControlPanel < handle
             
             % Create the GridLayout
             this.GridLayout = uigridlayout(uiparent);
-            this.GridLayout.ColumnWidth = {'1x','1x','1x','1x'};
+            this.GridLayout.ColumnWidth = {'1x','1x','1.2x','1x'};
             this.GridLayout.RowHeight = {};
             this.GridLayout.ColumnSpacing = 5;
             this.GridLayout.RowSpacing = 5;
             this.GridLayout.Scrollable = 'on';
             this.GridLayout.Padding = [5 40 5 0];
+            this.GridLayout.Visible = 'off';
 
             % Start with the first row
             gridrow = 1;       
@@ -96,7 +97,7 @@ classdef bdControlPanel < handle
                         %construct control widget for a matrix value
                         bdControlMatrix(sysobj,this,'pardef',idx,'parmode',this.GridLayout,gridrow);                        
                         this.GridLayout.RowHeight{gridrow} = 2.5*RowHeight;
-                end                
+                end                  
             end
             
             % empty row
@@ -135,7 +136,7 @@ classdef bdControlPanel < handle
                                 %construct control widget for a matrix value
                                 bdControlMatrix(sysobj,this,'lagdef',idx,'lagmode',this.GridLayout,gridrow);                        
                                 this.GridLayout.RowHeight{gridrow} = 2.5*RowHeight;
-                        end                
+                        end  
                     end
 
                     % empty row
@@ -234,23 +235,20 @@ classdef bdControlPanel < handle
             this.PerturbCheckBox.Value = sysobj.perturb;
             this.PerturbCheckBox.ValueChangedFcn = @(~,~) this.PerturbChanged(sysobj);
 
-%             EVOLVE button
-%             this.EvolveButton = uibutton(this.GridLayout);
-%             this.EvolveButton.Text = 'EVOL';
-%             this.EvolveButton.Layout.Row = gridrow;
-%             this.EvolveButton.Layout.Column = 3;
-%             this.EvolveButton.Tooltip = 'Evolve the Initial Conditions';
-%             this.EvolveButton.ButtonPushedFcn = @(src,evnt) EvolveButtonCallback(this,sysobj);
-
             % RAND button
             RandButton = uibutton(this.GridLayout);
             RandButton.Text = 'RAND';
             RandButton.Layout.Row = gridrow;
             RandButton.Layout.Column = 4;
-            RandButton.Tooltip = 'Random Initial Conditions';
+            RandButton.Tooltip = 'Random initial conditions';
             RandButton.ButtonPushedFcn = @(src,evnt) RandButtonCallback(this,sysobj);
             RandButton.Interruptible = 'off';
             RandButton.BusyAction = 'cancel';
+
+            %uiparent.Title = [];
+
+            % Make the grid layout visible
+            this.GridLayout.Visible = 'on';
 
             % listen to sysobj for REDRAW events
             this.rlistener = listener(sysobj,'redraw',@(src,evnt) this.Redraw(src,evnt));       

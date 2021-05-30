@@ -88,11 +88,21 @@ classdef bdPanelBase < handle
             % get the currently selected tab
             tab = tabgrp.SelectedTab;
                         
-            % get the Tag of the menu associated with this tab
+            % if there is a currently selected tab then ...
             if ~isempty(tab)
+                % get the Tag of the panel menu associated with this tab
                 FocusMenuTag = tab.Tag;
+                
+                % ensure the 'Brain Dynamics Toolbox' background text is hidden
+                tabgrp.UserData.label1.Visible = 'off';
+                tabgrp.UserData.label2.Visible = 'off';
             else
+                % there is no current tab so use an empty Tag
                 FocusMenuTag = [];
+                
+                % ensure the 'Brain Dynamics Toolbox' background text is visible
+                tabgrp.UserData.label1.Visible = 'on';
+                tabgrp.UserData.label2.Visible = 'on';
             end
             
             % find all panel menus in the parent figure
