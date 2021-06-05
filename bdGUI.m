@@ -164,9 +164,9 @@ classdef bdGUI < matlab.apps.AppBase
             % gui = bdGUI(sys,'sol',sol);
             % gui = bdGUI(sys,'Visible','off');
 
-            % bdGUI require matlab R2019b or newer
-            if verLessThan('matlab','9.7.0')
-                throw(MException('bdGUI:Version','bdGUI requires MATLAB R2019b or newer'));
+            % bdGUI requires matlab R2020a or newer
+            if verLessThan('matlab','9.8.0')
+                throwAsCaller(MException('bdGUI:Version',['bdGUI (Version ' bdSystem.version ') requires MATLAB R2020a or newer. You are using MATLAB R' version('-release') '.']));
             end
             
             % add the bdtoolkit/solvers directory to the path
@@ -298,7 +298,7 @@ classdef bdGUI < matlab.apps.AppBase
             app.TabGroup.UserData.label1.FontName = 'Times';
             app.TabGroup.UserData.label1.FontWeight = 'bold';
             app.TabGroup.UserData.label1.FontSize = 50;
-            app.TabGroup.UserData.label1.FontColor = [0.3 0.3 0.3];
+            app.TabGroup.UserData.label1.FontColor = [0.7 0.7 0.7];
             
             % Add 'Version YYYY' label to the TabGroup UserData.
             % The visibility of this text is managed by the bdPanelBase
@@ -306,22 +306,22 @@ classdef bdGUI < matlab.apps.AppBase
             app.TabGroup.UserData.label2 = uilabel(app.GridLayout);
             app.TabGroup.UserData.label2.Layout.Row = [1 2];
             app.TabGroup.UserData.label2.Layout.Column = 1;
-            app.TabGroup.UserData.label2.Text = {'','','',['Version ' app.sysobj.version]};
+            app.TabGroup.UserData.label2.Text = {'','','','',['Version ' app.sysobj.version]};
             app.TabGroup.UserData.label2.VerticalAlignment = 'center';
             app.TabGroup.UserData.label2.HorizontalAlignment = 'center';            
             app.TabGroup.UserData.label2.FontName = 'Times';
             app.TabGroup.UserData.label2.FontWeight = 'bold';
             app.TabGroup.UserData.label2.FontSize = 30;
-            app.TabGroup.UserData.label2.FontColor = [0.3 0.3 0.3];
+            app.TabGroup.UserData.label2.FontColor = [0.7 0.7 0.7];
 
             % Temporary "Loading" label over the Control panel
             LoadingLabel = uilabel(app.GridLayout);
             LoadingLabel.Layout.Row = 1;
             LoadingLabel.Layout.Column = 2;
-            LoadingLabel.Text = 'Loading ...';
+            LoadingLabel.Text = 'Loading';
             LoadingLabel.FontSize = 16;
-            LoadingLabel.FontWeight = 'bold';
-            LoadingLabel.FontColor = [0.5 0.5 0.5];
+            LoadingLabel.FontWeight = 'normal';
+            LoadingLabel.FontColor = [0.7 0.7 0.7];
             LoadingLabel.HorizontalAlignment = 'center';
             LoadingLabel.VerticalAlignment = 'center';
 
@@ -795,17 +795,12 @@ classdef bdGUI < matlab.apps.AppBase
 
             label1 = uilabel(panel);
             label1.Position = panel.OuterPosition;
-            %label1 = uilabel(app.GridLayout);
-            %label1.Layout.Row = [1 2];
-            %label1.Layout.Column = 1;
             label1.Text = {'Brain Dynamics','Toolbox','',''};
             label1.VerticalAlignment = 'center';
             label1.HorizontalAlignment = 'center';            
             label1.FontName = 'Times';
             label1.FontWeight = 'bold';
             label1.FontSize = 40;
-            %SplashLabel.FontColor = [1 1 1];
-            %SplashLabel.BackgroundColor = [0.7 0.7 0.7];
             
             label2 = uilabel(app.GridLayout);
             label2.Layout.Row = [1 2];
@@ -822,12 +817,12 @@ classdef bdGUI < matlab.apps.AppBase
         % Callback for System-About menu
         function AboutMenuCallback(app)          
             % Create the 'About' figure with the same Tag as the GUI figure
-            dlg = uifigure('Position',[300 300 600 300], 'Name','', 'Resize','off','Tag',app.fig.Tag);
+            dlg = uifigure('Position',[300 300 600 400], 'Name','', 'Resize','off','Tag',app.fig.Tag);
             
             % Create GridLayout
             gridlayout = uigridlayout(dlg);
             gridlayout.ColumnWidth = {'1x','1x'};
-            gridlayout.RowHeight = {60,40,40,100,40};
+            gridlayout.RowHeight = {80,40,40,100,60,70};
             gridlayout.RowSpacing = 0;
             %gridlayout.BackgroundColor = 'w';
 
@@ -881,17 +876,31 @@ classdef bdGUI < matlab.apps.AppBase
             label.Layout.Row = 4;
             label.Layout.Column = 2;
                         
+            % Citation
+            label = uilabel(gridlayout);
+            label.Text = {'Citation'
+                          'Heitmann & Breakspear (2020) Handbook for the Brain Dynamics Toolbox:'
+                          'Version 2020. bdtoolbox.org. ISBN 978-0-6450669-0-6.'
+                          };
+            label.FontName = 'Times';
+            label.FontSize = 16;
+            label.FontWeight = 'normal';
+            label.HorizontalAlignment = 'center';
+            label.VerticalAlignment = 'bottom';
+            label.Layout.Row = 5;
+            label.Layout.Column = [1 2];
+
             % License
             label = uilabel(gridlayout);
-            label.Text = {'This software is distributed under the 2-clause BSD open-source license.',
-                          'Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute and Stewart Heitmann.'};
+            label.Text = {'This software is distributed as open-source under the 2-clause BSD license.'
+                          'Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute and Stewart Heitmann.'
+                          };
             label.FontName = 'Times';
             label.FontSize = 14;
             label.FontWeight = 'normal';
             label.HorizontalAlignment = 'center';
-            label.Layout.Row = 5;
+            label.Layout.Row = 6;
             label.Layout.Column = [1 2];
-
         end      
          
         % Callback for System-Load menu
