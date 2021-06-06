@@ -3,9 +3,9 @@ classdef bdControlMatrix < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2017d,2018a,2019a,2020a,2020b)
+    %  Stewart Heitmann (2017d,2018a,2019a,2020a,2020b,2021a)
     
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,6 @@ classdef bdControlMatrix < handle
         EditField2   matlab.ui.control.NumericEditField
         RandButton   matlab.ui.control.Button
         PerbButton   matlab.ui.control.Button
-       % ShufButton   matlab.ui.control.Button
         AxesPanel    matlab.ui.container.Panel
         Axes         matlab.ui.control.UIAxes
         Image        matlab.graphics.primitive.Image
@@ -113,15 +112,6 @@ classdef bdControlMatrix < handle
             this.PerbButton.Interruptible = 'off';
             this.PerbButton.BusyAction = 'cancel';
 
-%             % Create SHUF Button
-%             this.ShufButton = uibutton(this.SubLayout, 'push');
-%             this.ShufButton.Layout.Row = 2;
-%             this.ShufButton.Layout.Column = 2;
-%             this.ShufButton.Text = 'SHUF';
-%             this.ShufButton.Visible = 'on';
-%             this.ShufButton.ButtonPushedFcn = @(~,~) ShufButtonPushedFcn(this,sysobj,xxxdef,xxxindx);
-%             this.ShufButton.Tooltip = ['Shuffle ''',name,''''];
-            
              % Create Panel for the Axes
             this.AxesPanel = uipanel(gridlayout);
             this.AxesPanel.Layout.Row = gridrow;
@@ -289,7 +279,7 @@ classdef bdControlMatrix < handle
         end
         
         % RAND Button callback
-        function RandButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+        function RandButtonPushedFcn(this,sysobj,xxxdef,xxxindx)
             % retrieve the relevant data from sysobj
             limit = sysobj.(xxxdef)(xxxindx).lim;
             value = sysobj.(xxxdef)(xxxindx).value;
@@ -302,13 +292,16 @@ classdef bdControlMatrix < handle
 
             % write the data back to sysobj
             sysobj.(xxxdef)(xxxindx).value = value;
-            
-            % notify everything to redraw (including self)
-            sysobj.NotifyRedraw([]);            
+                           
+            % update the image data (use only the first plane of 3D data)
+            this.Image.CData = value(:,:,1);
+
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw(this.listener1);            
         end
         
         % PERB Button callback
-        function PerbButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+        function PerbButtonPushedFcn(this,sysobj,xxxdef,xxxindx)
             % retrieve the relevant data from sysobj
             limit = sysobj.(xxxdef)(xxxindx).lim;
             value = sysobj.(xxxdef)(xxxindx).value;
@@ -322,25 +315,11 @@ classdef bdControlMatrix < handle
             % write the data back to sysobj
             sysobj.(xxxdef)(xxxindx).value = value;
             
-            % notify everything to redraw (including self)
-            sysobj.NotifyRedraw([]);            
-        end
+            % update the image data (use only the first plane of 3D data)
+            this.Image.CData = value(:,:,1);
 
-        % SHUF Button callback
-        function ShufButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
-            % retrieve the relevant data from sysobj
-            value = sysobj.(xxxdef)(xxxindx).value;
-
-            % shuffle the order
-            len = numel(value);
-            idx = randperm(len);
-            value(1:end) = value(idx);
-            
-            % write the data back to sysobj
-            sysobj.(xxxdef)(xxxindx).value = value;
-            
-            % notify everything to redraw (including self)
-            sysobj.NotifyRedraw([]);            
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw(this.listener1);            
         end
         
         % ButtonPushedFcn callback

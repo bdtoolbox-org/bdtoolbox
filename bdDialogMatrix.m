@@ -3,9 +3,9 @@ classdef bdDialogMatrix < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2021 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -69,7 +69,7 @@ classdef bdDialogMatrix < handle
         Image               matlab.graphics.primitive.Image
         Histogram           matlab.graphics.chart.primitive.Histogram
         Statistics          matlab.ui.control.Table
-        elistener            event.listener
+        elistener           event.listener
     end
     
     methods
@@ -394,10 +394,24 @@ classdef bdDialogMatrix < handle
             sz = size(value);
             value = (hi-lo)*rand(sz) + lo;           
 
-            % write the data back to sysobj and notify the change
+            % write the data back to sysobj
             this.sysobj.(this.xxxdef)(this.xxxindx).value = value;
-            this.sysobj.NotifyRedraw([]);
-        end
+            
+            % update the UITable
+            this.UITable.Data = value;
+            
+            % update the Image
+            this.Image.CData = value(:,:);
+
+            % update the histogram data
+            this.Histogram.Data = value(:);
+            
+            % update the statistics
+            this.Statistics.Data = [min(value(:)); max(value(:)); mean(value(:)); std(value(:)); var(value(:))];
+                       
+            % notify everything to redraw (excluding self)
+            this.sysobj.NotifyRedraw(this.elistener);
+         end
         
         % Menu selected function: PerturbMenu
         function PerturbMenuSelected(this)
@@ -411,9 +425,23 @@ classdef bdDialogMatrix < handle
             sz = size(value);
             value = value + 0.05*(hi-lo)*(rand(sz)-0.5);
             
-            % write the data back to sysobj and notify the change
+            % write the data back to sysobj
             this.sysobj.(this.xxxdef)(this.xxxindx).value = value;
-            this.sysobj.NotifyRedraw([]);
+            
+            % update the UITable
+            this.UITable.Data = value;
+            
+            % update the Image
+            this.Image.CData = value(:,:);
+
+            % update the histogram data
+            this.Histogram.Data = value(:);
+            
+            % update the statistics
+            this.Statistics.Data = [min(value(:)); max(value(:)); mean(value(:)); std(value(:)); var(value(:))];
+                       
+            % notify everything to redraw (excluding self)
+            this.sysobj.NotifyRedraw(this.elistener);
         end
 
         % Menu selected function: ShuffleMenu
@@ -427,9 +455,23 @@ classdef bdDialogMatrix < handle
             idx = randperm(len);
             value = reshape(value(idx),sz);
             
-            % write the data back to sysobj and notify the change
+            % write the data back to sysobj
             this.sysobj.(this.xxxdef)(this.xxxindx).value = value;
-            this.sysobj.NotifyRedraw([]);
+            
+            % update the UITable
+            this.UITable.Data = value;
+            
+            % update the Image
+            this.Image.CData = value(:,:);
+
+            % update the histogram data
+            this.Histogram.Data = value(:);
+            
+            % update the statistics
+            this.Statistics.Data = [min(value(:)); max(value(:)); mean(value(:)); std(value(:)); var(value(:))];
+                       
+            % notify everything to redraw (excluding self)
+            this.sysobj.NotifyRedraw(this.elistener);
         end
         
         % FillEditField callback function
@@ -446,12 +488,27 @@ classdef bdDialogMatrix < handle
                 else
                     % Blank the FillEditField
                     this.FillEditField.Value='';
+                    
                     % Fill the data
                     value(:) = val;
+                    
                     % write value back to sysobj
                     this.sysobj.(this.xxxdef)(this.xxxindx).value = value;
-                    % notify everything (including self) to redraw
-                    this.sysobj.NotifyRedraw([]);
+            
+                    % update the UITable
+                    this.UITable.Data = value;
+            
+                    % update the Image
+                    this.Image.CData = value(:,:);
+
+                    % update the histogram data
+                    this.Histogram.Data = value(:);
+            
+                    % update the statistics
+                    this.Statistics.Data = [min(value(:)); max(value(:)); mean(value(:)); std(value(:)); var(value(:))];
+                       
+                    % notify everything to redraw (excluding self)
+                    this.sysobj.NotifyRedraw(this.elistener);
                 end
             end
         end        

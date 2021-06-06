@@ -3,9 +3,9 @@ classdef bdControlVector < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2017d,2018a,2020a,2020b)
+    %  Stewart Heitmann (2017d,2018a,2020a,2020b,2021a)
 
-    % Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -270,7 +270,7 @@ classdef bdControlVector < handle
         end
         
         % RAND Button callback
-        function RandButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+        function RandButtonPushedFcn(this,sysobj,xxxdef,xxxindx)
             % retrieve the relevant data from sysobj
             limit = sysobj.(xxxdef)(xxxindx).lim;
             value = sysobj.(xxxdef)(xxxindx).value;
@@ -283,13 +283,16 @@ classdef bdControlVector < handle
 
             % write the data back to sysobj
             sysobj.(xxxdef)(xxxindx).value = value;
-            
-            % notify everything to redraw (including self)
-            sysobj.NotifyRedraw([]);            
+                            
+            % update the Y data in the bar graph
+            this.BarGraph.YData = value;
+
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw(this.listener1);            
         end
         
         % PERB Button callback
-        function PerbButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
+        function PerbButtonPushedFcn(this,sysobj,xxxdef,xxxindx)
             % retrieve the relevant data from sysobj
             limit = sysobj.(xxxdef)(xxxindx).lim;
             value = sysobj.(xxxdef)(xxxindx).value;
@@ -303,25 +306,11 @@ classdef bdControlVector < handle
             % write the data back to sysobj
             sysobj.(xxxdef)(xxxindx).value = value;
             
-            % notify everything to redraw (including self)
-            sysobj.NotifyRedraw([]);            
-        end
+            % update the Y data in the bar graph
+            this.BarGraph.YData = value;
 
-        % SHUF Button callback
-        function ShufButtonPushedFcn(~,sysobj,xxxdef,xxxindx)
-            % retrieve the relevant data from sysobj
-            value = sysobj.(xxxdef)(xxxindx).value;
-
-            % shuffle the order
-            len = numel(value);
-            idx = randperm(len);
-            value = value(idx);
-            
-            % write the data back to sysobj
-            sysobj.(xxxdef)(xxxindx).value = value;
-            
-            % notify everything to redraw (including self)
-            sysobj.NotifyRedraw([]);            
+            % notify everything to redraw (excluding self)
+            sysobj.NotifyRedraw(this.listener1);            
         end
         
         % ButtonPushedFcn callback
