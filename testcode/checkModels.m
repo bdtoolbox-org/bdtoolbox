@@ -19,8 +19,16 @@ bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
-disp 'TESTING BrownianMotion';
-sys = BrownianMotion();
+disp 'TESTING BrownianMotionArithmetic';
+n = 100;
+sys = BrownianMotionArithmetic(n);
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING BrownianMotionGeometric';
+n = 100;
+sys = BrownianMotionGeometric(n);
 bdSysCheck(sys,'run','on');
 disp '===';
 
