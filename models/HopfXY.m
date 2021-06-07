@@ -11,7 +11,7 @@ function sys = HopfXY()
     % Authors
     %   Stewart Heitmann (2020a)
 
-    % Copyright (C) 2020 Stewart Heitmann. All rights reserved.
+    % Copyright (C) 2020-2021 Stewart Heitmann. All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
     % modification, are permitted provided that the following conditions

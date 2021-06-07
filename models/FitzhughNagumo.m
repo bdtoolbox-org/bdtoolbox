@@ -26,7 +26,7 @@
 % Sanz-Leon et al. (2015) Mathematical framework for large-scale brain network
 %   modeling in The Virtual Brain. NeuroImage 111: 385--430.
 
-% Copyright (C) 2016-2020 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without

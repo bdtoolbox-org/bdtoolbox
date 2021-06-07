@@ -20,7 +20,7 @@
 %   Lecar (2007) Morris-Lecar model. Scholarpedia, 2(10):1333.
 %   Ermentrout and Terman (2010) Mathematical Foundations of Neuroscience. Chapter 3.
 
-% Copyright (C) 2019 Stewart Heitmann. All rights reserved.
+% Copyright (C) 2019-2021 Stewart Heitmann. All rights reserved.
 function sys = MorrisLecar(flag)
     % Preset parameters from Table 3.1 of Ermentrout & Terman (2010) 
     switch flag 

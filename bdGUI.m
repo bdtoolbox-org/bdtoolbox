@@ -892,7 +892,7 @@ classdef bdGUI < matlab.apps.AppBase
 
             % License
             label = uilabel(gridlayout);
-            label.Text = {'This software is distributed as open-source under the 2-clause BSD license.'
+            label.Text = {'This is open-source software distributed under the 2-clause BSD license.'
                           'Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute and Stewart Heitmann.'
                           };
             label.FontName = 'Times';

@@ -10,7 +10,7 @@
 % References
 %   Strogatz (1994) Nonlinear Dynamics and Chaos. Section 6.7. 
 
-% Copyright (C) 2019-2020 Stewart Heitmann. All rights reserved.
+% Copyright (C) 2019-2021 Stewart Heitmann. All rights reserved.
 function sys = Pendulum()
     % Handle to our ODE function
     sys.odefun = @odefun;

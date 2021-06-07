@@ -3,9 +3,9 @@ classdef bdPanelMgr < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2020a)
+    %  Stewart Heitmann (2020a,2021a)
 
-    % Copyright (C) 2020 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2021 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
