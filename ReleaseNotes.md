@@ -1,6 +1,14 @@
 # Release Notes
 # Brain Dynamics Toolbox
 
+## Version 2021a
+Released 7 June 2021
+
+Value spinners were included in the control panel and the slider behaviour was altered so that values are only applied when the slider is released. This fixes a fatal race condition on Matlab R2020b and R2021a. The loading of the graphical interface was improved by providing more visual feedback during startup. Similarly, the mouse pointer now switches to a 'busy' icon during long computations. The Undo/Redo stack was removed for simplicity. Error messages are now shown in the solver toolbar. The Brownian Motion model (SDE) was replaced by separate examples of Arithmetic and Geometric Brownian Motion.
+
+Requires Matlab R2020a or newer.
+
+
 ## Version 2020b
 Released 31 Jan 2021
 
