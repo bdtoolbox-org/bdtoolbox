@@ -4,7 +4,7 @@ classdef bdPhasePortrait < bdPanelBase
     %AUTHORS
     %Stewart Heitmann (2016a,2017a,2018b,2017c,2019a,2020a,2021a)   
     
-    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -238,13 +238,15 @@ classdef bdPhasePortrait < bdPanelBase
             this.axes.FontSize = 11;
 
             % Customise the axes toolbars
-            axtoolbar(this.axes,{'export','datacursor'});
+            axtoolbar(this.axes,{'export','datacursor','restoreview'});
             
             % Construct the quiver plot for the vector field
             this.quiver = quiver(this.axes,[],[],[],[]);
             this.quiver.Color = [0.75 0.75 0.75];
-            this.quiver.ShowArrowHead = 'on';
-            this.quiver.Marker = 'none';
+            this.quiver.AutoScale='off';
+            this.quiver.ShowArrowHead = 'off';
+            this.quiver.Marker = 'o';
+            this.quiver.MarkerSize = 5;
             this.quiver.HitTest = 'off';
             
             % Construct the contour plot for the X nullcline
@@ -498,7 +500,7 @@ classdef bdPhasePortrait < bdPanelBase
             % get the plot limits of the selected variables
             [~,limX] = this.selectorX.lim();
             [~,limY] = this.selectorY.lim();
-            
+
             % compute a mesh for the domain
             nx = 11;
             ny = 11;
@@ -507,6 +509,10 @@ classdef bdPhasePortrait < bdPanelBase
             [xmesh,ymesh] = meshgrid(xdomain,ydomain);
             dxmesh = zeros(size(xmesh));
             dymesh = zeros(size(ymesh));
+            
+            % desired length of our tell-tales
+            spanX = (limX(2) - limX(1))/20;
+            spanY = (limY(2) - limY(1))/20;
             
             % current time slider
             tval = this.sysobj.tval;
@@ -531,9 +537,24 @@ classdef bdPhasePortrait < bdPanelBase
                     % evaluate the ODE at Y0
                     dY = this.sysobj.odefun(tval,Y0,P0{:});
 
+                    % extract the dY values for our selected state variables
+                    dx = dY(subXindx);
+                    dy = dY(subYindx);
+
+                    % we scale our vector field manually 
+                    D = norm([dx dy]);
+                    xscale = spanX/D;
+                    yscale = spanY/D;
+                    if isinf(xscale)
+                        xscale=0;
+                    end
+                    if isinf(yscale)
+                        yscale=0;
+                    end
+
                     % save results
-                    dxmesh(xi,yi) = dY(subXindx);
-                    dymesh(xi,yi) = dY(subYindx);
+                    dxmesh(xi,yi) = dx.*xscale;
+                    dymesh(xi,yi) = dy.*yscale;
                 end
             end
             
@@ -765,7 +786,7 @@ classdef bdPhasePortrait < bdPanelBase
         
         function optout = optcheck(opt)
             % check the format of incoming options and apply defaults to missing values
-            optout.title       = bdPanelBase.GetOption(opt, 'title', 'Phase Portrait');
+            optout.title       = bdPanelBase.GetOption(opt, 'title', 'Phase Portrait 2D');
             optout.transients  = bdPanelBase.GetOption(opt, 'transients', 'on');            
             optout.markers     = bdPanelBase.GetOption(opt, 'markers', 'on');            
             optout.points      = bdPanelBase.GetOption(opt, 'points', 'off');            
