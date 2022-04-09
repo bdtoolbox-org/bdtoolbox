@@ -31,9 +31,9 @@
 %   figure; plot(tplot,xp, tplot,yp); legend('dx/dt','dy/dt');
 % 
 %AUTHORS
-%  Stewart Heitmann (2016a,2019a)
+%  Stewart Heitmann (2016a,2019a,2022a)
 
-% Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -114,7 +114,7 @@ function [y,yp] = bdEval(sol,xint,varargin)
     end
     
     switch sol.solver
-        case {'ode45','ode23','ode113','ode15s','ide23s','ode23t','ode23tb','dde23'}
+        case {'ode45','ode23','ode78','ode89','ode113','ode15s','ide23s','ode23t','ode23tb','dde23'}
             % Use MATLAB deval for MATLAB solvers
             [y,yp] = deval(sol,xint,idx);       
             
