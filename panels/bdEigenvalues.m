@@ -66,7 +66,12 @@ classdef bdEigenvalues < bdPanelBase
                         
             % get the parent figure of the TabGroup
             fig = ancestor(tabgrp,'figure');
-            
+                       
+            %  set the mouser cursor to 'watch' icon
+            prevPointer = fig.Pointer;
+            fig.Pointer = 'watch';
+            drawnow;
+
             % Create the panel menu and assign it a unique Tag to identify it.
             this.menu = uimenu('Parent',fig, ...
                 'Label','Eigenvalues', ...
@@ -143,6 +148,9 @@ classdef bdEigenvalues < bdPanelBase
             
             % make the grid visible
             GridLayout.Visible = 'on';
+
+            %  restore the previous mouse cursor icon
+            fig.Pointer = prevPointer;
             
             % listen for Redraw events
             this.rlistener = listener(sysobj,'redraw',@(src,evnt) this.Redraw(evnt));
@@ -191,6 +199,12 @@ classdef bdEigenvalues < bdPanelBase
             switch this.sysobj.solvertype 
                 case 'odesolver'
                     try
+                        %  set the mouser cursor to 'watch' icon
+                        fig = ancestor(this.tab,'figure');
+                        prevPointer = fig.Pointer;
+                        fig.Pointer = 'watch';
+                        drawnow;
+
                         % recompute the Jacobian at Y(t)
                         this.t = this.sysobj.tval;
                         this.Y = bdEval(this.sysobj.sol,this.t);
@@ -214,6 +228,9 @@ classdef bdEigenvalues < bdPanelBase
 
                     % update the Eigenvalue table
                     this.Etable.Data = this.E;
+                    
+                    %  restore the previous mouse cursor icon
+                    fig.Pointer = prevPointer;
 
                 otherwise
                     % nothing to do
