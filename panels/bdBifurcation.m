@@ -4,7 +4,7 @@ classdef bdBifurcation < bdPanelBase
     %AUTHORS
     %Stewart Heitmann (2018a,2020a,2021a)   
     
-    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -507,7 +507,7 @@ classdef bdBifurcation < bdPanelBase
         
         function optout = optcheck(opt)
             % check the format of incoming options and apply defaults to missing values
-            optout.title      = bdPanelBase.GetOption(opt, 'title', 'Bifurcation');
+            optout.title      = bdPanelBase.GetOption(opt, 'title', 'Bifurcation 2D');
             optout.transients = bdPanelBase.GetOption(opt, 'transients', 'on');   
             optout.markers    = bdPanelBase.GetOption(opt, 'markers', 'on');            
             optout.points     = bdPanelBase.GetOption(opt, 'points', 'off');                        

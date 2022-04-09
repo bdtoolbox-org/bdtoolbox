@@ -15,7 +15,7 @@ function sys = Othmer1997()
     %   for the Brain Dynamics Toolbox (bdtoolbox.org) was written by
     %   Stewart Heitmann.
     % 
-    % Copyright (C) 2020-2021 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2022 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
 
     % Handle to our ODE function

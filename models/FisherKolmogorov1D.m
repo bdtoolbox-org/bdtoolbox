@@ -21,7 +21,7 @@ function sys = FisherKolmogorov1D(n,bflag)
     % Authors
     %   Stewart Heitmann (2019a,2020a)
     
-    % Copyright (C) 2019-2021 Stewart Heitmann
+    % Copyright (C) 2019-2022 Stewart Heitmann
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without

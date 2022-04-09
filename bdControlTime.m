@@ -5,7 +5,7 @@ classdef bdControlTime < handle
     %AUTHORS
     %  Stewart Heitmann (2020a)
 
-    % Copyright (C) 2020-2021 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2022 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without

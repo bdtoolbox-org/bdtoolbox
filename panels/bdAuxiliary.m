@@ -4,7 +4,7 @@ classdef bdAuxiliary < bdPanelBase
     %AUTHORS
     %  Stewart Heitmann (2018a,2018b,2020a,2021a)
 
-    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without

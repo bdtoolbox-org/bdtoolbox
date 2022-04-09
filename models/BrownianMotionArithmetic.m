@@ -12,7 +12,7 @@
 % Authors
 %   Stewart Heitmann (2021a)
 
-% Copyright (C) 2021 Stewart Heitmann
+% Copyright (C) 2021-2022 Stewart Heitmann
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without

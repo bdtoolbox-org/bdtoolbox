@@ -32,7 +32,7 @@ function sys = VanDerPolOscillators(Kij)
     % Authors
     %   Stewart Heitmann (2016a,2017a,2018a,2020a)
 
-    % Copyright (C) 2016-2021 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without

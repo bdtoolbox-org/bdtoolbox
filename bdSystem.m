@@ -1,15 +1,14 @@
 classdef bdSystem < handle
     %bdSystem  System object for the Brain Dynamics Toolbox.
-    % The bdSystem object embodies the core simulation engine of a model as
-    % defined by the model's system structure (sys). As such, it operates as
-    % the computational heart of the graphical user interface (bdGUI).
-    % Nonetheless, the bdSystem object can still be instantiated independently
-    % of the GUI, allowing the model to be run programmatically in scripts.
+    % The bdSystem object embodies the simulation engine for a model as
+    % defined by the model's system structure (sys). The bdSystem object
+    % can be instantiated independently of the GUI, allowing the model to
+    % be run in headless mode.
     %
     %AUTHORS
-    %  Stewart Heitmann (2020a,2020b,2021a)
+    %  Stewart Heitmann (2020a,2020b,2021a,2022a)
 
-    % Copyright (C) 2020-2021 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2022 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -38,7 +37,7 @@ classdef bdSystem < handle
     % POSSIBILITY OF SUCH DAMAGE.
     
     properties (Constant=true)
-        version = '2021a';      % version number of the toolbox
+        version = '2022a';      % version number of the toolbox
     end
 
     events
@@ -727,9 +726,9 @@ classdef bdSystem < handle
             end   
         end
         
-        function [Y,dY] = Eval(this,tdomain,varindx)
+        function [Y,dY] = Eval(sysobj,tdomain,varindx)
             % size of the variable
-            [nr,nc] = size(this.vardef(varindx).value);
+            [nr,nc] = size(sysobj.vardef(varindx).value);
             
             % number of time steps
             nt = numel(tdomain);
@@ -741,13 +740,13 @@ classdef bdSystem < handle
             end
 
             % special case of empty sol
-            if isempty(this.sol.x)
+            if isempty(sysobj.sol.x)
                 return      % nothing more to do
             end
 
             % time limits of sol
-            t0 = this.sol.x(1);
-            t1 = this.sol.x(end);
+            t0 = sysobj.sol.x(1);
+            t1 = sysobj.sol.x(end);
             tidx = (tdomain>=t0 & tdomain<=t1);
             
             % special case of [t0 t1] not in tdomain
@@ -756,13 +755,13 @@ classdef bdSystem < handle
             end
 
             % sol indexes for varname
-            solindx = this.vardef(varindx).solindx;
+            solindx = sysobj.vardef(varindx).solindx;
             
             % interpolate the solution
-            switch this.sol.solver
+            switch sysobj.sol.solver
                 case {'ode45','ode23','ode113','ode15s','ide23s','ode23t','ode23tb','dde23'}
                     % Use MATLAB deval for MATLAB solvers
-                    [y,dy] = deval(this.sol,tdomain(tidx),solindx);
+                    [y,dy] = deval(sysobj.sol,tdomain(tidx),solindx);
                     Y(:,tidx) = y;
                     if nargout>1
                         dY(:,tidx) = dy;
@@ -774,10 +773,10 @@ classdef bdSystem < handle
                     % a matrix but not when it is a vector.
                     if size(solindx,2)==1
                         % Do not transpose the result when the input is a vector
-                        Y  = interp1(this.sol.x, this.sol.y(solindx,:)', tdomain(tidx)); 
+                        Y  = interp1(sysobj.sol.x, sysobj.sol.y(solindx,:)', tdomain(tidx)); 
                     else
                         % Do ytranspose the result when the input is a matrix
-                        Y  = interp1(this.sol.x, this.sol.y(solindx,:)', tdomain(tidx))'; 
+                        Y  = interp1(sysobj.sol.x, sysobj.sol.y(solindx,:)', tdomain(tidx))'; 
                     end
             end
             
@@ -813,6 +812,25 @@ classdef bdSystem < handle
             end
         end
               
+        function J = Jacobian(sysobj,t,Y)
+            % Evaluate the Jacobian matrix of the ODE F(t,Y).
+            switch sysobj.solvertype
+                case 'odesolver'                
+                    % if a user-defined Jacobian function exists then use it
+                    if isfield(sysobj.odeoption,'Jacobian') && ~isempty(sysobj.odeoption.Jacobian)
+                        % call the user-defined Jacobian
+                        parms = {sysobj.pardef.value};
+                        J = sysobj.odeoption.Jacobian(t,Y,parms{:});
+                    else
+                        % estimate the Jacobian numerically
+                        J = bdSystem.dFdY(sysobj,t,Y);
+                    end
+                otherwise
+                    % The Jacobian does not apply to non-ODEs.
+                    J = [];     % Return empty J.
+            end
+        end
+
         function TimerFcn(sysobj)
             try
                 % recompute the solution if required
@@ -991,7 +1009,7 @@ classdef bdSystem < handle
             for ix = 1:numel(exlisteners)
                 exlisteners(ix).Enabled = false;
             end
-            
+
             % notify all widgets/panels to redraw themselves
             notify(sysobj,'redraw',eventdata);
             
@@ -1277,7 +1295,12 @@ classdef bdSystem < handle
                 
                 % check sys.odesolver
                 if ~isfield(sys,'odesolver')
-                    sys.odesolver = {@ode45,@ode23,@ode113,@ode15s,@ode23s,@ode23t,@ode23tb,@odeEul};
+                    if verLessThan('matlab','9.11')
+                        % ode78 and ode89 are not supported prior to matlab R2021b (version 9.11) 
+                        sys.odesolver = {@ode45,@ode23,@ode113,@ode15s,@ode23s,@ode23t,@ode23tb,@odeEul};
+                    else
+                        sys.odesolver = {@ode45,@ode23,@ode78,@ode89,@ode113,@ode15s,@ode23s,@ode23t,@ode23tb,@odeEul};
+                    end
                 end
                 if ~iscell(sys.odesolver)
                     throw(MException('bdtoolkit:syscheck:odesolver','The sys.odesolver field must be a cell array'));
@@ -1551,7 +1574,6 @@ classdef bdSystem < handle
                 throw(MException('bdSystem:solcheck:badsol','The sol.stats.nfevals field is missing'));
             end    
         end
-
         
         % The functionality of bdSolve but without the error checking on sys
         function sol = quicksolve(sys,tspan,solverfun,solvertype)
@@ -1585,7 +1607,41 @@ classdef bdSystem < handle
                     throw(MException('bdtoolkit:solve:solvertype','Invalid solvertype ''%s''',solvertype));
                 end        
         end
+    
+        % The functionality of bdJacobian and bdSystem:Jacobian but without
+        % the error checking. Here sys is assummed to be an ODE. The sys
+        % input may be either a system struct or a bdSystem object.
+        function J = dFdY(sys,t,Y)
+            % Initialise the output
+            J = NaN(numel(Y));
+
+            % Get the parameter values from sys.pardef
+            parms = {sys.pardef.value};
+                
+            % Step size for computing the finite differences.
+            h = 1e-6;
         
+            % for each state variable in Y ...
+            for idx=1:numel(Y)
+                % central point
+                Y0 = Y;
+    
+                % left-hand point
+                Y0(idx) = Y(idx) - h;
+                Fl = sys.odefun(t,Y0,parms{:});
+    
+                % right-hand point
+                Y0(idx) = Y(idx) + h;
+                Fr = sys.odefun(t,Y0,parms{:});
+    
+                % finite difference
+                dF = (Fr - Fl)./(2*h);       % dF = [dFdx ; dGdx ; ...]
+    
+                % store dF in the i'th column of matrix J
+                J(:,idx) = dF;
+            end
+        end
+
     end
 end
 

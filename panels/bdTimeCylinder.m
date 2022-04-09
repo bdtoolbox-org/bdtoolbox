@@ -4,7 +4,7 @@ classdef bdTimeCylinder < bdPanelBase
     %AUTHORS
     %  Stewart Heitmann (2020a,2020b,2021a)
 
-    % Copyright (C) 2020-2021 Stewart Heitmann
+    % Copyright (C) 2020-2022 Stewart Heitmann
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
