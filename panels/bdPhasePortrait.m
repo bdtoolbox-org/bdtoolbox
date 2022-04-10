@@ -541,20 +541,18 @@ classdef bdPhasePortrait < bdPanelBase
                     dx = dY(subXindx);
                     dy = dY(subYindx);
 
-                    % we scale our vector field manually 
-                    D = norm([dx dy]);
-                    xscale = spanX/D;
-                    yscale = spanY/D;
-                    if isinf(xscale)
-                        xscale=0;
-                    end
-                    if isinf(yscale)
-                        yscale=0;
+                    % we scale our vector field manually using the equation
+                    % for an ellipse to accommodate the different spans of
+                    % the vertical and horizontal axes.
+                    L = sqrt(dx^2/spanX^2 + dy^2/spanY^2);
+                    scale = 1/L;
+                    if isinf(scale)
+                        scale=0;
                     end
 
                     % save results
-                    dxmesh(xi,yi) = dx.*xscale;
-                    dymesh(xi,yi) = dy.*yscale;
+                    dxmesh(xi,yi) = dx.*scale;
+                    dymesh(xi,yi) = dy.*scale;
                 end
             end
             
