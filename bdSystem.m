@@ -557,7 +557,7 @@ classdef bdSystem < handle
                         Y0, ...
                         option, ...
                         parms{:});
-                    
+
                 case 'ddesolver'
                     % case of a DDE solver (eg dde23)
                     option = ddeset(sysobj.ddeoption, 'OutputFcn',@sysobj.odeOutputFcn, 'OutputSel',[], 'InitialStep',sysobj.tstep);
@@ -865,15 +865,11 @@ classdef bdSystem < handle
                     end
                     
                     % Call the solver. It updates sysobj.sol and sets sysobj.eventdata.sol=true.
+                    warning('off');
                     sysobj.Solve();     % Solve repeatedly calls the odeOutputFcn to report progress.
-
-                    % Warn of overflow (if relevant) but do not halt.
-                    if ~all(isfinite(sysobj.sol.y(:,end)))
-                        sysobj.indicators.ErrorUpdate('Overflow','Solution has blown out to infinity');
-                    else
-                        % clear the error indicator
-                        sysobj.indicators.ErrorUpdate([],[]);
-                    end
+                    warning('on');
+                    [LASTMSG, LASTID] = lastwarn('');
+                    sysobj.indicators.ErrorUpdate(LASTID,LASTMSG);
 
                     % Interpolate the solution. It updates sysobj.tdomain and sysobj.vars.
                     sysobj.indicators.InterpolatorInit();
