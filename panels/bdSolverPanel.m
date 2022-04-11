@@ -354,8 +354,8 @@ classdef bdSolverPanel < bdPanelBase
             if isnan(ymax2)
                 ymax2=1;
             end;
-            this.axes1.YLim = [0 1.2*ymax1];
-            this.axes2.YLim = [0 1.2*ymax2];
+            this.axes1.YLim = sort([0 1.2*ymax1]);
+            this.axes2.YLim = sort([0 1.2*ymax2]);
         end
         
         % DOCK menu callback
