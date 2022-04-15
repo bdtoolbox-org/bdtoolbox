@@ -759,7 +759,7 @@ classdef bdSystem < handle
             
             % interpolate the solution
             switch sysobj.sol.solver
-                case {'ode45','ode23','ode113','ode15s','ide23s','ode23t','ode23tb','dde23'}
+                case {'ode45','ode23','ode78','ode89','ode113','ode15s','ide23s','ode23t','ode23tb','dde23'}
                     % Use MATLAB deval for MATLAB solvers
                     [y,dy] = deval(sysobj.sol,tdomain(tidx),solindx);
                     Y(:,tidx) = y;
