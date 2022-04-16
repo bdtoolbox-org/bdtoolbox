@@ -1,10 +1,18 @@
 # Release Notes
 # Brain Dynamics Toolbox
 
+## Version 2022a
+Released 17 April 2022
+
+Added new display panels for computing the Jacobian and its eigenvalues. Added support for matlab's new ode78 and ode89 solvers. Improved the rendering of vector fields in the 2D phase portrait. Added the Lotka-Volterra model. Added examples from chapters 5 and 6 of Strogatz's (1994) textbook on nonlinear dynamics and chaos.
+
+Requires Matlab R2020a or newer.
+
+
 ## Version 2021a
 Released 7 June 2021
 
-Value spinners were included in the control panel and the slider behaviour was altered so that values are only applied when the slider is released. This fixes a fatal race condition on Matlab R2020b and R2021a. The loading of the graphical interface was improved by providing more visual feedback during startup. Similarly, the mouse pointer now switches to a 'busy' icon during long computations. The Undo/Redo stack was removed for simplicity. Error messages are now shown in the solver toolbar. The Brownian Motion model (SDE) was replaced by separate examples of Arithmetic and Geometric Brownian Motion.
+Value spinners were included in the control panel and the slider behaviour was altered so that values are only applied when the slider is released. This fixes a fatal race condition in Matlab R2020b and R2021a. The loading of the graphical interface was improved by providing more visual feedback during startup. Similarly, the mouse pointer now switches to a 'busy' icon during long computations. The Undo/Redo stack was removed for simplicity. Error messages are now shown in the solver toolbar. The Brownian Motion model (SDE) was replaced by separate examples of Arithmetic and Geometric Brownian Motion.
 
 Requires Matlab R2020a or newer.
 
