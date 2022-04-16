@@ -71,8 +71,8 @@ function sys = Strogatz_6_7()
         'Steven H Strogatz (1994) Nonlinear Dynamics and Chaos. Westview Press.'
         };
 
-    % Time Portrait panel 
-    sys.panels.bdTimePortrait = [];
+    % Time Cylinder panel 
+    sys.panels.bdTimeCylinder.azimuth = 5;
 
     % Phase Portrait panel
     sys.panels.bdPhasePortrait.nullclines = 'on';
