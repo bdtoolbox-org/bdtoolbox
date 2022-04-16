@@ -210,6 +210,12 @@ bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
+disp 'TESTING LotkaVolterra';
+sys = LotkaVolterra();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
 disp 'TESTING MorrisLecar';
 sys = MorrisLecar('Hopf');
 bdSysCheck(sys,'run','on');
@@ -266,6 +272,108 @@ disp '===';
 %%
 disp 'TESTING RFB2017';
 sys = RFB2017();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_5_1_1';
+sys = Strogatz_5_1_1();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_5_1_2';
+sys = Strogatz_5_1_2();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_5_2_1';
+sys = Strogatz_5_2_1();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_5_2_5';
+sys = Strogatz_5_2_5();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_5_2_6';
+sys = Strogatz_5_2_6();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_5_3_1';
+sys = Strogatz_5_3_1();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_1_1';
+sys = Strogatz_6_1_1();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_3_1';
+sys = Strogatz_6_3_1();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_3_2a';
+sys = Strogatz_6_3_2a();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_3_2b';
+sys = Strogatz_6_3_2b();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_4';
+sys = Strogatz_6_4();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_5_2';
+sys = Strogatz_6_5_2();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_6_1';
+sys = Strogatz_6_6_1();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_6_2';
+sys = Strogatz_6_6_2();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_6_3';
+sys = Strogatz_6_6_3();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_7';
+sys = Strogatz_6_7();
+bdSysCheck(sys,'run','on');
+disp '===';
+
+%%
+disp 'TESTING Strogatz_6_8_3';
+sys = Strogatz_6_8_3();
 bdSysCheck(sys,'run','on');
 disp '===';
 
