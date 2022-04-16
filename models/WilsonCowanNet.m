@@ -113,6 +113,7 @@ function sys = WilsonCowanNet(Kij,Je,Ji)
     
     % Default ODE options
     sys.odeoption.RelTol = 1e-5;
+    sys.odeoption.InitialStep = 0.1;
     
     % Latex Panel
     sys.panels.bdLatexPanel.latex = {
