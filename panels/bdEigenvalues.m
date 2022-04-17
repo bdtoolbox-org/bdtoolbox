@@ -210,6 +210,18 @@ classdef bdEigenvalues < bdPanelBase
                         this.Y = bdEval(this.sysobj.sol,this.t);
                         this.dFdY = this.sysobj.Jacobian(this.t,this.Y);
     
+                        % throw an error if the Jacobian contains NaNs or Infs
+                        assert(all(isfinite(this.dFdY),'all'));
+                            
+                        % recompute the eigenvalues (E) and eigenvectors (V)
+                        [this.V, this.E] = eig(this.dFdY, 'vector');
+                    
+                        % update the Eigenvector table
+                        this.Vtable.Data = this.V;
+
+                        % update the Eigenvalue table
+                        this.Etable.Data = this.E;
+                        
                         % update the Jacobian label
                         this.Jlabel.Text = sprintf('Eigenvalues of dF/dY evaluated at Y(t=%0.4g)',this.t);
                     catch
@@ -219,15 +231,6 @@ classdef bdEigenvalues < bdPanelBase
                         this.E = NaN(n,1);
                         this.Jlabel.Text = sprintf('Error: Failed to evaluate F(Y) at Y(t=%0.4g)',this.t);
                     end
-
-                    % recompute the eigenvalues (E) and eigenvectors (V)
-                    [this.V, this.E] = eig(this.dFdY, 'vector');
-                    
-                    % update the Eigenvector table
-                    this.Vtable.Data = this.V;
-
-                    % update the Eigenvalue table
-                    this.Etable.Data = this.E;
                     
                     %  restore the previous mouse cursor icon
                     fig.Pointer = prevPointer;
