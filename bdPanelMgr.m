@@ -3,7 +3,7 @@ classdef bdPanelMgr < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2020a,2021a)
+    %  Stewart Heitmann (2020a,2021a,2022b)
 
     % Copyright (C) 2020-2022 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
@@ -176,8 +176,11 @@ classdef bdPanelMgr < handle
         function PanelMenus(this,rootmenu,panels)
             %disp('bdPanelMgr.PanelMenus');
 
-            % find all panel classes in the bdtoolkit/panels directory
-            panelspath = what('panels');
+            % Find all panel classes in the bdtoolkit/panels directory.
+            % We need to be careful not to accidentally find other 
+            % directories in the matlab path that are also called 'panels'.
+            panelsname = fullfile(fileparts(mfilename('fullpath')),'panels');
+            panelspath = what(panelsname);
             if isempty(panelspath)
                 msg = {'The ''bdtoolkit/panels'' directory was not found.'
                 'Ensure it is in the matlab search PATH. See Chapter 1'
