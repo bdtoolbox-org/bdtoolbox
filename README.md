@@ -1,5 +1,5 @@
 # Brain Dynamics Toolbox
-## Version 2022a
+## Version 2022b
 
 Open-source matlab software for simulating non-linear dynamical systems in neuroscience. Source code and supporting materials are available from [https://bdtoolbox.org](http://bdtoolbox.org). See the Handbook for installation instructions. Matlab R2020a or newer is required.
 

@@ -1,6 +1,14 @@
 # Release Notes
 # Brain Dynamics Toolbox
 
+## Version 2022b
+Released 12 Sep 2022
+
+New example model (HopfRC) demonstrating the normal form of the Hopf bifurcation in polar coordinates. Fixed a bug in bGUI when multiple panels directories were found in the matlab PATH. 
+
+Requires Matlab R2020a or newer.
+
+
 ## Version 2022a
 Released 17 April 2022
 

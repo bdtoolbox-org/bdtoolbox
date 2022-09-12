@@ -6,7 +6,7 @@ classdef bdSystem < handle
     % be run in headless mode.
     %
     %AUTHORS
-    %  Stewart Heitmann (2020a,2020b,2021a,2022a)
+    %  Stewart Heitmann (2020a,2020b,2021a,2022a,2022b)
 
     % Copyright (C) 2020-2022 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
@@ -37,7 +37,7 @@ classdef bdSystem < handle
     % POSSIBILITY OF SUCH DAMAGE.
     
     properties (Constant=true)
-        version = '2022a';      % version number of the toolbox
+        version = '2022b';      % version number of the toolbox
     end
 
     events
