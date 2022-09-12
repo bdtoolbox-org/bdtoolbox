@@ -3,7 +3,7 @@ classdef bdPanelMgr < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2020a,2021a,2022b)
+    %  Stewart Heitmann (2020a,2021a)
 
     % Copyright (C) 2020-2022 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
@@ -187,12 +187,6 @@ classdef bdPanelMgr < handle
                 uiwait( errordlg(msg,'Missing Display Panels') );
                 throw(MException('bdGUI:badpath','The ''panels'' directory was not found'));
             end
-
-            % Workaround for a bug in Matlab R2022a on Windows whereby
-            % the 'what()' function returns a 2x1 struct array instead
-            % a single struct. The fix here is to discard all but the
-            % first struct in our 'panelspath' variable.
-            panelspath = panelspath(1);
 
             % add the found panels to the menu ...
             for indx = 1:numel(panelspath.m)
