@@ -2,7 +2,7 @@ classdef bdHilbert < bdPanelBase
     %bdHilbert Display panel for plotting the Hilbert transform of a time series
     %
     %AUTHORS
-    %  Stewart Heitmann (2017b,2018a,2019a,2020a,2020b,2021a)
+    %  Stewart Heitmann (2017b,2018a,2019a,2020a,2020b,2021a,2023a)
 
     % Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
     % All rights reserved.
@@ -948,8 +948,9 @@ classdef bdHilbert < bdPanelBase
             %
             % The algorithm [1] is similar to that used by the hilbert()
             % function provided with Matlab Signal Processing Toolbox
-            % except that here it operates along the rows of Y instead
-            % of the columns.
+            % except that: (i) It operates along the rows of Y instead
+            % of the columns. (ii) The DC multiplier is 0, which is
+            % equivalent to zeroing the mean of the input signal.
             %
             % [1] Marple S L "Computing the Discrete-Time Analytic Signal
             %     via FFT" IEEE Transactions on Signal Processing. Vol 47
@@ -967,11 +968,11 @@ classdef bdHilbert < bdPanelBase
             M = zeros(size(Yfft));
             if mod(nfft,2)
                 % nfft is odd
-                M(:,1) = 1;             % DC component
+                M(:,1) = 0;             % DC component
                 M(:,2:halfn) = 2;       % positive frequencies
             else
                 % nfft is even
-                M(:,1) = 1;             % DC component
+                M(:,1) = 0;             % DC component
                 M(:,2:halfn) = 2;       % positive frequencies
                 M(:,halfn+1) = 1;       % Nyquist component
             end
