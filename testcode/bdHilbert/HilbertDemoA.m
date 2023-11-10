@@ -5,8 +5,8 @@ addpath ../../
 addpath ../../panels
 
 xr = [1 2 3 4];
-x1 = hilbert(xr)                % Matlab Hilbert function
-x2 = bdHilbert.hilbert(xr)      % bdtoolbox Hilbert function
+x1 = hilbert(xr - mean(xr))         % Matlab Hilbert function
+x2 = bdHilbert.hilbert(xr)          % bdtoolbox Hilbert function
 assert(max(abs(x1-x2)) < 1e-8);
 
 imx1 = imag(x1)

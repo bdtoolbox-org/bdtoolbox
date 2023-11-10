@@ -14,10 +14,11 @@ function test01()
     % generate random signals in y (nsig x nfft)
     nfft = randi(100)+1;
     nsig = randi(10);
-    y = 20*rand(nsig,nfft) - 10;
+    y = 20*rand(nsig,nfft) - 10;        % y is a random signal
+    y0 = y - mean(y,2);                 % y0 is the zero mean of y
     
     % compute Hilbert using the Signal Processing Toolbox
-    h1 = hilbert(y.').';
+    h1 = hilbert(y0.').';
     
     % compute Hilbert using bdHilbert panel
     h2 = bdHilbert.hilbert(y);

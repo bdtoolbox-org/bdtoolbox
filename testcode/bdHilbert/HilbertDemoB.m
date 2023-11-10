@@ -9,7 +9,7 @@ t = 0:1/fs:1;
 
 x = 2.5+cos(2*pi*203*t)+sin(2*pi*721*t)+cos(2*pi*1001*t);
 
-y1 = hilbert(x);
+y1 = hilbert(x - mean(x));
 y2 = bdHilbert.hilbert(x);
 
 mse = mean(abs(y1-y2).^2)
