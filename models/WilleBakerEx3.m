@@ -16,9 +16,9 @@
 %   gui = bdGUI(sys);       % open the Brain Dynamics GUI
 %
 % Authors
-%   Stewart Heitmann (2016a-2018a,2020a)
+%   Stewart Heitmann (2016a-2018a,2020a,2023b)
 
-% Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2023 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -73,7 +73,7 @@ function sys = WilleBakerEx3()
     sys.tspan = [0 20]; 
 
     % Specify DDE solvers and default options
-    sys.ddesolver = {@dde23,@dde23a};          % DDE solvers
+    sys.ddesolver = {@dde23};                  % DDE solvers
     sys.ddeoption = ddeset('RelTol',1e-6);     % DDE solver options    
     
     % Include the Latex (Equations) panel in the GUI
