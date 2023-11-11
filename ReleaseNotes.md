@@ -1,6 +1,13 @@
 # Release Notes
 # Brain Dynamics Toolbox
 
+## Version 2023a
+Released 12 Nov 2023
+
+The dde23a solver was removed. It is superseded by the improved dde23 solver that ships with Matlab R2023b. The BTF2003DDE and WilleBakerEx3 models were updated accordingly. The Hilbert panel (bdHilbert) was modified to automatically zero-mean the time series before applying the transform.
+
+Requires Matlab R2020a or newer. Matlab R2023b is recommended for solving DDEs.
+
 ## Version 2022b
 Released 12 Sep 2022
 
