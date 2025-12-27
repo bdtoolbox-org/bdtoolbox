@@ -13,9 +13,9 @@
 %  bdSetVar, bdSetPar, bdSetValue, bdSetValues
 %
 %AUTHORS
-%  Stewart Heitmann (2019a)
+%  Stewart Heitmann (2019a,2026a)
 
-% Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2026 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -53,7 +53,7 @@ function sys = bdSetLag(sys,name,val)
             try
                 sys.lagdef = bdSetValue(sys.lagdef,name,val);
             catch ME
-                throwAsCaller(MException('bdSetLag:NotFound',['Name ''' name ''' not found in sys.lagdef']));
+                throwAsCaller(MException('bdSetLag:NotFound',"Name '" + name +"' not found in sys.lagdef"));
             end
         otherwise
             throwAsCaller(MException('bdSetLag:Syntax','Too many input arguments'));

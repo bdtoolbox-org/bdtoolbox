@@ -21,9 +21,9 @@
 %  bdSetValues, bdSetPar, bdSetVar, bdSetLag
 %
 %AUTHORS
-%  Stewart Heitmann (2016a,2017a,2019a)
+%  Stewart Heitmann (2016a,2017a,2019a,2026a)
 
-% Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
+% Copyright (C) 2016-2026 QIMR Berghofer Medical Research Institute
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -59,5 +59,5 @@ function yyydef = bdSetValue(xxxdef,name,val)
             return
         end
     end
-    throwAsCaller(MException('bdSetValue:NotFound',['Name ''' name ''' not found in xxxdef']));
+    throwAsCaller(MException('bdSetValue:NotFound',"Name '" + name + "' not found in xxxdef"));
 end
