@@ -3,9 +3,9 @@ classdef bdControlMatrix < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2017d,2018a,2019a,2020a,2020b,2021a)
+    %  Stewart Heitmann (2017d,2018a,2019a,2020a,2020b,2021a,2026a)
     
-    % Copyright (C) 2016-2022 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2026 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -130,8 +130,8 @@ classdef bdControlMatrix < handle
             this.Axes.YAxis.LimitsMode = 'manual';
             this.Axes.XAxis.Visible = 'off';
             this.Axes.YAxis.Visible = 'off';
-            this.Axes.XLim = [0.5 size(value,1)+0.5];
-            this.Axes.YLim = [0.5 size(value,2)+0.5];
+            this.Axes.XLim = [0.5 size(value,2)+0.5];
+            this.Axes.YLim = [0.5 size(value,1)+0.5];
             this.Axes.Box = 'off';
             this.Axes.Position = [-4 -4 this.AxesPanel.InnerPosition(3)+10 this.AxesPanel.InnerPosition(4)+10];
             axis(this.Axes,'off');

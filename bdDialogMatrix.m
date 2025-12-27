@@ -3,9 +3,9 @@ classdef bdDialogMatrix < handle
     %  This class is not intended to be called directly by users.
     % 
     %AUTHORS
-    %  Stewart Heitmann (2020a,2021a)
+    %  Stewart Heitmann (2020a,2021a,2026a)
 
-    % Copyright (C) 2020-2022 Stewart Heitmann <heitmann@bdtoolbox.org>
+    % Copyright (C) 2020-2026 Stewart Heitmann <heitmann@bdtoolbox.org>
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -262,8 +262,8 @@ classdef bdDialogMatrix < handle
             
             % Create Image in UIAxes1
             this.Image = imagesc(value(:,:,1),'Parent',this.UIAxes1,safelimit);
-            this.UIAxes1.XLim = [0.5 size(value,1)+0.5];
-            this.UIAxes1.YLim = [0.5 size(value,2)+0.5];
+            this.UIAxes1.XLim = [0.5 size(value,2)+0.5];
+            this.UIAxes1.YLim = [0.5 size(value,1)+0.5];
 
             % Create UIAxes2 (for Histogram)
             this.UIAxes2 = uiaxes(this.GridLayout3);
