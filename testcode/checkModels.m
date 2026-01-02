@@ -153,8 +153,8 @@ bdSysCheck(sys,'run','on');
 disp '===';
 
 %%
-disp 'TESTING HodgkinHuxley';
-sys = HodgkinHuxley();
+disp 'TESTING HodgkinHuxley1952';
+sys = HodgkinHuxley1952();
 bdSysCheck(sys,'run','on');
 disp '===';
 
