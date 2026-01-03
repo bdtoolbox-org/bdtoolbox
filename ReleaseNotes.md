@@ -1,6 +1,14 @@
 # Release Notes
 # Brain Dynamics Toolbox
 
+## Version 2026a
+Released 3rd Jan 2026
+
+Minor bug fixes to exception handling (bdSetPar, bdSetVar, bdSetLag, bdSetValue). Minor bug fixes to GUI matrix controls (bdControlMatrix, bdDialogMatrix). Revised Hodgkin-Huxley model.
+
+Matlab R2023b or newer is recommended.
+
+
 ## Version 2023a
 Released 12 Nov 2023
 

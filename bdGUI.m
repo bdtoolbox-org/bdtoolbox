@@ -80,9 +80,9 @@ classdef bdGUI < matlab.apps.AppBase
     %   Modeller's Workshop - Building custom models with the Brain Dynamics Toolbox
     %
     %AUTHORS
-    %   Stewart Heitmann (2016a-2023a)
+    %   Stewart Heitmann (2016a-2026a)
 
-    % Copyright (C) 2016-2023 QIMR Berghofer Medical Research Institute
+    % Copyright (C) 2016-2026 QIMR Berghofer Medical Research Institute
     % All rights reserved.
     %
     % Redistribution and use in source and binary forms, with or without
@@ -879,8 +879,8 @@ classdef bdGUI < matlab.apps.AppBase
             % Citation
             label = uilabel(gridlayout);
             label.Text = {'Citation'
-                          'Heitmann & Breakspear (2023) Handbook for the Brain Dynamics Toolbox:'
-                          'Version 2023. bdtoolbox.org. ISBN 978-0-6450669-3-7.'
+                          'Heitmann & Breakspear (2026) Handbook for the Brain Dynamics Toolbox:'
+                          'Version 2026. bdtoolbox.org. ISBN 978-0-6450669-4-4'
                           };
             label.FontName = 'Times';
             label.FontSize = 16;
@@ -893,7 +893,7 @@ classdef bdGUI < matlab.apps.AppBase
             % License
             label = uilabel(gridlayout);
             label.Text = {'This is open-source software distributed under the 2-clause BSD license.'
-                          'Copyright (C) 2016-2023 QIMR Berghofer Medical Research Institute and Stewart Heitmann.'
+                          'Copyright (C) 2016-2026 QIMR Berghofer Medical Research Institute and Stewart Heitmann.'
                           };
             label.FontName = 'Times';
             label.FontSize = 14;

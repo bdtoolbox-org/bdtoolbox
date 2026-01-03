@@ -1,8 +1,8 @@
 % BDTOOLBOX - Brain Dynamics Toolbox
 %
 % The Brain Dynamics Toolbox (https://bdtoolbox.org) is an open-source
-% toolbox for simulating dynamical systems in neuroscience and beyond.
-% See the "Handbook for the Brain Dynamics Toolbox" for details.
+% toolbox for simulating dynamical systems in neuroscience and related
+% fields. See the "Handbook for the Brain Dynamics Toolbox" for more.
 % 
 % Graphical Application
 %   bdGUI           - Brain Dynamics Toolbox Graphical User Interface.
